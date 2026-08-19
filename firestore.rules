@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Allow read and write for authenticated users or public app access for Cristolândia stock
+    match /products/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /movements/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /kits/{document=**} {
+      allow read, write: if true;
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /meals/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

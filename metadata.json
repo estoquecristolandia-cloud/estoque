@@ -1,0 +1,6 @@
+{
+  "name": "Estoque Cristolândia",
+  "description": "Sistema de controle de estoque, consumo diário, rastreabilidade por setor e previsão de abastecimento para a Cristolândia.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
