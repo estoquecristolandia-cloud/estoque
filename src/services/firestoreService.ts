@@ -233,7 +233,7 @@ export async function syncInitialFirestoreData() {
       }
     });
 
-    // 1. Synchronize real verified physical stock (19/08) directly into Firestore
+    // 1. Sync official products with Firestore so current stock reflects the audited reality
     INITIAL_PRODUCTS.forEach((p) => {
       const ref = doc(db, PRODUCTS_COLLECTION, p.id);
       batch.set(ref, cleanForFirestore(p), { merge: true });

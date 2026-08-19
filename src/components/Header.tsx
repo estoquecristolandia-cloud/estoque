@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut } from 'lucide-react';
+import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle } from 'lucide-react';
 import { AppUserProfile, ROLE_LABELS } from '../firebase';
 
 interface HeaderProps {
@@ -7,6 +7,7 @@ interface HeaderProps {
   setActiveTab: (tab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports') => void;
   onOpenKitModal: () => void;
   onOpenMissionariesModal?: () => void;
+  onOpenWhatsAppModal?: () => void;
   onResetData?: () => void;
   currentUser: AppUserProfile | null;
   onOpenAuthModal: () => void;
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   onOpenKitModal,
   onOpenMissionariesModal,
+  onOpenWhatsAppModal,
   onResetData,
   currentUser,
   onOpenAuthModal,
@@ -169,6 +171,19 @@ export const Header: React.FC<HeaderProps> = ({
             })}
 
             <div className="pt-4 border-t border-slate-800 flex flex-col gap-2">
+              {onOpenWhatsAppModal && (
+                <button
+                  onClick={() => {
+                    onOpenWhatsAppModal();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full py-2.5 bg-emerald-600/20 border border-emerald-500/40 text-emerald-400 rounded-xl text-xs font-bold hover:bg-emerald-600/30 transition-colors flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-4 h-4 text-emerald-400" />
+                  <span>📲 WhatsApp Chefe Marcos</span>
+                </button>
+              )}
+
               {onOpenMissionariesModal && (
                 <button
                   onClick={() => {
@@ -263,6 +278,17 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Footer Actions */}
         <div className="mt-auto space-y-2 pt-4 border-t border-slate-800">
+          {onOpenWhatsAppModal && (
+            <button
+              onClick={onOpenWhatsAppModal}
+              className="w-full py-2.5 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-700/60 text-emerald-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              title="Abrir Alerta de Estoque para Chefe Marcos (+55 62 99974-6823)"
+            >
+              <MessageCircle className="w-4 h-4 text-emerald-400" />
+              <span>📲 Alerta WhatsApp (Marcos)</span>
+            </button>
+          )}
+
           <button
             onClick={onOpenKitModal}
             className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl text-xs font-black shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"

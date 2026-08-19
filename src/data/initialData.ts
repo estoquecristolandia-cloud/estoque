@@ -50,7 +50,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Diário (Almoço/Janta)',
     location: 'Depósito Principal - Prateleira A1',
     barcode: '7891000100101',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-feijao',
@@ -64,7 +64,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Diário (Almoço/Janta)',
     location: 'Depósito Principal - Prateleira A2',
     barcode: '7891000100102',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-acucar',
@@ -78,7 +78,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Diário (Café/Sucos)',
     location: 'Depósito Principal - Prateleira B1',
     barcode: '7891000100106',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-farinha',
@@ -92,7 +92,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Diário',
     location: 'Depósito Principal - Prateleira A3',
     barcode: '7891000100115',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-sal',
@@ -106,7 +106,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Diário',
     location: 'Dispensa Cozinha - Armário 1',
     barcode: '7891000100104',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-leite',
@@ -120,7 +120,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Diário (Café Manhã/Tarde)',
     location: 'Geladeira Central',
     barcode: '7891000100111',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-cafe',
@@ -134,7 +134,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Diário (Café Manhã/Tarde)',
     location: 'Dispensa Cozinha - Armário 3',
     barcode: '7891000100107',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-suco',
@@ -148,21 +148,21 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Diário',
     location: 'Dispensa Cozinha - Armário 3',
     barcode: '7891000100105',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-oleo',
     name: 'Óleo de Soja (900ml)',
     category: 'Óleos e Condimentos',
     unit: 'litro',
-    currentStock: 14,
+    currentStock: 13,
     minStock: 4.5,
     dailyAvgConsumption: 1.5,
     alertDays: 3,
     usageFrequency: 'Diário',
     location: 'Dispensa Cozinha - Armário 2',
     barcode: '7891000100103',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-flocao',
@@ -176,7 +176,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Quartas e Domingos (15 pc/refeição)',
     location: 'Dispensa Cozinha',
     barcode: '7891000100116',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-milho-pipoca',
@@ -190,7 +190,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Eventos Esporádicos',
     location: 'Dispensa Cozinha (Consumo Esporádico)',
     barcode: '7891000100117',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-manteiga',
@@ -204,7 +204,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Diário (Pães e Cozinha)',
     location: 'Geladeira Central',
     barcode: '7891000100118',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-macarrao',
@@ -218,7 +218,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Quartas e Domingos (10 pc/refeição)',
     location: 'Depósito Principal - Prateleira B2',
     barcode: '7891000100108',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
   {
     id: 'prod-alho',
@@ -232,7 +232,7 @@ export const INITIAL_PRODUCTS: Product[] = [
     usageFrequency: 'Diário (1 pc c/ 10 cabeças)',
     location: 'Dispensa Cozinha - Balcão',
     barcode: '7891000100114',
-    lastUpdated: '2026-08-19T07:30:00Z',
+    lastUpdated: '2026-08-19T07:00:00Z',
   },
 ];
 
@@ -3995,6 +3995,22 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
     deliveredBy: 'Marconi Castro (Gestor do Estoque)',
     notes: 'Saída para Cozinha - Cozimento do dia 15/08',
     createdAt: '2026-08-15T07:30:00Z',
+  },
+  {
+    id: 'mov-sai-1508-coz-oleo-extra',
+    productId: 'prod-oleo',
+    productName: 'Óleo de Soja (900ml)',
+    type: 'saida',
+    quantity: 1,
+    unit: 'litro',
+    date: '2026-08-15',
+    time: '18:30',
+    sector: 'Cozinha',
+    kitchenShift: 'Jantar',
+    retrievedBy: 'Equipe Cozinha (Jantar)',
+    deliveredBy: 'Marconi Castro (Gestor do Estoque)',
+    notes: 'Saída Cozinha (15/08) - 1 L de óleo de soja para preparo do jantar',
+    createdAt: '2026-08-15T18:30:00Z',
   },
   {
     id: 'mov-sai-1508-coz-alho',

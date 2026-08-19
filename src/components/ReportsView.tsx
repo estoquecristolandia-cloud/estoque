@@ -216,6 +216,47 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements })
     setTimeout(() => setCopiedWhatsApp(false), 3000);
   };
 
+  const handleDirectWhatsAppChefeMarcos = () => {
+    const feijao = products.find((p) => p.id === 'prod-feijao');
+    const criticals = shoppingList.filter((item) => item.daysRemaining <= 5);
+
+    let msg = `🏛️ *JUNTA DE MISSÕES NACIONAIS - CRISTOLÂNDIA (LEM/BA)*\n`;
+    msg += `📋 *ALERTA OFICIAL DE ESTOQUE & COMPRAS*\n\n`;
+    msg += `Prezado *Chefe Marcos*,\n`;
+    msg += `Segue o comunicado oficial do Almoxarifado / Estoque:\n\n`;
+
+    msg += `🚨 *ITEM EM NÍVEL CRÍTICO DE REPOSIÇÃO:*\n`;
+    if (feijao) {
+      const daily = feijao.dailyAvgConsumption || 9;
+      const days = (feijao.currentStock / daily).toFixed(1);
+      msg += `• *Produto:* Feijão Carioca\n`;
+      msg += `• *Estoque Físico Atual:* *${feijao.currentStock} kg*\n`;
+      msg += `• *Estoque Mínimo:* ${feijao.minStock} kg\n`;
+      msg += `• *Consumo Médio:* ${daily} kg/dia\n`;
+      msg += `• *Autonomia Estimada:* *~${days} dias*\n\n`;
+    }
+
+    if (criticals.length > 0) {
+      msg += `📌 *Previsão de Compra para meta de ${bufferDays} dias:*\n`;
+      criticals.forEach((item) => {
+        msg += `• *${item.name}*: Comprar +${item.neededQtyForBuffer} ${item.unit} (Autonomia atual: ${item.daysRemaining} dias)\n`;
+      });
+      msg += `\n`;
+    }
+
+    msg += `💡 *Recomendação Operacional:*\n`;
+    msg += `Programar a compra/reabastecimento prioritário de Feijão Carioca para as próximas 48 horas para assegurar as refeições da unidade.\n\n`;
+    msg += `👤 *Gestor Responsável:* Marconi Castro\n`;
+    msg += `📍 *Unidade:* Cristolândia LEM/BA\n`;
+    msg += `📅 *Emitido em:* ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+
+    const url = `https://api.whatsapp.com/send?phone=5562999746823&text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
+
   // Group Movements into detailed Sector Data based on Date Filter
   const sectorDetailsMap: Record<string, SectorDetails> = {};
   filteredMovements
@@ -779,11 +820,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements })
             {/* Buffer Selector & WhatsApp Action */}
             <div className="flex flex-wrap items-center gap-3">
               <button
+                onClick={handleDirectWhatsAppChefeMarcos}
+                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
+                title="Abrir WhatsApp diretamente com o Chefe Marcos (+55 62 99974-6823)"
+              >
+                <span>📲 Enviar Alerta ao Chefe Marcos</span>
+              </button>
+
+              <button
                 onClick={handleCopyWhatsAppText}
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                className="px-3.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm border border-slate-200 dark:border-slate-700"
                 title="Copiar lista de necessidades formatada para grupos de WhatsApp"
               >
-                <span>📱 {copiedWhatsApp ? 'Copiado para WhatsApp!' : 'Copiar Pedido (WhatsApp)'}</span>
+                <span>📋 {copiedWhatsApp ? 'Copiado para WhatsApp!' : 'Copiar Pedido Geral'}</span>
               </button>
 
               <div className="flex items-center gap-1.5">

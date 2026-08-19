@@ -62,6 +62,7 @@ import { MealManager } from './components/MealManager';
 import { ReportsView } from './components/ReportsView';
 import { AuthModal } from './components/AuthModal';
 import { MissionaryManagerModal } from './components/MissionaryManagerModal';
+import { WhatsAppAlertModal } from './components/WhatsAppAlertModal';
 import { LoginScreen } from './components/LoginScreen';
 
 import { ToastContainer } from './components/ToastContainer';
@@ -121,6 +122,7 @@ export default function App() {
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isKitModalOpen, setIsKitModalOpen] = useState(false);
   const [isMissionariesModalOpen, setIsMissionariesModalOpen] = useState(false);
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [timelineProduct, setTimelineProduct] = useState<Product | null>(null);
   const [selectedProductForAction, setSelectedProductForAction] = useState<Product | null>(null);
   const [actionInitialDate, setActionInitialDate] = useState<string | null>(null);
@@ -505,6 +507,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenKitModal={() => setIsKitModalOpen(true)}
         onOpenMissionariesModal={() => setIsMissionariesModalOpen(true)}
+        onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
         onResetData={handleResetData}
         currentUser={currentUser}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
@@ -528,6 +531,7 @@ export default function App() {
               onOpenKitModal={() => setIsKitModalOpen(true)}
               onOpenReports={() => setActiveTab('reports')}
               onOpenMeals={() => setActiveTab('meals')}
+              onOpenWhatsAppAlert={() => setIsWhatsAppModalOpen(true)}
             />
 
             {/* Bento Grid KPI & Inventory Gauges */}
@@ -755,7 +759,14 @@ export default function App() {
         onSaveMissionaries={handleSaveMissionaries}
       />
 
-      {/* 6. Auth & Roles Modal */}
+      {/* 6. WhatsApp Stock Alert Modal */}
+      <WhatsAppAlertModal
+        isOpen={isWhatsAppModalOpen}
+        onClose={() => setIsWhatsAppModalOpen(false)}
+        products={products}
+      />
+
+      {/* 7. Auth & Roles Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}

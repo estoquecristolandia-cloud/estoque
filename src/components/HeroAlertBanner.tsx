@@ -14,6 +14,7 @@ import {
   Sparkles,
   Calendar,
   Eye,
+  MessageCircle,
 } from 'lucide-react';
 import { Product, DailyKit } from '../types';
 import { UserRole } from '../firebase';
@@ -28,6 +29,7 @@ interface HeroAlertBannerProps {
   onOpenKitModal: () => void;
   onOpenReports: () => void;
   onOpenMeals?: () => void;
+  onOpenWhatsAppAlert?: () => void;
 }
 
 export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
@@ -39,6 +41,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
   onOpenKitModal,
   onOpenReports,
   onOpenMeals,
+  onOpenWhatsAppAlert,
 }) => {
   const isAdmin = userRole === 'admin';
   const [viewTab, setViewTab] = useState<'alerts' | 'staples' | 'all'>('alerts');
@@ -120,6 +123,55 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
       item.product.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleSendWhatsAppAlert = () => {
+    const feijao = products.find((p) => p.id === 'prod-feijao');
+    const alertItems = products.filter((p) => {
+      const daily = p.dailyAvgConsumption > 0 ? p.dailyAvgConsumption : 1;
+      const days = p.currentStock / daily;
+      return days <= 5 || p.currentStock <= p.minStock;
+    });
+
+    let msg = `🏛️ *JUNTA DE MISSÕES NACIONAIS - CRISTOLÂNDIA (LEM/BA)*\n`;
+    msg += `📋 *ALERTA OFICIAL DE ESTOQUE & SUPRIMENTOS*\n\n`;
+    msg += `Prezado *Chefe Marcos*,\n`;
+    msg += `Segue o comunicado oficial do Almoxarifado / Estoque da unidade:\n\n`;
+
+    msg += `🚨 *ITEM EM NÍVEL CRÍTICO DE REPOSIÇÃO:*\n`;
+    if (feijao) {
+      const daily = feijao.dailyAvgConsumption || 9;
+      const days = (feijao.currentStock / daily).toFixed(1);
+      msg += `• *Produto:* Feijão Carioca\n`;
+      msg += `• *Estoque Físico Atual:* *${feijao.currentStock} kg*\n`;
+      msg += `• *Estoque Mínimo de Segurança:* ${feijao.minStock} kg\n`;
+      msg += `• *Consumo Diário Médio:* ${daily} kg/dia\n`;
+      msg += `• *Autonomia Estimada:* *~${days} dias* (Previsão de término em breve)\n\n`;
+    }
+
+    if (alertItems.length > 1) {
+      msg += `📌 *Outros itens com atenção para compra/reposição:*\n`;
+      alertItems
+        .filter((p) => p.id !== 'prod-feijao')
+        .forEach((p) => {
+          const daily = p.dailyAvgConsumption || 1;
+          const days = (p.currentStock / daily).toFixed(1);
+          msg += `• ${p.name}: ${p.currentStock} ${p.unit} (~${days} dias de autonomia)\n`;
+        });
+      msg += `\n`;
+    }
+
+    msg += `💡 *Recomendação Operacional:*\n`;
+    msg += `Programar a compra/reabastecimento prioritário de Feijão Carioca para as próximas 48 horas para assegurar as refeições da unidade.\n\n`;
+    msg += `👤 *Gestor Responsável:* Marconi Castro\n`;
+    msg += `📍 *Unidade:* Cristolândia LEM/BA\n`;
+    msg += `📅 *Emitido em:* ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })}`;
+
+    const url = `https://api.whatsapp.com/send?phone=5562999746823&text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
+
   const totalVolume = products.reduce((acc, p) => acc + p.currentStock, 0);
 
   return (
@@ -172,6 +224,21 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
               </button>
             </>
           )}
+
+          <button
+            onClick={() => {
+              if (onOpenWhatsAppAlert) {
+                onOpenWhatsAppAlert();
+              } else {
+                handleSendWhatsAppAlert();
+              }
+            }}
+            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+            title="Enviar Alerta Oficial de Feijão / Estoque para Chefe Marcos (+55 62 99974-6823)"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            <span>Alerta WhatsApp (Chefe Marcos)</span>
+          </button>
 
           <button
             onClick={onOpenKitModal}

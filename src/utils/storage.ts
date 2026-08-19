@@ -1,9 +1,9 @@
 import { Product, StockMovement, DailyKit, AuditReport, EntryType, Missionary, DailyMealRecord } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_MOVEMENTS, DEFAULT_DAILY_KIT, INITIAL_MISSIONARIES, INITIAL_MEAL_RECORDS } from '../data/initialData';
 
-const PRODUCTS_KEY = 'cristolandia_products_v44';
-const MOVEMENTS_KEY = 'cristolandia_movements_v43';
-const DAILY_KIT_KEY = 'cristolandia_daily_kit_v43';
+const PRODUCTS_KEY = 'cristolandia_products_v48';
+const MOVEMENTS_KEY = 'cristolandia_movements_v48';
+const DAILY_KIT_KEY = 'cristolandia_daily_kit_v48';
 const MISSIONARIES_KEY = 'cristolandia_missionaries_v4';
 const MEALS_KEY = 'cristolandia_meals_v6';
 
