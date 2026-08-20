@@ -27,6 +27,17 @@ export type EntryType = 'Compra' | 'Doação' | 'Ajuste de Estoque' | 'Contagem 
 
 export type KitchenShift = 'Café / Manhã' | 'Almoço' | 'Jantar / Tarde' | 'Ceia / Lanche';
 
+export type UserRole = 'admin' | 'cozinha' | 'coordenacao' | 'pendente';
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface Missionary {
   id: string;
   name: string;

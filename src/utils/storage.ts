@@ -1,9 +1,9 @@
 import { Product, StockMovement, DailyKit, AuditReport, EntryType, Missionary, DailyMealRecord } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_MOVEMENTS, DEFAULT_DAILY_KIT, INITIAL_MISSIONARIES, INITIAL_MEAL_RECORDS } from '../data/initialData';
 
-const PRODUCTS_KEY = 'cristolandia_products_v48';
-const MOVEMENTS_KEY = 'cristolandia_movements_v48';
-const DAILY_KIT_KEY = 'cristolandia_daily_kit_v48';
+const PRODUCTS_KEY = 'cristolandia_products_v51';
+const MOVEMENTS_KEY = 'cristolandia_movements_v51';
+const DAILY_KIT_KEY = 'cristolandia_daily_kit_v51';
 const MISSIONARIES_KEY = 'cristolandia_missionaries_v4';
 const MEALS_KEY = 'cristolandia_meals_v6';
 
@@ -80,6 +80,37 @@ export function saveProducts(products: Product[]): void {
   }
 }
 
+const HOUSES_TO_COZINHA_NAMES = new Set<string>([
+  'Casa Marcos & Fabíola (Cesta Básica)',
+  'Casa da Coordenação (Huberto & Débora)',
+  'Casa Lana & Joabe (Cesta Básica)',
+  'Casa Tainã (Cesta Básica)',
+]);
+
+function sanitizeStoredMovement(m: StockMovement): StockMovement {
+  if (m.sector && HOUSES_TO_COZINHA_NAMES.has(m.sector)) {
+    const initMov = INITIAL_MOVEMENTS.find((im) => im.id === m.id);
+    if (initMov) {
+      return {
+        ...m,
+        sector: initMov.sector,
+        kitchenShift: initMov.kitchenShift || 'Almoço',
+        retrievedBy: initMov.retrievedBy,
+        deliveredBy: initMov.deliveredBy,
+        notes: initMov.notes,
+        date: initMov.date,
+        time: initMov.time,
+      };
+    }
+    return {
+      ...m,
+      sector: 'Cozinha',
+      kitchenShift: m.kitchenShift || 'Almoço',
+    };
+  }
+  return m;
+}
+
 export function getStoredMovements(): StockMovement[] {
   try {
     const data = localStorage.getItem(MOVEMENTS_KEY);
@@ -88,15 +119,16 @@ export function getStoredMovements(): StockMovement[] {
       return INITIAL_MOVEMENTS;
     }
     const parsed = JSON.parse(data) as StockMovement[];
-    const storedIds = new Set(parsed.map((m) => m.id));
+    const sanitizedList = parsed.map(sanitizeStoredMovement);
+    const storedIds = new Set(sanitizedList.map((m) => m.id));
     const missingMovements = INITIAL_MOVEMENTS.filter((m) => !storedIds.has(m.id));
 
     if (missingMovements.length > 0) {
-      const merged = [...parsed, ...missingMovements];
+      const merged = [...sanitizedList, ...missingMovements];
       saveMovements(merged);
       return merged;
     }
-    return parsed;
+    return sanitizedList;
   } catch {
     return INITIAL_MOVEMENTS;
   }

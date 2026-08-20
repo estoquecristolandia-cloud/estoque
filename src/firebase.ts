@@ -17,6 +17,10 @@ import {
   onSnapshot 
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
+import { UserRole, UserProfile } from './types';
+
+export type { UserRole };
+export type AppUserProfile = UserProfile;
 
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -30,17 +34,7 @@ export const db = firebaseConfig.firestoreDatabaseId
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-export type UserRole = 'admin' | 'cozinha' | 'coordenacao';
-
-export interface AppUserProfile {
-  uid: string;
-  email: string;
-  displayName: string;
-  role: UserRole;
-  createdAt: string;
-}
-
-// Default role assignments for initial setup
+// Default role assignments for initial setup and display
 export const ROLE_LABELS: Record<UserRole, { title: string; badge: string; color: string }> = {
   admin: {
     title: 'Administrador (Compras & Estoque)',
@@ -56,6 +50,11 @@ export const ROLE_LABELS: Record<UserRole, { title: string; badge: string; color
     title: 'Coordenação (Visualizador)',
     badge: '📊 Coordenação',
     color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-950/40 dark:text-blue-400',
+  },
+  pendente: {
+    title: 'Pendente de Autorização',
+    badge: '⏳ Aguardando Aprovação',
+    color: 'bg-zinc-500/10 text-zinc-600 border-zinc-500/20 dark:bg-zinc-800 dark:text-zinc-400',
   },
 };
 
@@ -74,17 +73,21 @@ export async function getUserProfile(uid: string): Promise<AppUserProfile | null
   }
 }
 
-// Create or update user profile
+// Create or update user profile with strict role assignment:
+// Only the master founder account receives 'admin' automatically. All new users default strictly to 'pendente'.
 export async function createUserProfile(
   user: FirebaseUser, 
-  role: UserRole = 'admin',
+  role?: UserRole,
   customName?: string
 ): Promise<AppUserProfile> {
+  const isMasterAdmin = user.email === 'estoquecristolandia@gmail.com';
+  const assignedRole: UserRole = isMasterAdmin ? 'admin' : (role || 'pendente');
+
   const profile: AppUserProfile = {
     uid: user.uid,
     email: user.email || 'Acesso Sem E-mail',
     displayName: customName || user.displayName || user.email?.split('@')[0] || 'Usuário Cristolândia',
-    role,
+    role: assignedRole,
     createdAt: new Date().toISOString(),
   };
 
@@ -97,7 +100,9 @@ export async function loginWithGoogle() {
   const result = await signInWithPopup(auth, googleProvider);
   let profile = await getUserProfile(result.user.uid);
   if (!profile) {
-    profile = await createUserProfile(result.user, 'admin');
+    const isMasterAdmin = result.user.email === 'estoquecristolandia@gmail.com';
+    const defaultRole: UserRole = isMasterAdmin ? 'admin' : 'pendente';
+    profile = await createUserProfile(result.user, defaultRole);
   }
   return profile;
 }
@@ -105,3 +110,4 @@ export async function loginWithGoogle() {
 export async function logoutUser() {
   await firebaseSignOut(auth);
 }
+
