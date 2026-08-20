@@ -7,6 +7,8 @@ import { subscribeToProducts, subscribeToMovements, subscribeToDailyKit, subscri
 import { Header } from './components/Header';
 import { HeroAlertBanner } from './components/HeroAlertBanner';
 import { KpiCards } from './components/KpiCards';
+import { ReplenishmentAlertSection } from './components/ReplenishmentAlertSection';
+import { RecentMovementsSection } from './components/RecentMovementsSection';
 import { CurrentStockOverview } from './components/CurrentStockOverview';
 import { DashboardCharts } from './components/DashboardCharts';
 import { ProductTimelineModal } from './components/ProductTimelineModal';
@@ -131,13 +133,45 @@ export default function App() {
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
             <HeroAlertBanner products={products} dailyKit={dailyKit} userRole={currentUser.role} onOpenEntryModal={(p) => handleOpenEntryModal(p || null)} onOpenExitModal={(p) => handleOpenExitModal(p || null)} onOpenKitModal={() => setIsKitModalOpen(true)} onOpenReports={() => setActiveTab('reports')} onOpenMeals={() => setActiveTab('meals')} onOpenWhatsAppAlert={() => setIsWhatsAppModalOpen(true)} />
-            <KpiCards products={products} onSelectCategoryFilter={() => setActiveTab('products')} />
-            <CurrentStockOverview products={products} userRole={currentUser.role} onOpenEntry={(p) => handleOpenEntryModal(p)} onOpenExit={(p) => handleOpenExitModal(p)} onOpenTimeline={handleOpenTimelineById} onForceSyncPhysicalStock={handleForceSyncPhysicalInventory} />
+            
+            <KpiCards
+              products={products}
+              movements={movements}
+              dailyKit={dailyKit}
+              meals={meals}
+              userRole={currentUser.role}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+              onOpenEntryModal={() => handleOpenEntryModal(null)}
+              onOpenExitModal={() => handleOpenExitModal(null)}
+              onOpenKitModal={() => setIsKitModalOpen(true)}
+              onOpenMealsModal={() => setActiveTab('meals')}
+            />
+
+            <ReplenishmentAlertSection
+              products={products}
+              userRole={currentUser.role}
+              onOpenEntry={(p) => handleOpenEntryModal(p)}
+              onViewAllProducts={() => setActiveTab('products')}
+            />
+
+            <RecentMovementsSection
+              movements={movements}
+              products={products}
+              userRole={currentUser.role}
+              onViewAllMovements={() => setActiveTab('entries')}
+              onOpenProductTimeline={handleOpenTimelineById}
+            />
+
+            <CurrentStockOverview
+              products={products}
+              userRole={currentUser.role}
+              onOpenEntry={(p) => handleOpenEntryModal(p)}
+              onOpenExit={(p) => handleOpenExitModal(p)}
+              onOpenTimeline={handleOpenTimelineById}
+              onForceSyncPhysicalStock={handleForceSyncPhysicalInventory}
+            />
+
             <DashboardCharts products={products} movements={movements} />
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-hidden space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800"><div><h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>Feed de Últimas Movimentações em Tempo Real</h3><p className="text-xs text-slate-500 dark:text-slate-400">Últimas entradas e saídas registradas no estoque.</p></div><button onClick={() => setActiveTab('entries')} className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white font-extrabold text-xs rounded-xl transition-all">Ver Histórico Completo →</button></div>
-              <MovementsHistory movements={movements} products={products} userRole={currentUser.role} onOpenProductTimeline={handleOpenTimelineById} onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)} onOpenExitForDate={(d) => handleOpenExitModal(null, d)} onUpdateMovement={handleUpdateMovement} onDeleteMovement={handleDeleteMovement} />
-            </div>
           </motion.div>}
           {activeTab === 'products' && <ProductManager products={products} onOpenTimeline={handleOpenTimeline} onOpenEntry={handleOpenEntryModal} onOpenExit={handleOpenExitModal} onSaveProduct={handleSaveProduct} onAddProduct={handleAddProduct} userRole={currentUser.role} />}
           {activeTab === 'entries' && <div className="space-y-6"><div className="flex items-center justify-between bg-white border border-slate-200 rounded-3xl p-6 shadow-sm"><div><h2 className="text-lg font-bold text-slate-900">Entradas no Estoque (Compras e Doações)</h2><p className="text-xs text-slate-500">Rastreio de todos os mantimentos recebidos na Cristolândia</p></div>{currentUser.role === 'admin' && <button onClick={() => handleOpenEntryModal(null)} className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer">+ Nova Entrada</button>}</div><MovementsHistory movements={movements.filter((m) => m.type === 'entrada')} products={products} userRole={currentUser.role} onOpenProductTimeline={handleOpenTimelineById} onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)} onOpenExitForDate={(d) => handleOpenExitModal(null, d)} onUpdateMovement={handleUpdateMovement} onDeleteMovement={handleDeleteMovement} /></div>}
