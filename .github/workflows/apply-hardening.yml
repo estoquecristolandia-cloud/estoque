@@ -1,0 +1,122 @@
+name: Apply Hardening Etapa 1
+on:
+  push:
+    branches: [hardening/etapa-1-integridade]
+permissions:
+  contents: write
+jobs:
+  hardening:
+    if: ${{ !contains(github.event.head_commit.message, '[hardening-bot]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Apply and validate hardening
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          p = Path('src/firebase.ts')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace("export type UserRole = 'admin' | 'cozinha' | 'coordenacao';", "export type UserRole = 'admin' | 'cozinha' | 'coordenacao' | 'pendente';")
+          s = s.replace("  coordenacao: {", "  pendente: { title: 'Acesso Pendente', badge: '⏳ Pendente', color: 'bg-slate-500/10 text-slate-600 border-slate-500/20' },\n  coordenacao: {")
+          s = re.sub(r"role: UserRole = 'admin'", "role: UserRole = 'pendente'", s)
+          s = s.replace("createUserProfile(result.user, 'admin')", "createUserProfile(result.user, 'pendente')")
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('src/components/AuthModal.tsx')
+          s = p.read_text(encoding='utf-8')
+          s = re.sub(r"useState<UserRole>\('cozinha'\)", "useState<UserRole>('pendente')", s)
+          s = re.sub(r"<select\n\s*value=\{selectedRoleForNewUser\}.*?</select>", "<div className=\"w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold\">Acesso Pendente — o Administrador deverá aprovar o perfil.</div>", s, flags=re.S)
+          s = s.replace("createUserProfile(\n          userCredential.user, \n          selectedRoleForNewUser,", "createUserProfile(\n          userCredential.user, \n          'pendente',")
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('firestore.rules')
+          p.write_text(r'''rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function masterAdmin() { return signedIn() && request.auth.token.email == 'estoquecristolandia@gmail.com'; }
+    function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function role(r) { return signedIn() && userDoc().data.role == r; }
+    function admin() { return masterAdmin() || role('admin'); }
+    function operational() { return admin() || role('cozinha') || role('coordenacao'); }
+
+    match /users/{userId} {
+      allow get: if signedIn() && (request.auth.uid == userId || admin());
+      allow list: if admin();
+      allow create: if signedIn() && request.auth.uid == userId && request.resource.data.uid == request.auth.uid && request.resource.data.role == 'pendente';
+      allow update: if admin() && request.resource.data.uid == resource.data.uid;
+      allow delete: if admin() && userId != request.auth.uid;
+    }
+
+    match /products/{productId} {
+      allow read: if operational();
+      allow create, delete: if admin();
+      allow update: if admin() || (role('cozinha') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentStock','lastUpdated','lastOperationId']) && request.resource.data.currentStock >= 0);
+    }
+
+    match /movements/{movementId} {
+      allow read: if operational();
+      allow create: if operational() && request.resource.data.keys().hasAll(['id','productId','type','quantity','createdAt']) && request.resource.data.id == movementId && request.resource.data.quantity > 0;
+      allow update, delete: if admin();
+    }
+
+    match /kits/{kitId} {
+      allow read: if operational();
+      allow create, update, delete: if admin();
+    }
+
+    match /meals/{mealId} {
+      allow read: if operational();
+      allow create, update, delete: if admin();
+    }
+  }
+}
+''', encoding='utf-8')
+
+          # Route only the four critical stock flows through the existing atomic service functions.
+          p = Path('src/App.tsx')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('  syncInitialFirestoreData,\n} from \'./services/firestoreService\';', '  syncInitialFirestoreData,\n  executeEntryTransaction,\n  executeExitTransaction,\n  executeBatchExitTransaction,\n  executeDailyKitTransaction,\n} from \'./services/firestoreService\';')
+          s = s.replace("profile = await createUserProfile(user, 'admin');", "profile = await createUserProfile(user, 'pendente');")
+          s = re.sub(r"  const handleSelectLocalRole = \(role: UserRole\) => \{.*?\n  \};", "  const handleSelectLocalRole = (_role: UserRole) => {\n    showToast('As permissões são controladas pelo Administrador no banco de dados.', 'info');\n  };", s, flags=re.S)
+          entry = '''  const handleAddEntry = async (product: Product, quantity: number, entryType: EntryType, supplierOrDonor: string, receivedBy: string, date: string, time: string, notes: string) => {\n    try {\n      await executeEntryTransaction({ id: `mov-${Date.now()}-${Math.random().toString(36).slice(2,8)}`, productId: product.id, productName: product.name, unit: product.unit, type: 'entrada', quantity, date, time, entryType, supplierOrDonor, receivedBy, notes, createdAt: new Date().toISOString() });\n      showToast(`+ ${quantity} ${product.unit} de ${product.name} adicionado ao estoque (${entryType})!`, 'success');\n    } catch (err: any) { showToast(err.message || 'Erro ao registrar entrada', 'warning'); }\n  };'''
+          s = re.sub(r"  // Execute Entry Submission with Realtime Firestore Persistence.*?\n  const handleAddExit", entry + "\n\n  const handleAddExit", s, flags=re.S)
+          exitfn = '''  const handleAddExit = async (product: Product, quantity: number, sector: Sector, retrievedBy: string, deliveredBy: string, date: string, time: string, notes: string) => {\n    try {\n      await executeExitTransaction({ id: `mov-${Date.now()}-${Math.random().toString(36).slice(2,8)}`, productId: product.id, productName: product.name, unit: product.unit, type: 'saida', quantity, date, time, sector, retrievedBy, deliveredBy, notes, createdAt: new Date().toISOString() });\n      showToast(`- ${quantity} ${product.unit} de ${product.name} entregue para ${sector}!`, 'success');\n    } catch (err: any) { showToast(err.message || 'Erro ao registrar saída', 'warning'); }\n  };'''
+          s = re.sub(r"  const handleAddExit = async \(.*?\n  \};\n\n  const handleAddBatchExit", exitfn + "\n\n  const handleAddBatchExit", s, flags=re.S)
+          batchfn = '''  const handleAddBatchExit = async (items: Array<{ product: Product; quantity: number }>, sector: Sector, retrievedBy: string, deliveredBy: string, date: string, time: string, notes: string) => {\n    try {\n      const ms = items.map((item, i) => ({ id: `mov-${Date.now()}-${i}-${Math.random().toString(36).slice(2,8)}`, productId: item.product.id, productName: item.product.name, unit: item.product.unit, type: 'saida' as const, quantity: item.quantity, date, time, sector, retrievedBy, deliveredBy, notes, createdAt: new Date().toISOString() }));\n      await executeBatchExitTransaction(ms);\n      showToast(`Saída de ${items.length} item(ns) realizada com sucesso para ${sector}!`, 'success');\n    } catch (err: any) { showToast(err.message || 'Erro ao registrar saída de itens', 'warning'); }\n  };'''
+          s = re.sub(r"  const handleAddBatchExit = async \(.*?\n  \};\n\n  const handleUpdateMovement", batchfn + "\n\n  const handleUpdateMovement", s, flags=re.S)
+          kitfn = '''  const handleDeliverKit = async (kitToDeliver: DailyKit, retrievedBy: string, deliveredBy: string, date: string, time: string, saveAsDefault?: boolean) => {\n    try {\n      if (saveAsDefault) { await saveDailyKitToFirestore(kitToDeliver); setDailyKit(kitToDeliver); saveDailyKit(kitToDeliver); }\n      const delivered = await executeDailyKitTransaction(kitToDeliver, retrievedBy, deliveredBy, date, time);\n      showToast(`⚡ Kit Diário da Cozinha baixado com sucesso! (${delivered.length} itens atualizados)`, 'success');\n    } catch (err: any) { showToast(err.message || 'Erro ao baixar Kit Diário', 'warning'); }\n  };'''
+          s = re.sub(r"  // Execute Daily Kitchen Kit Delivery with Realtime Firestore Persistence.*?\n  const handleSaveProduct", kitfn + "\n\n  const handleSaveProduct", s, flags=re.S)
+          p.write_text(s, encoding='utf-8')
+
+          # Add transaction functions if absent.
+          p = Path('src/services/firestoreService.ts')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('  writeBatch\n} from \'firebase/firestore\';', '  writeBatch,\n  runTransaction\n} from \'firebase/firestore\';')
+          if 'export async function executeEntryTransaction' not in s:
+            marker = '// Write Operations\n'
+            tx = '''const stockOperationRef = (id: string) => doc(db, 'stockOperations', id);\n\nexport async function executeEntryTransaction(movement: StockMovement) {\n  const productRef = doc(db, PRODUCTS_COLLECTION, movement.productId);\n  const movementRef = doc(db, MOVEMENTS_COLLECTION, movement.id);\n  return runTransaction(db, async (tx) => {\n    const [productSnap, movementSnap] = await Promise.all([tx.get(productRef), tx.get(movementRef)]);\n    if (movementSnap.exists()) return;\n    if (!productSnap.exists()) throw new Error('Produto não encontrado no Firestore.');\n    const product = productSnap.data() as Product;\n    const before = Number(product.currentStock) || 0;\n    const after = before + movement.quantity;\n    tx.set(stockOperationRef(movement.id), { operationId: movement.id, productId: movement.productId, resultingStock: after, delta: movement.quantity, type: 'entrada', createdAt: movement.createdAt });\n    tx.update(productRef, { currentStock: after, lastUpdated: new Date().toISOString(), lastOperationId: movement.id });\n    tx.set(movementRef, { ...cleanForFirestore(movement), operationId: movement.id, stockBefore: before, resultingStock: after });\n  });\n}\n\nexport async function executeExitTransaction(movement: StockMovement) {\n  const productRef = doc(db, PRODUCTS_COLLECTION, movement.productId);\n  const movementRef = doc(db, MOVEMENTS_COLLECTION, movement.id);\n  return runTransaction(db, async (tx) => {\n    const [productSnap, movementSnap] = await Promise.all([tx.get(productRef), tx.get(movementRef)]);\n    if (movementSnap.exists()) return;\n    if (!productSnap.exists()) throw new Error('Produto não encontrado no Firestore.');\n    const product = productSnap.data() as Product;\n    const before = Number(product.currentStock) || 0;\n    if (movement.quantity > before) throw new Error(`Estoque insuficiente para ${product.name}. Disponível: ${before} ${product.unit}.`);\n    const after = before - movement.quantity;\n    tx.set(stockOperationRef(movement.id), { operationId: movement.id, productId: movement.productId, resultingStock: after, delta: -movement.quantity, type: 'saida', createdAt: movement.createdAt });\n    tx.update(productRef, { currentStock: after, lastUpdated: new Date().toISOString(), lastOperationId: movement.id });\n    tx.set(movementRef, { ...cleanForFirestore(movement), operationId: movement.id, stockBefore: before, resultingStock: after });\n  });\n}\n\nexport async function executeBatchExitTransaction(movements: StockMovement[]) {\n  const grouped = new Map<string, number>();\n  for (const m of movements) grouped.set(m.productId, (grouped.get(m.productId) || 0) + m.quantity);\n  return runTransaction(db, async (tx) => {\n    const productRefs = [...grouped.keys()].map((id) => doc(db, PRODUCTS_COLLECTION, id));\n    const movementRefs = movements.map((m) => doc(db, MOVEMENTS_COLLECTION, m.id));\n    const productSnaps = []; for (const ref of productRefs) productSnaps.push(await tx.get(ref));\n    const movementSnaps = []; for (const ref of movementRefs) movementSnaps.push(await tx.get(ref));\n    if (movementSnaps.some((s) => s.exists())) throw new Error('Movimentação duplicada detectada.');\n    const states = new Map<string, { ref: any; before: number; after: number }>();\n    for (let i = 0; i < productRefs.length; i++) { const snap = productSnaps[i]; if (!snap.exists()) throw new Error('Produto não encontrado no Firestore.'); const before = Number(snap.data().currentStock) || 0; const after = before - (grouped.get(productRefs[i].id) || 0); if (after < 0) throw new Error(`Estoque insuficiente para ${snap.data().name}.`); states.set(productRefs[i].id, { ref: productRefs[i], before, after }); }\n    const operationId = movements[0]?.id || `batch-${Date.now()}`;\n    for (const [productId, st] of states) { tx.set(stockOperationRef(`${operationId}_${productId}`), { operationId, productId, resultingStock: st.after, delta: st.after - st.before, type: 'saida_lote', createdAt: new Date().toISOString() }); tx.update(st.ref, { currentStock: st.after, lastUpdated: new Date().toISOString(), lastOperationId: operationId }); }\n    for (const m of movements) { const st = states.get(m.productId)!; tx.set(doc(db, MOVEMENTS_COLLECTION, m.id), { ...cleanForFirestore(m), operationId, stockBefore: st.before, resultingStock: st.after }); }\n  });\n}\n\nexport async function executeDailyKitTransaction(kit: DailyKit, retrievedBy: string, deliveredBy: string, date: string, time: string) {\n  const now = new Date().toISOString();\n  const movements = kit.items.filter((i) => i.quantity > 0).map((i, idx) => ({ id: `kit-${Date.now()}-${idx}-${Math.random().toString(36).slice(2,8)}`, productId: i.productId, productName: i.productName, unit: i.unit, type: 'saida' as const, quantity: i.quantity, date, time, sector: kit.sector, retrievedBy, deliveredBy, notes: `Kit Diário: ${kit.name}`, createdAt: now }));\n  await executeBatchExitTransaction(movements); return movements;\n}\n\n'''
+            s = s.replace(marker, tx + marker)
+          p.write_text(s, encoding='utf-8')
+
+          # Ensure no open Firestore rules remain.
+          assert 'allow read, write: if true' not in Path('firestore.rules').read_text()
+          print('Hardening changes applied.')
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Commit hardening
+        run: |
+          git config user.name "estoquecristolandia-cloud"
+          git config user.email "estoquecristolandia@gmail.com"
+          git add firestore.rules src/firebase.ts src/App.tsx src/services/firestoreService.ts src/components/AuthModal.tsx
+          git diff --cached --check
+          git commit -m "security: complete etapa 1 hardening [hardening-bot]"
+          git push
