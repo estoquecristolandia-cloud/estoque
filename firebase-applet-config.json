@@ -1,12 +1,12 @@
 {
-  "projectId": "careful-coil-q6pck",
-  "appId": "1:131022382209:web:d1dd3e232f2314fd359980",
-  "apiKey": "AIzaSyBeX94h6dyo8dsRsLRVeDQYzGO74RXXk5M",
-  "authDomain": "careful-coil-q6pck.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-estoquecristolnd-f7a29e57-dace-47c9-8258-112405d5439e",
-  "storageBucket": "careful-coil-q6pck.firebasestorage.app",
-  "messagingSenderId": "131022382209",
+  "projectId": "estoque-cristolandia",
+  "appId": "1:947446856696:web:6c734e43e8ec52a8aef40d",
+  "apiKey": "AIzaSyAQVxwhXcagFJdKXhMzkuoark16TiLNaPA",
+  "authDomain": "estoque-cristolandia.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-estoque-256280f5-01ca-4416-ac4c-e04242a68ae4",
+  "storageBucket": "estoque-cristolandia.firebasestorage.app",
+  "messagingSenderId": "947446856696",
   "measurementId": "",
-  "oAuthClientId": "131022382209-ol75lj2bqtlef2uufjbq061libhc7ips.apps.googleusercontent.com",
+  "oAuthClientId": "947446856696-unk8erco6uvpi0tbn91i2k892gc5t6c0.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }
