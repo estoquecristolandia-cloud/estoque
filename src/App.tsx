@@ -45,12 +45,6 @@ import {
   deleteMealRecordFromFirestore,
   saveProductsAndMovementsInFirestore,
   syncInitialFirestoreData,
-  executeEntryTransaction,
-  executeExitTransaction,
-  executeBatchExitTransaction,
-  executeDailyKitTransaction,
-  executeUpdateMovementTransaction,
-  executeDeleteMovementTransaction
 } from './services/firestoreService';
 
 import { Header } from './components/Header';
@@ -264,7 +258,7 @@ export default function App() {
     }
   };
 
-  // Execute Entry Submission with Atomic Firestore Transaction
+  // Execute Entry Submission with Realtime Firestore Persistence
   const handleAddEntry = async (
     product: Product,
     quantity: number,
@@ -276,7 +270,7 @@ export default function App() {
     notes: string
   ) => {
     try {
-      const result = await executeEntryTransaction({
+      const { updatedProducts, updatedMovements } = addEntryMovement(
         product,
         quantity,
         entryType,
@@ -285,22 +279,29 @@ export default function App() {
         date,
         time,
         notes,
-      });
-
-      // Optimistically update state (snapshot listener will also guarantee consistency)
-      setProducts((prev) =>
-        prev.map((p) => (p.id === product.id ? { ...p, currentStock: result.updatedStock, lastUpdated: new Date().toISOString() } : p))
+        products,
+        movements
       );
-      setMovements((prev) => [result.movement, ...prev]);
+
+      setProducts(updatedProducts);
+      setMovements(updatedMovements);
+
+      // Firestore Realtime Write
+      const updatedProd = updatedProducts.find((p) => p.id === product.id);
+      if (updatedProd) {
+        await saveProductToFirestore(updatedProd);
+      }
+      if (updatedMovements[0]) {
+        await saveMovementToFirestore(updatedMovements[0]);
+      }
 
       showToast(`+ ${quantity} ${product.unit} de ${product.name} adicionado ao estoque (${entryType})!`, 'success');
     } catch (err: any) {
-      console.error('Error in handleAddEntry transaction:', err);
-      showToast(err.message || 'Erro ao registrar entrada no estoque', 'warning');
+      showToast(err.message || 'Erro ao registrar entrada', 'warning');
     }
   };
 
-  // Execute Exit Submission with Atomic Firestore Transaction
+  // Execute Exit Submission with Realtime Firestore Persistence
   const handleAddExit = async (
     product: Product,
     quantity: number,
@@ -312,7 +313,7 @@ export default function App() {
     notes: string
   ) => {
     try {
-      const result = await executeExitTransaction({
+      const { updatedProducts, updatedMovements } = addExitMovement(
         product,
         quantity,
         sector,
@@ -321,18 +322,25 @@ export default function App() {
         date,
         time,
         notes,
-      });
-
-      // Optimistically update state
-      setProducts((prev) =>
-        prev.map((p) => (p.id === product.id ? { ...p, currentStock: result.updatedStock, lastUpdated: new Date().toISOString() } : p))
+        products,
+        movements
       );
-      setMovements((prev) => [result.movement, ...prev]);
+
+      setProducts(updatedProducts);
+      setMovements(updatedMovements);
+
+      // Firestore Realtime Write
+      const updatedProd = updatedProducts.find((p) => p.id === product.id);
+      if (updatedProd) {
+        await saveProductToFirestore(updatedProd);
+      }
+      if (updatedMovements[0]) {
+        await saveMovementToFirestore(updatedMovements[0]);
+      }
 
       showToast(`- ${quantity} ${product.unit} de ${product.name} entregue para ${sector}!`, 'success');
     } catch (err: any) {
-      console.error('Error in handleAddExit transaction:', err);
-      showToast(err.message || 'Erro ao registrar saída de estoque', 'warning');
+      showToast(err.message || 'Erro ao registrar saída', 'warning');
     }
   };
 
@@ -346,7 +354,7 @@ export default function App() {
     notes: string
   ) => {
     try {
-      const createdMovements = await executeBatchExitTransaction({
+      const { updatedProducts, updatedMovements } = addBatchExitMovements(
         items,
         sector,
         retrievedBy,
@@ -354,14 +362,19 @@ export default function App() {
         date,
         time,
         notes,
-      });
+        products,
+        movements
+      );
 
-      setMovements((prev) => [...createdMovements, ...prev]);
+      setProducts(updatedProducts);
+      setMovements(updatedMovements);
+
+      // Firestore Batch Write
+      await saveProductsAndMovementsInFirestore(updatedProducts, updatedMovements);
 
       const itemsSummary = items.map((i) => `${i.quantity} ${i.product.unit} ${i.product.name}`).join(', ');
       showToast(`Saída de ${items.length} item(ns) realizada com sucesso para ${sector}! (${itemsSummary})`, 'success');
     } catch (err: any) {
-      console.error('Error in handleAddBatchExit transaction:', err);
       showToast(err.message || 'Erro ao registrar saída de itens', 'warning');
     }
   };
@@ -371,29 +384,44 @@ export default function App() {
     updatedData: Partial<StockMovement> & { productId: string; quantity: number; type: 'entrada' | 'saida' }
   ) => {
     try {
-      await executeUpdateMovementTransaction({
+      const { updatedProducts, updatedMovements } = updateStockMovement(
         movementId,
         updatedData,
-      });
+        products,
+        movements
+      );
 
-      showToast('Movimentação atualizada! Estoque recalculado com sucesso no banco.', 'success');
+      setProducts(updatedProducts);
+      setMovements(updatedMovements);
+
+      await saveProductsAndMovementsInFirestore(updatedProducts, updatedMovements);
+
+      showToast('Movimentação atualizada! Estoque recalculado com sucesso.', 'success');
     } catch (err: any) {
-      console.error('Error in handleUpdateMovement transaction:', err);
       showToast(err.message || 'Erro ao atualizar movimentação', 'warning');
     }
   };
 
   const handleDeleteMovement = async (movementId: string) => {
     try {
-      await executeDeleteMovementTransaction(movementId);
+      const { updatedProducts, updatedMovements } = deleteStockMovement(
+        movementId,
+        products,
+        movements
+      );
+
+      setProducts(updatedProducts);
+      setMovements(updatedMovements);
+
+      await saveProductsAndMovementsInFirestore(updatedProducts, updatedMovements);
+
       showToast('Movimentação excluída e saldo de estoque estornado!', 'info');
     } catch (err: any) {
-      console.error('Error in handleDeleteMovement transaction:', err);
       showToast(err.message || 'Erro ao excluir movimentação', 'warning');
     }
   };
 
-  // Execute Daily Kitchen Kit Delivery with Atomic Firestore Transaction
+  // Execute Daily Kitchen Kit Delivery with Realtime Firestore Persistence
   const handleDeliverKit = async (
     kitToDeliver: DailyKit,
     retrievedBy: string,
@@ -402,26 +430,32 @@ export default function App() {
     time: string,
     saveAsDefault?: boolean
   ) => {
-    try {
-      const { deliveredCount, movements: createdMovs } = await executeDailyKitTransaction({
-        kit: kitToDeliver,
-        retrievedBy,
-        deliveredBy,
-        date,
-        time,
-        saveAsDefault,
-      });
+    if (saveAsDefault) {
+      saveDailyKit(kitToDeliver);
+      setDailyKit(kitToDeliver);
+      await saveDailyKitToFirestore(kitToDeliver);
+    }
 
-      if (saveAsDefault) {
-        setDailyKit(kitToDeliver);
-        saveDailyKit(kitToDeliver);
-      }
+    const { updatedProducts, updatedMovements, deliveredCount, warnings } = executeDailyKitDelivery(
+      kitToDeliver,
+      retrievedBy,
+      deliveredBy,
+      date,
+      time,
+      products,
+      movements
+    );
 
-      setMovements((prev) => [...createdMovs, ...prev]);
+    setProducts(updatedProducts);
+    setMovements(updatedMovements);
+
+    // Save batch changes online
+    await saveProductsAndMovementsInFirestore(updatedProducts, updatedMovements);
+
+    if (warnings.length > 0) {
+      showToast(`Kit Entregue com ${deliveredCount} item(ns). Avisos: ${warnings[0]}`, 'warning');
+    } else {
       showToast(`⚡ Kit Diário da Cozinha baixado com sucesso! (${deliveredCount} itens atualizados)${saveAsDefault ? ' - Novo modelo padrão salvo!' : ''}`, 'success');
-    } catch (err: any) {
-      console.error('Error in handleDeliverKit transaction:', err);
-      showToast(err.message || 'Erro ao entregar Kit Diário', 'warning');
     }
   };
 
@@ -484,29 +518,6 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden">
-        {/* Pending Authorization Warning Banner */}
-        {currentUser?.role === 'pendente' && (
-          <div className="bg-amber-500/15 border border-amber-500/40 dark:bg-amber-950/40 dark:border-amber-500/30 rounded-3xl p-5 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-fade-in">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950">
-                  Aguardando Aprovação
-                </span>
-                <p className="font-bold text-sm">Conta Pendente de Autorização Operacional</p>
-              </div>
-              <p className="text-xs text-amber-800/90 dark:text-amber-300/90">
-                Seu login foi autenticado com sucesso. Para realizar lançamentos ou alterações de estoque, solicite a liberação de acesso ao <strong>Administrador Marconi Castro</strong> (estoquecristolandia@gmail.com).
-              </p>
-            </div>
-            <button
-              onClick={() => setIsAuthModalOpen(true)}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors shrink-0"
-            >
-              Ver Status da Conta
-            </button>
-          </div>
-        )}
-
         {/* 1. DASHBOARD TAB */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">

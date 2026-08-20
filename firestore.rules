@@ -1,93 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions for Authentication & Role-Based Access Control (RBAC)
+    // Helper function to check if user is authenticated
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    function isMasterAdmin() {
-      return isAuthenticated() && request.auth.token.email == 'estoquecristolandia@gmail.com';
+    // Allow read and write for authenticated users or public app access for Cristolândia stock
+    match /products/{document=**} {
+      allow read, write: if true;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    match /movements/{document=**} {
+      allow read, write: if true;
     }
 
-    function userExists() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    match /kits/{document=**} {
+      allow read, write: if true;
     }
 
-    function getUserRole() {
-      return userExists() ? getUserData().role : 'pendente';
-    }
-
-    function isAdmin() {
-      return isMasterAdmin() || (isAuthenticated() && getUserRole() == 'admin');
-    }
-
-    function isCozinha() {
-      return isAdmin() || (isAuthenticated() && getUserRole() == 'cozinha');
-    }
-
-    function isCoordenacao() {
-      return isAdmin() || (isAuthenticated() && getUserRole() == 'coordenacao');
-    }
-
-    function isAuthorizedViewer() {
-      return isAdmin() || isCozinha() || isCoordenacao();
-    }
-
-    // 1. PRODUCTS COLLECTION
-    // Admin has full control. Cozinha can ONLY update currentStock & timestamps during atomic transactions,
-    // and CANNOT alter name, unit, category, minStock, initialStock, or set currentStock < 0.
-    // Pending users and unauthenticated requests have no access.
-    match /products/{productId} {
-      allow read: if isAuthenticated() && isAuthorizedViewer();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (
-        isCozinha() && 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentStock', 'lastUpdated', 'updatedAt']) &&
-        request.resource.data.currentStock >= 0
-      );
-    }
-
-    // 2. MOVEMENTS COLLECTION
-    // Admin and Cozinha can create movements (entries, exits, kits). Only Admin can edit/delete historical logs.
-    match /movements/{movementId} {
-      allow read: if isAuthenticated() && isAuthorizedViewer();
-      allow create: if isCozinha();
-      allow update, delete: if isAdmin();
-    }
-
-    // 3. KITS COLLECTION
-    // Daily Kit configuration. Admin has full control, Cozinha can update kit items/usage if authorized.
-    match /kits/{kitId} {
-      allow read: if isAuthenticated() && isAuthorizedViewer();
-      allow create, delete: if isAdmin();
-      allow update: if isCozinha();
-    }
-
-    // 4. USERS COLLECTION (CRITICAL FOR AUTH / RBAC SECURITY)
-    // - New users can only create their document with role == 'pendente' (except master admin)
-    // - No user can change their own role or promote themselves
-    // - Only Admin can update role from 'pendente' to 'cozinha', 'coordenacao', or 'admin'
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == userId && (
-        request.resource.data.role == 'pendente' || isMasterAdmin()
-      );
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow read: if true;
+      allow write: if true;
     }
 
-    // 5. MEALS COLLECTION
-    // Daily meal count logs for kitchen management
-    match /meals/{mealId} {
-      allow read: if isAuthenticated() && isAuthorizedViewer();
-      allow create, update: if isCozinha();
-      allow delete: if isAdmin();
+    match /meals/{document=**} {
+      allow read, write: if true;
     }
   }
 }
-

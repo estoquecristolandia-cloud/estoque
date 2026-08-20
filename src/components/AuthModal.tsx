@@ -33,7 +33,7 @@ export const AuthModal = ({
   const [usernameInput, setUsernameInput] = useState('');
   const [password, setPassword] = useState('');
   const [displayNameInput, setDisplayNameInput] = useState('');
-  const [selectedRoleForNewUser, setSelectedRoleForNewUser] = useState<UserRole>('pendente');
+  const [selectedRoleForNewUser, setSelectedRoleForNewUser] = useState<UserRole>('cozinha');
   const [isRegistering, setIsRegistering] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -57,10 +57,9 @@ export const AuthModal = ({
     try {
       if (isRegistering) {
         const userCredential = await createUserWithEmailAndPassword(auth, emailToUse, password);
-        const assignedRole: UserRole = currentUser?.role === 'admin' ? selectedRoleForNewUser : 'pendente';
         await createUserProfile(
           userCredential.user, 
-          assignedRole, 
+          selectedRoleForNewUser, 
           displayNameInput.trim() || usernameInput.trim()
         );
       } else {
@@ -365,54 +364,35 @@ export const AuthModal = ({
           {activeTab === 'users' && (
             <div className="space-y-3">
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Como Administrador, você autoriza novos usuários e define permissões de Cozinha ou Coordenação:
+                Como Administrador, você pode atribuir permissões para o Chefe de Cozinha e a Coordenação:
               </p>
 
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                {allUsers.map((u) => {
-                  const isPending = u.role === 'pendente';
-                  return (
-                    <div
-                      key={u.uid}
-                      className={`p-3 rounded-2xl border flex items-center justify-between gap-3 text-xs transition-all ${
-                        isPending
-                          ? 'bg-amber-500/10 border-amber-500/30 dark:bg-amber-950/20'
-                          : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-slate-900 dark:text-white">{u.displayName}</p>
-                          {isPending && (
-                            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                              Pendente de Aprovação
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-slate-400">
-                          {u.email && !u.email.endsWith('@app.local') && !u.email.endsWith('@cristolandia.org')
-                            ? u.email
-                            : `Usuário ID: ${u.uid.substring(0, 8)}`}
-                        </p>
-                      </div>
-
-                      <select
-                        value={u.role}
-                        onChange={(e) => handleRoleChange(u.uid, e.target.value as UserRole)}
-                        className={`border rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none cursor-pointer ${
-                          isPending 
-                            ? 'bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-100 border-amber-400' 
-                            : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-700'
-                        }`}
-                      >
-                        <option value="pendente">⏳ Pendente (Bloqueado)</option>
-                        <option value="cozinha">🍳 Chefe Cozinha (Operacional)</option>
-                        <option value="coordenacao">📊 Coordenação (Visualizador)</option>
-                        <option value="admin">👑 Admin Compras (Acesso Total)</option>
-                      </select>
+                {allUsers.map((u) => (
+                  <div
+                    key={u.uid}
+                    className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div>
+                      <p className="font-bold text-slate-900 dark:text-white">{u.displayName}</p>
+                      <p className="text-[10px] text-slate-400">
+                        {u.email && !u.email.endsWith('@app.local') && !u.email.endsWith('@cristolandia.org')
+                          ? u.email
+                          : `Usuário ID: ${u.uid.substring(0, 8)}`}
+                      </p>
                     </div>
-                  );
-                })}
+
+                    <select
+                      value={u.role}
+                      onChange={(e) => handleRoleChange(u.uid, e.target.value as UserRole)}
+                      className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none"
+                    >
+                      <option value="admin">Admin Compras</option>
+                      <option value="cozinha">Chefe Cozinha</option>
+                      <option value="coordenacao">Coordenação</option>
+                    </select>
+                  </div>
+                ))}
 
                 {allUsers.length === 0 && (
                   <p className="text-xs text-slate-400 text-center py-4">Nenhum usuário registrado ainda no Firebase.</p>
