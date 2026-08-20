@@ -1,51 +1,44 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() { return request.auth != null; }
-    function isMaster() { return signedIn() && request.auth.token.email != null && request.auth.token.email == 'estoquecristolandia@gmail.com'; }
-    function role() { return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : null; }
-    function isAdmin() { return isMaster() || (signedIn() && role() == 'admin'); }
-    function isKitchen() { return signedIn() && role() == 'cozinha'; }
-    function isCoordination() { return signedIn() && role() == 'coordenacao'; }
-    function isAuthorized() { return isAdmin() || isKitchen() || isCoordination(); }
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.email != null && request.auth.token.email.lower() == 'estoquecristolandia@gmail.com';
+    }
 
     match /users/{userId} {
-      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
-      allow create: if signedIn() && request.auth.uid == userId && request.resource.data.uid == userId && request.resource.data.email == request.auth.token.email && ((isMaster() && request.resource.data.role == 'admin') || request.resource.data.role == 'pendente');
-      allow update: if isAdmin()
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.email == resource.data.email
-        && (request.auth.uid != userId || request.resource.data.role == resource.data.role)
-        && (resource.data.email != 'estoquecristolandia@gmail.com' || request.resource.data.role == 'admin');
-      allow delete: if isAdmin() && resource.data.email != 'estoquecristolandia@gmail.com';
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if isAdmin();
     }
 
     match /products/{productId} {
-      allow read: if isAuthorized();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin() || (isKitchen()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentStock', 'lastUpdated', 'updatedAt', 'lastOperationId'])
-        && request.resource.data.currentStock >= 0
-        && request.resource.data.lastOperationId is string
-        && getAfter(/databases/$(database)/documents/movements/$(request.resource.data.lastOperationId)).data.productId == productId
-        && getAfter(/databases/$(database)/documents/movements/$(request.resource.data.lastOperationId)).data.operationId == request.resource.data.lastOperationId
-        && getAfter(/databases/$(database)/documents/movements/$(request.resource.data.lastOperationId)).data.quantity > 0
-        && ((getAfter(/databases/$(database)/documents/movements/$(request.resource.data.lastOperationId)).data.type == 'entrada' && request.resource.data.currentStock == resource.data.currentStock + getAfter(/databases/$(database)/documents/movements/$(request.resource.data.lastOperationId)).data.quantity)
-          || (getAfter(/databases/$(database)/documents/movements/$(request.resource.data.lastOperationId)).data.type == 'saida' && request.resource.data.currentStock == resource.data.currentStock - getAfter(/databases/$(database)/documents/movements/$(request.resource.data.lastOperationId)).data.quantity));
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
     }
 
     match /movements/{movementId} {
-      allow read: if isAuthorized();
-      allow create: if isAdmin() || (isKitchen()
-        && request.resource.data.operationId == movementId
-        && request.resource.data.productId is string
-        && request.resource.data.quantity > 0
-        && (request.resource.data.type == 'entrada' || request.resource.data.type == 'saida')
-        && getAfter(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.lastOperationId == movementId);
-      allow update, delete: if isAdmin();
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
     }
 
-    match /kits/{kitId} { allow read: if isAuthorized(); allow write: if isAdmin(); }
-    match /meals/{mealId} { allow read: if isAuthorized(); allow create, update: if isAdmin() || isKitchen(); allow delete: if isAdmin(); }
+    match /kits/{kitId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /meals/{mealId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /missionaries/{missionaryId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
   }
 }
+

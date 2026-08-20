@@ -16,7 +16,7 @@ export const db = firebaseConfig.firestoreDatabaseId ? getFirestore(app, firebas
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-export type UserRole = 'admin' | 'cozinha' | 'coordenacao' | 'pendente';
+export type UserRole = 'admin' | 'viewer' | 'cozinha' | 'coordenacao' | 'pendente';
 
 export interface AppUserProfile {
   uid: string;
@@ -28,45 +28,82 @@ export interface AppUserProfile {
 
 export const MASTER_ADMIN_EMAIL = 'estoquecristolandia@gmail.com';
 
-export const ROLE_LABELS: Record<UserRole, { title: string; badge: string; color: string }> = {
-  admin: { title: 'Administrador (Compras & Estoque)', badge: '👑 Admin Compras', color: 'bg-red-500/10 text-red-600 border-red-500/20 dark:bg-red-950/40 dark:text-red-400' },
-  cozinha: { title: 'Chefe de Cozinha', badge: '🍳 Chefe Cozinha', color: 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:bg-amber-950/40 dark:text-amber-400' },
-  coordenacao: { title: 'Coordenação (Visualizador)', badge: '📊 Coordenação', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-950/40 dark:text-blue-400' },
-  pendente: { title: 'Aguardando aprovação', badge: '⏳ Aguardando aprovação', color: 'bg-slate-500/10 text-slate-600 border-slate-500/20 dark:bg-slate-950/40 dark:text-slate-400' },
+export function isMasterAdminEmail(email?: string | null): boolean {
+  return (email || '').trim().toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
+}
+
+export function resolveUserRole(email?: string | null): UserRole {
+  return isMasterAdminEmail(email) ? 'admin' : 'viewer';
+}
+
+export const ROLE_LABELS: Record<string, { title: string; badge: string; color: string }> = {
+  admin: {
+    title: 'Administrador (Gestão Total)',
+    badge: '👑 Administrador',
+    color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:bg-emerald-950/40 dark:text-emerald-400',
+  },
+  viewer: {
+    title: 'Visualização (Somente Leitura)',
+    badge: '👁️ Visualizador',
+    color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-950/40 dark:text-blue-400',
+  },
+  cozinha: {
+    title: 'Visualização (Somente Leitura)',
+    badge: '👁️ Visualizador',
+    color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-950/40 dark:text-blue-400',
+  },
+  coordenacao: {
+    title: 'Visualização (Somente Leitura)',
+    badge: '👁️ Visualizador',
+    color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-950/40 dark:text-blue-400',
+  },
+  pendente: {
+    title: 'Visualização (Somente Leitura)',
+    badge: '👁️ Visualizador',
+    color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-950/40 dark:text-blue-400',
+  },
 };
 
 export async function getUserProfile(uid: string): Promise<AppUserProfile | null> {
   try {
     const snap = await getDoc(doc(db, 'users', uid));
-    return snap.exists() ? (snap.data() as AppUserProfile) : null;
+    if (snap.exists()) {
+      const data = snap.data() as AppUserProfile;
+      const computedRole = resolveUserRole(data.email);
+      return { ...data, role: computedRole };
+    }
+    return null;
   } catch (err) {
     console.error('Error fetching user profile:', err);
     return null;
   }
 }
 
-export async function createUserProfile(user: FirebaseUser, _requestedRole: UserRole = 'pendente', customName?: string): Promise<AppUserProfile> {
-  const isMaster = user.email?.toLowerCase() === MASTER_ADMIN_EMAIL;
+export async function createUserProfile(user: FirebaseUser, _requestedRole?: UserRole, customName?: string): Promise<AppUserProfile> {
+  const role: UserRole = resolveUserRole(user.email);
   const profile: AppUserProfile = {
     uid: user.uid,
     email: user.email || 'Acesso Sem E-mail',
     displayName: customName || user.displayName || user.email?.split('@')[0] || 'Usuário Cristolândia',
-    role: isMaster ? 'admin' : 'pendente',
+    role,
     createdAt: new Date().toISOString(),
   };
-  await setDoc(doc(db, 'users', user.uid), profile, { merge: true });
+  try {
+    await setDoc(doc(db, 'users', user.uid), profile, { merge: true });
+  } catch (err) {
+    console.warn('Could not write user profile to firestore:', err);
+  }
   return profile;
 }
 
 export async function loginWithGoogle(): Promise<AppUserProfile> {
   const result = await signInWithPopup(auth, googleProvider);
   let profile = await getUserProfile(result.user.uid);
-  if (!profile) profile = await createUserProfile(result.user, 'pendente');
-  if (result.user.email?.toLowerCase() === MASTER_ADMIN_EMAIL && profile.role !== 'admin') {
-    await setDoc(doc(db, 'users', result.user.uid), { role: 'admin' }, { merge: true });
-    profile = { ...profile, role: 'admin' };
+  if (!profile) {
+    profile = await createUserProfile(result.user);
   }
-  return profile;
+  const effectiveRole = resolveUserRole(result.user.email);
+  return { ...profile, role: effectiveRole };
 }
 
 export async function loginWithCredentials(usernameOrEmail: string, password: string): Promise<AppUserProfile> {
@@ -74,8 +111,11 @@ export async function loginWithCredentials(usernameOrEmail: string, password: st
   const email = raw.includes('@') ? raw : `${raw.replace(/[^a-z0-9._-]/g, '')}@app.local`;
   const result = await signInWithEmailAndPassword(auth, email, password);
   let profile = await getUserProfile(result.user.uid);
-  if (!profile) profile = await createUserProfile(result.user, 'pendente');
-  return profile;
+  if (!profile) {
+    profile = await createUserProfile(result.user);
+  }
+  const effectiveRole = resolveUserRole(result.user.email);
+  return { ...profile, role: effectiveRole };
 }
 
 export async function registerWithCredentials(username: string, password: string, displayName?: string): Promise<AppUserProfile> {
@@ -83,7 +123,7 @@ export async function registerWithCredentials(username: string, password: string
   if (!cleaned) throw new Error('Informe um nome de usuário válido.');
   const email = cleaned.includes('@') ? cleaned : `${cleaned}@app.local`;
   const result = await createUserWithEmailAndPassword(auth, email, password);
-  return createUserProfile(result.user, 'pendente', displayName || username);
+  return createUserProfile(result.user, undefined, displayName || username);
 }
 
 export async function logoutUser() {
