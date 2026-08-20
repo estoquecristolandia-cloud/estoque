@@ -1,36 +1,31 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
-  signOut as firebaseSignOut, 
-  onAuthStateChanged,
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut as firebaseSignOut,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   User as FirebaseUser
 } from 'firebase/auth';
-import { 
-  getFirestore, 
-  doc, 
-  getDoc, 
-  setDoc, 
-  onSnapshot 
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
-// Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Initialize Firestore with specific database ID if present
-export const db = firebaseConfig.firestoreDatabaseId 
+export const db = firebaseConfig.firestoreDatabaseId
   ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
   : getFirestore(app);
 
-// Initialize Firebase Auth
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-export type UserRole = 'admin' | 'cozinha' | 'coordenacao';
+export type UserRole = 'admin' | 'cozinha' | 'coordenacao' | 'pendente';
 
 export interface AppUserProfile {
   uid: string;
@@ -40,7 +35,8 @@ export interface AppUserProfile {
   createdAt: string;
 }
 
-// Default role assignments for initial setup
+export const MASTER_ADMIN_EMAIL = 'estoquecristolandia@gmail.com';
+
 export const ROLE_LABELS: Record<UserRole, { title: string; badge: string; color: string }> = {
   admin: {
     title: 'Administrador (Compras & Estoque)',
@@ -57,9 +53,17 @@ export const ROLE_LABELS: Record<UserRole, { title: string; badge: string; color
     badge: '📊 Coordenação',
     color: 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-950/40 dark:text-blue-400',
   },
+  pendente: {
+    title: 'Acesso Pendente',
+    badge: '⏳ Pendente',
+    color: 'bg-slate-500/10 text-slate-600 border-slate-500/20 dark:bg-slate-800/60 dark:text-slate-300',
+  },
 };
 
-// Fetch user profile from Firestore
+export function isMasterAdminEmail(email?: string | null): boolean {
+  return (email || '').trim().toLowerCase() === MASTER_ADMIN_EMAIL;
+}
+
 export async function getUserProfile(uid: string): Promise<AppUserProfile | null> {
   try {
     const userDocRef = doc(db, 'users', uid);
@@ -74,12 +78,18 @@ export async function getUserProfile(uid: string): Promise<AppUserProfile | null
   }
 }
 
-// Create or update user profile
+/**
+ * Creates a profile with the least privilege by default.
+ * The requested role is intentionally ignored for non-master users.
+ * Role promotion must be performed by an administrator through Firestore rules.
+ */
 export async function createUserProfile(
-  user: FirebaseUser, 
-  role: UserRole = 'admin',
+  user: FirebaseUser,
+  _requestedRole: UserRole = 'pendente',
   customName?: string
 ): Promise<AppUserProfile> {
+  const role: UserRole = isMasterAdminEmail(user.email) ? 'admin' : 'pendente';
+
   const profile: AppUserProfile = {
     uid: user.uid,
     email: user.email || 'Acesso Sem E-mail',
@@ -97,7 +107,7 @@ export async function loginWithGoogle() {
   const result = await signInWithPopup(auth, googleProvider);
   let profile = await getUserProfile(result.user.uid);
   if (!profile) {
-    profile = await createUserProfile(result.user, 'admin');
+    profile = await createUserProfile(result.user, 'pendente');
   }
   return profile;
 }
