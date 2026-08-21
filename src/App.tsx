@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Product, StockMovement, DailyKit, EntryType, Sector, Missionary, DailyMealRecord } from './types';
+import { Product, StockMovement, DailyKit, EntryType, Sector, Missionary, DailyMealRecord, InventoryAudit, InventorySessionSummary } from './types';
 import { getStoredProducts, saveProducts, getStoredMovements, saveMovements, getStoredDailyKit, saveDailyKit, getStoredMissionaries, saveMissionaries, getStoredMeals, saveMeals, addOrUpdateMealRecord, deleteStoredMealRecord } from './utils/storage';
 import { auth, getUserProfile, createUserProfile, AppUserProfile, UserRole } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { subscribeToProducts, subscribeToMovements, subscribeToDailyKit, subscribeToUsers, subscribeToMeals, saveProductToFirestore, saveDailyKitToFirestore, saveMealRecordToFirestore, deleteMealRecordFromFirestore, syncInitialFirestoreData, executeEntryTransaction, executeExitTransaction, executeBatchExitTransaction, executeDailyKitTransaction, updateStockMovementTransaction, deleteStockMovementTransaction } from './services/firestoreService';
+import { subscribeToProducts, subscribeToMovements, subscribeToDailyKit, subscribeToUsers, subscribeToMeals, subscribeToInventoryAudits, subscribeToInventorySessions, saveProductToFirestore, saveDailyKitToFirestore, saveMealRecordToFirestore, deleteMealRecordFromFirestore, syncInitialFirestoreData, executeEntryTransaction, executeExitTransaction, executeBatchExitTransaction, executeDailyKitTransaction, updateStockMovementTransaction, deleteStockMovementTransaction } from './services/firestoreService';
 import { Header } from './components/Header';
 import { HeroAlertBanner } from './components/HeroAlertBanner';
 import { KpiCards } from './components/KpiCards';
@@ -22,6 +22,7 @@ import { ReportsView } from './components/ReportsView';
 import { AuthModal } from './components/AuthModal';
 import { MissionaryManagerModal } from './components/MissionaryManagerModal';
 import { WhatsAppAlertModal } from './components/WhatsAppAlertModal';
+import { PhysicalInventoryModal } from './components/PhysicalInventoryModal';
 import { LoginScreen } from './components/LoginScreen';
 import { ToastContainer } from './components/ToastContainer';
 import { toast } from './utils/toast';
@@ -34,6 +35,8 @@ export default function App() {
   const [dailyKit, setDailyKit] = useState<DailyKit>(getStoredDailyKit());
   const [missionaries, setMissionaries] = useState<Missionary[]>(getStoredMissionaries());
   const [meals, setMeals] = useState<DailyMealRecord[]>(getStoredMeals());
+  const [inventoryAudits, setInventoryAudits] = useState<InventoryAudit[]>([]);
+  const [inventorySessions, setInventorySessions] = useState<InventorySessionSummary[]>([]);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => { const saved = localStorage.getItem('cristolandia_theme'); return saved !== null ? saved === 'dark' : true; });
 
   useEffect(() => { if (isDarkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('cristolandia_theme', 'dark'); } else { document.documentElement.classList.remove('dark'); localStorage.setItem('cristolandia_theme', 'light'); } }, [isDarkMode]);
@@ -50,6 +53,7 @@ export default function App() {
   const [isKitModalOpen, setIsKitModalOpen] = useState(false);
   const [isMissionariesModalOpen, setIsMissionariesModalOpen] = useState(false);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+  const [isPhysicalInventoryOpen, setIsPhysicalInventoryOpen] = useState(false);
   const [timelineProduct, setTimelineProduct] = useState<Product | null>(null);
   const [selectedProductForAction, setSelectedProductForAction] = useState<Product | null>(null);
   const [actionInitialDate, setActionInitialDate] = useState<string | null>(null);
@@ -76,8 +80,10 @@ export default function App() {
     const unsubMovs = subscribeToMovements((data) => { setMovements(data); saveMovements(data); });
     const unsubKit = subscribeToDailyKit((data) => { setDailyKit(data); saveDailyKit(data); });
     const unsubMeals = subscribeToMeals((data) => { setMeals(data); saveMeals(data); });
+    const unsubAudits = subscribeToInventoryAudits((data) => setInventoryAudits(data));
+    const unsubSessions = subscribeToInventorySessions((data) => setInventorySessions(data));
     const unsubUsers = currentUser.role === 'admin' ? subscribeToUsers((users) => setAllUsers(users)) : () => undefined;
-    return () => { unsubProds(); unsubMovs(); unsubKit(); unsubMeals(); unsubUsers(); };
+    return () => { unsubProds(); unsubMovs(); unsubKit(); unsubMeals(); unsubAudits(); unsubSessions(); unsubUsers(); };
   }, [currentUser?.uid, currentUser?.role]);
 
   const showToast = (message: string, type: 'success' | 'warning' | 'info' = 'success') => { if (type === 'success') toast.success(message); else if (type === 'warning') toast.warning(message); else toast.info(message); };
@@ -177,7 +183,20 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex flex-col md:flex-row selection:bg-indigo-600 selection:text-white transition-colors duration-200">
       <ToastContainer />
-      <Header activeTab={activeTab} setActiveTab={setActiveTab} onOpenKitModal={() => setIsKitModalOpen(true)} onOpenMissionariesModal={() => setIsMissionariesModalOpen(true)} onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)} onResetData={handleResetData} currentUser={currentUser} onOpenAuthModal={() => setIsAuthModalOpen(true)} onLogout={handleLogout} isDarkMode={isDarkMode} onToggleDarkMode={toggleDarkMode} />
+      <Header
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenKitModal={() => setIsKitModalOpen(true)}
+        onOpenPhysicalInventory={() => setIsPhysicalInventoryOpen(true)}
+        onOpenMissionariesModal={() => setIsMissionariesModalOpen(true)}
+        onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
+        onResetData={handleResetData}
+        currentUser={currentUser}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onLogout={handleLogout}
+        isDarkMode={isDarkMode}
+        onToggleDarkMode={toggleDarkMode}
+      />
       <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden">
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
@@ -217,6 +236,7 @@ export default function App() {
               onOpenEntry={(p) => handleOpenEntryModal(p)}
               onOpenExit={(p) => handleOpenExitModal(p)}
               onOpenTimeline={handleOpenTimelineById}
+              onOpenPhysicalInventory={() => setIsPhysicalInventoryOpen(true)}
               onForceSyncPhysicalStock={handleForceSyncPhysicalInventory}
             />
 
@@ -235,6 +255,25 @@ export default function App() {
       {isKitModalOpen && <DailyKitModal products={products} kit={dailyKit} missionaries={missionaries} userRole={currentUser.role} onClose={() => setIsKitModalOpen(false)} onSubmitKit={handleDeliverKit} />}
       <MissionaryManagerModal isOpen={isMissionariesModalOpen} onClose={() => setIsMissionariesModalOpen(false)} missionaries={missionaries} onSaveMissionaries={handleSaveMissionaries} />
       <WhatsAppAlertModal isOpen={isWhatsAppModalOpen} onClose={() => setIsWhatsAppModalOpen(false)} products={products} />
+      {isPhysicalInventoryOpen && (
+        <PhysicalInventoryModal
+          isOpen={isPhysicalInventoryOpen}
+          products={products}
+          userRole={currentUser.role}
+          currentUserName={currentUser.displayName || 'Marconi Castro'}
+          currentUserEmail={currentUser.email}
+          currentUserUid={currentUser.uid}
+          inventoryAudits={inventoryAudits}
+          inventorySessions={inventorySessions}
+          onClose={() => setIsPhysicalInventoryOpen(false)}
+          onNotify={(msg, type) => {
+            if (type === 'error') showToast(msg, 'warning');
+            else if (type === 'warning') showToast(msg, 'warning');
+            else if (type === 'info') showToast(msg, 'info');
+            else showToast(msg, 'success');
+          }}
+        />
+      )}
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} currentUser={currentUser} allUsers={allUsers} onSelectRole={handleSelectLocalRole} onRefreshProfile={async () => { if (auth.currentUser) { const p = await getUserProfile(auth.currentUser.uid); if (p) setCurrentUser(p); } }} />
     </div>
   );

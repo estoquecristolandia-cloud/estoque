@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle } from 'lucide-react';
+import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale } from 'lucide-react';
 import { AppUserProfile, ROLE_LABELS } from '../firebase';
 
 interface HeaderProps {
   activeTab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports';
   setActiveTab: (tab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports') => void;
   onOpenKitModal: () => void;
+  onOpenPhysicalInventory?: () => void;
   onOpenMissionariesModal?: () => void;
   onOpenWhatsAppModal?: () => void;
   onResetData?: () => void;
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   onOpenKitModal,
+  onOpenPhysicalInventory,
   onOpenMissionariesModal,
   onOpenWhatsAppModal,
   onResetData,
@@ -171,6 +173,19 @@ export const Header: React.FC<HeaderProps> = ({
             })}
 
             <div className="pt-4 border-t border-slate-800 flex flex-col gap-2">
+              {onOpenPhysicalInventory && (
+                <button
+                  onClick={() => {
+                    onOpenPhysicalInventory();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full py-2.5 bg-purple-600/20 border border-purple-500/40 text-purple-300 rounded-xl text-xs font-bold hover:bg-purple-600/30 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Scale className="w-4 h-4 text-purple-400" />
+                  <span>⚖️ Inventário Físico / Marco Zero</span>
+                </button>
+              )}
+
               {onOpenWhatsAppModal && (
                 <button
                   onClick={() => {
@@ -278,6 +293,17 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Footer Actions */}
         <div className="mt-auto space-y-2 pt-4 border-t border-slate-800">
+          {onOpenPhysicalInventory && (
+            <button
+              onClick={onOpenPhysicalInventory}
+              className="w-full py-2.5 bg-purple-950/60 hover:bg-purple-900/80 border border-purple-700/60 text-purple-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              title="Abrir Conferência de Inventário Físico e Ajustes Auditados"
+            >
+              <Scale className="w-4 h-4 text-purple-400" />
+              <span>⚖️ Inventário Físico</span>
+            </button>
+          )}
+
           {onOpenWhatsAppModal && (
             <button
               onClick={onOpenWhatsAppModal}

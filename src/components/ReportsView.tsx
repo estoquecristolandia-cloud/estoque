@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Product, StockMovement, Sector } from '../types';
 import { calculateDaysRemaining, verifyProductAudit, getTodayDateString } from '../utils/storage';
 import { generateInventoryPDF, generateMovementsDetailedPDF } from '../utils/pdfExport';
+import { runStockMathematicalAudit } from '../utils/stockAuditor';
 import {
   FileText,
   Printer,
@@ -23,6 +24,9 @@ import {
   Search,
   Layers,
   History,
+  Scale,
+  ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface ReportsViewProps {
@@ -54,10 +58,15 @@ interface SectorDetails {
 }
 
 export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements }) => {
-  const [activeReportTab, setActiveReportTab] = useState<'daily_ledger' | 'product' | 'sector' | 'person' | 'shopping'>('daily_ledger');
+  const [activeReportTab, setActiveReportTab] = useState<'daily_ledger' | 'product' | 'sector' | 'person' | 'shopping' | 'audit'>('daily_ledger');
   const [bufferDays, setBufferDays] = useState<number>(30); // Target buffer days e.g. 15 or 30 days
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<string>('todos');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
+
+  // Pure Read-Only Mathematical Audit
+  const mathematicalAuditReport = useMemo(() => {
+    return runStockMathematicalAudit(products, movements);
+  }, [products, movements]);
 
   // Daily Ledger Tab filters
   const [ledgerTypeFilter, setLedgerTypeFilter] = useState<'all' | 'entrada' | 'saida'>('all');
@@ -501,6 +510,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements })
         >
           <ShoppingCart className="w-4 h-4" />
           <span>🛒 Previsão de Compras</span>
+        </button>
+
+        <button
+          onClick={() => setActiveReportTab('audit')}
+          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+            activeReportTab === 'audit'
+              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+          }`}
+        >
+          <Scale className="w-4 h-4" />
+          <span>⚖️ Auditoria & Consistência Matemática</span>
         </button>
       </div>
 
@@ -1143,6 +1164,163 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements })
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: PURE READ-ONLY MATHEMATICAL AUDIT */}
+      {activeReportTab === 'audit' && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Summary KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-1">
+                <span>Status Global do Motor</span>
+                <ShieldCheck className={`w-4 h-4 ${mathematicalAuditReport.overallStatus === 'CONSISTENTE' ? 'text-emerald-500' : 'text-rose-500'}`} />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xl font-black ${mathematicalAuditReport.overallStatus === 'CONSISTENTE' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                  {mathematicalAuditReport.overallStatus === 'CONSISTENTE' ? '100% CONSISTENTE' : 'DIVERGÊNCIAS DETECTADAS'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {mathematicalAuditReport.consistentProductsCount} de {mathematicalAuditReport.totalProducts} produtos matematicamente exatos
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-1">
+                <span>Produtos com Marco Zero</span>
+                <Scale className="w-4 h-4 text-indigo-500" />
+              </div>
+              <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">
+                {mathematicalAuditReport.productsWithMarcoZeroCount} / {mathematicalAuditReport.totalProducts}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Ancorados no inventário físico oficial
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-1">
+                <span>Movimentações Auditadas</span>
+                <Layers className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="text-xl font-black text-slate-900 dark:text-white">
+                {mathematicalAuditReport.totalMovementsAnalyzed}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Entradas, saídas e ajustes no histórico
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-1">
+                <span>Suspeitas de Duplicidade</span>
+                <AlertTriangle className={`w-4 h-4 ${mathematicalAuditReport.totalDuplicatesDetected === 0 ? 'text-emerald-500' : 'text-amber-500'}`} />
+              </div>
+              <div className={`text-xl font-black ${mathematicalAuditReport.totalDuplicatesDetected === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                {mathematicalAuditReport.totalDuplicatesDetected}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {mathematicalAuditReport.totalDuplicatesDetected === 0 ? 'Nenhuma duplicidade detectada' : 'Registros com mesmo carimbo'}
+              </p>
+            </div>
+          </div>
+
+          {/* Detailed Audit Table */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Scale className="w-5 h-5 text-indigo-500" />
+                  Diagnóstico Contábil de Estoque (Somente Leitura)
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Fórmula: <code className="font-mono text-indigo-600 dark:text-indigo-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">Saldo Reconstruído = Base (Marco Zero) + Entradas - Saídas ± Ajustes</code>
+                </p>
+              </div>
+              <span className="text-[11px] text-slate-400 font-mono">
+                Auditado em: {new Date(mathematicalAuditReport.auditTimestamp).toLocaleString('pt-BR')}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                    <th className="py-3 px-3">Produto</th>
+                    <th className="py-3 px-3">Base / Marco Zero</th>
+                    <th className="py-3 px-3 text-emerald-600 dark:text-emerald-400">Entradas (+)</th>
+                    <th className="py-3 px-3 text-rose-600 dark:text-rose-400">Saídas (-)</th>
+                    <th className="py-3 px-3 text-amber-600 dark:text-amber-400">Ajustes (±)</th>
+                    <th className="py-3 px-3 text-indigo-600 dark:text-indigo-400">Saldo Reconstruído</th>
+                    <th className="py-3 px-3 font-bold text-slate-900 dark:text-white">currentStock Atual</th>
+                    <th className="py-3 px-3">Diferença</th>
+                    <th className="py-3 px-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {mathematicalAuditReport.diagnostics.map((diag) => (
+                    <tr key={diag.productId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                      <td className="py-3.5 px-3">
+                        <div className="font-bold text-slate-900 dark:text-white">{diag.productName}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{diag.movementsCount} movimentações</div>
+                      </td>
+                      <td className="py-3.5 px-3">
+                        {diag.hasMarcoZero ? (
+                          <div>
+                            <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                              {diag.marcoZeroStock} {diag.unit}
+                            </span>
+                            <span className="block text-[10px] text-slate-400">{diag.marcoZeroDate}</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-[11px] italic">Cadastro Base</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-3 font-bold text-emerald-600 dark:text-emerald-400">
+                        +{diag.totalEntries} {diag.unit}
+                      </td>
+                      <td className="py-3.5 px-3 font-bold text-rose-600 dark:text-rose-400">
+                        -{diag.totalExits} {diag.unit}
+                      </td>
+                      <td className="py-3.5 px-3 font-bold text-amber-600 dark:text-amber-400">
+                        {diag.totalAdjustments >= 0 ? `+${diag.totalAdjustments}` : diag.totalAdjustments} {diag.unit}
+                      </td>
+                      <td className="py-3.5 px-3 font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                        {diag.reconstructedBalance} {diag.unit}
+                      </td>
+                      <td className="py-3.5 px-3 font-black text-slate-900 dark:text-white text-sm">
+                        {diag.currentStock} {diag.unit}
+                      </td>
+                      <td className="py-3.5 px-3 font-mono text-xs">
+                        {diag.discrepancy === 0 ? (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">0.00</span>
+                        ) : (
+                          <span className="text-rose-600 dark:text-rose-400 font-bold">
+                            {diag.discrepancy > 0 ? `+${diag.discrepancy}` : diag.discrepancy}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-3">
+                        {diag.status === 'OK' ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                            OK (Exato)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-800">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                            DIVERGENTE
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

@@ -17,6 +17,7 @@ import {
   Clock,
   Layers,
   AlertCircle,
+  Scale,
 } from 'lucide-react';
 import { getProductStockStatus, calculateDaysRemaining } from '../utils/storage';
 
@@ -26,6 +27,7 @@ interface CurrentStockOverviewProps {
   onOpenEntry: (product: Product) => void;
   onOpenExit: (product: Product) => void;
   onOpenTimeline: (productId: string) => void;
+  onOpenPhysicalInventory?: () => void;
   onForceSyncPhysicalStock?: () => void;
 }
 
@@ -35,6 +37,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
   onOpenEntry,
   onOpenExit,
   onOpenTimeline,
+  onOpenPhysicalInventory,
   onForceSyncPhysicalStock,
 }) => {
   const isAdmin = userRole === 'admin';
@@ -170,11 +173,22 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
             ))}
           </select>
 
+          {onOpenPhysicalInventory && (
+            <button
+              onClick={onOpenPhysicalInventory}
+              title="Abrir Conferência de Inventário Físico, Ajustes e Marco Zero"
+              className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ml-auto"
+            >
+              <Scale className="w-3.5 h-3.5" />
+              <span>⚖️ Inventário Físico / Marco Zero</span>
+            </button>
+          )}
+
           {onForceSyncPhysicalStock && (
             <button
               onClick={onForceSyncPhysicalStock}
               title="Ajusta e sincroniza imediatamente o sistema com o inventário físico real da despensa (19/08)"
-              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ml-auto"
+              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
             >
               <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>Sincronizar Estoque Real (19/08)</span>
