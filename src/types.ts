@@ -21,13 +21,67 @@ export interface Product {
 }
 
 export interface StockMovement {
-  id: string; productId: string; productName: string; unit: Unit; type: 'entrada' | 'saida'; quantity: number;
-  date: string; time?: string; entryType?: EntryType; supplierOrDonor?: string; receivedBy?: string;
-  sector?: Sector; kitchenShift?: string; retrievedBy?: string; deliveredBy?: string; notes?: string;
-  createdAt: string; operationId?: string;
+  id: string;
+  productId: string;
+  productName: string;
+  unit: Unit;
+  type: 'entrada' | 'saida' | 'ajuste';
+  quantity: number;
+  date: string;
+  time?: string;
+  entryType?: EntryType;
+  supplierOrDonor?: string;
+  receivedBy?: string;
+  sector?: Sector;
+  kitchenShift?: string;
+  retrievedBy?: string;
+  deliveredBy?: string;
+  notes?: string;
+  createdAt: string;
+  operationId?: string;
+  responsible?: string;
+  reason?: string;
+  previousStock?: number;
+  physicalStock?: number;
+  difference?: number;
+  userUid?: string;
+  userEmail?: string;
 }
 
 export interface KitItem { productId: string; productName: string; quantity: number; unit: Unit; }
 export interface DailyKit { id: string; name: string; sector: Sector; items: KitItem[]; defaultRetriever: string; defaultDeliverer: string; }
 export interface AuditReport { productId: string; productName: string; initialStock: number; totalEntries: number; totalExits: number; calculatedBalance: number; currentStock: number; isBalanced: boolean; discrepancy: number; }
 export interface DailyMealRecord { id: string; date: string; breakfast: number; lunch: number; afternoonSnack: number; dinner: number; totalMeals: number; responsible: string; notes?: string; createdAt: string; updatedAt?: string; }
+
+export interface InventoryAudit {
+  id: string;
+  productId: string;
+  productName: string;
+  unit: Unit;
+  previousStock: number;
+  physicalStock: number;
+  difference: number;
+  reason: string;
+  responsible: string;
+  date: string;
+  time: string;
+  timestamp?: any;
+  createdAt: string;
+  userUid?: string;
+  userEmail?: string;
+  notes?: string;
+}
+
+export interface InventorySessionSummary {
+  id: string;
+  date: string;
+  time: string;
+  responsible: string;
+  totalProducts: number;
+  checkedCount: number;
+  divergentCount: number;
+  adjustedCount: number;
+  notes?: string;
+  createdAt: string;
+  userEmail?: string;
+}

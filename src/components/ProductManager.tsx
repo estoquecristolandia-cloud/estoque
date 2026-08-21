@@ -173,7 +173,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       name: name.trim(),
       category,
       unit,
-      currentStock: parseFloat(currentStock) || 0,
+      currentStock: editingProd ? editingProd.currentStock : parseFloat(currentStock) || 0,
       minStock: parseFloat(minStock) || 0,
       dailyAvgConsumption: parseFloat(dailyAvgConsumption) || 0,
       alertDays: parseFloat(alertDays) || 3,
@@ -186,6 +186,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       onSaveProduct({
         ...editingProd,
         ...prodData,
+        currentStock: editingProd.currentStock,
         lastUpdated: new Date().toISOString(),
       });
     } else {
@@ -779,14 +780,31 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Estoque Atual ({unit})</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                    <span>Estoque Atual ({unit})</span>
+                    {editingProd && (
+                      <span className="text-[10px] text-amber-400 font-normal flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Gerenciado por Lançamentos
+                      </span>
+                    )}
+                  </label>
                   <input
                     type="number"
                     step="any"
+                    disabled={!!editingProd}
                     value={currentStock}
                     onChange={(e) => setCurrentStock(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-bold"
+                    className={`w-full border rounded-xl px-3 py-2 text-sm font-bold ${
+                      editingProd
+                        ? 'bg-slate-800/60 border-slate-700 text-emerald-400 cursor-not-allowed opacity-90'
+                        : 'bg-slate-800 border-slate-700 text-white focus:outline-none focus:border-emerald-500'
+                    }`}
                   />
+                  {editingProd && (
+                    <span className="text-[10px] text-slate-400 block mt-1">
+                      Para alterar o saldo físico, faça uma Entrada, Saída ou Ajuste de Inventário.
+                    </span>
+                  )}
                 </div>
 
                 <div>

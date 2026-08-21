@@ -91,32 +91,81 @@ export default function App() {
   const handleOpenTimelineById = (productId: string) => { const p = products.find((prod) => prod.id === productId); if (p) setTimelineProduct(p); };
 
   const handleAddEntry = async (product: Product, quantity: number, entryType: EntryType, supplierOrDonor: string, receivedBy: string, date: string, time: string, notes: string) => {
-    try { const result = await executeEntryTransaction(product.id, quantity, entryType, supplierOrDonor, receivedBy, date, time, notes); setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p)); setMovements((prev) => [result.movement, ...prev.filter((m) => m.id !== result.movement.id)]); showToast(`+ ${quantity} ${product.unit} de ${product.name} registrada com sucesso!`, 'success'); }
-    catch (err: any) { showToast(err.message || 'Erro ao registrar entrada', 'warning'); }
+    try {
+      const result = await executeEntryTransaction(product.id, quantity, entryType, supplierOrDonor, receivedBy, date, time, notes);
+      setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p));
+      setMovements((prev) => [result.movement, ...prev.filter((m) => m.id !== result.movement.id)]);
+      showToast(`+ ${quantity} ${product.unit} de ${product.name} registrada com sucesso!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao registrar entrada', 'warning');
+      throw err;
+    }
   };
+
   const handleAddExit = async (product: Product, quantity: number, sector: Sector, retrievedBy: string, deliveredBy: string, date: string, time: string, notes: string) => {
-    try { const result = await executeExitTransaction(product.id, quantity, sector, retrievedBy, deliveredBy, date, time, notes); setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p)); setMovements((prev) => [result.movement, ...prev.filter((m) => m.id !== result.movement.id)]); showToast(`- ${quantity} ${product.unit} de ${product.name} entregue para ${sector}!`, 'success'); }
-    catch (err: any) { showToast(err.message || 'Erro ao registrar saída', 'warning'); }
+    try {
+      const result = await executeExitTransaction(product.id, quantity, sector, retrievedBy, deliveredBy, date, time, notes);
+      setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p));
+      setMovements((prev) => [result.movement, ...prev.filter((m) => m.id !== result.movement.id)]);
+      showToast(`- ${quantity} ${product.unit} de ${product.name} entregue para ${sector}!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao registrar saída', 'warning');
+      throw err;
+    }
   };
+
   const handleAddBatchExit = async (items: Array<{ product: Product; quantity: number }>, sector: Sector, retrievedBy: string, deliveredBy: string, date: string, time: string, notes: string) => {
-    try { const result = await executeBatchExitTransaction(items.map((item) => ({ productId: item.product.id, quantity: item.quantity })), sector, retrievedBy, deliveredBy, date, time, notes); setProducts((prev) => prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p)); setMovements((prev) => [...result.movements, ...prev.filter((m) => !result.movements.some((r) => r.id === m.id))]); const itemsSummary = items.map((i) => `${i.quantity} ${i.product.unit} ${i.product.name}`).join(', '); showToast(`Saída de ${items.length} item(ns) realizada com sucesso para ${sector}! (${itemsSummary})`, 'success'); }
-    catch (err: any) { showToast(err.message || 'Erro ao registrar saída de itens', 'warning'); }
+    try {
+      const result = await executeBatchExitTransaction(items.map((item) => ({ productId: item.product.id, quantity: item.quantity })), sector, retrievedBy, deliveredBy, date, time, notes);
+      setProducts((prev) => prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p));
+      setMovements((prev) => [...result.movements, ...prev.filter((m) => !result.movements.some((r) => r.id === m.id))]);
+      const itemsSummary = items.map((i) => `${i.quantity} ${i.product.unit} ${i.product.name}`).join(', ');
+      showToast(`Saída de ${items.length} item(ns) realizada com sucesso para ${sector}! (${itemsSummary})`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao registrar saída de itens', 'warning');
+      throw err;
+    }
   };
+
   const handleUpdateMovement = async (movementId: string, updatedData: Partial<StockMovement> & { productId: string; quantity: number; type: 'entrada' | 'saida' }) => {
-    try { const result = await updateStockMovementTransaction(movementId, updatedData); setProducts((prev) => prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p)); setMovements((prev) => prev.map((m) => m.id === result.movement.id ? result.movement : m)); showToast('Movimentação atualizada com sucesso!', 'success'); }
-    catch (err: any) { showToast(err.message || 'Erro ao atualizar movimentação', 'warning'); }
+    try {
+      const result = await updateStockMovementTransaction(movementId, updatedData);
+      setProducts((prev) => prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p));
+      setMovements((prev) => prev.map((m) => m.id === result.movement.id ? result.movement : m));
+      showToast('Movimentação atualizada com sucesso!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao atualizar movimentação', 'warning');
+      throw err;
+    }
   };
+
   const handleDeleteMovement = async (movementId: string) => {
-    try { const result = await deleteStockMovementTransaction(movementId); setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p)); setMovements((prev) => prev.filter((m) => m.id !== result.deletedMovementId)); showToast('Movimentação excluída e saldo de estoque estornado!', 'info'); }
-    catch (err: any) { showToast(err.message || 'Erro ao excluir movimentação', 'warning'); }
+    try {
+      const result = await deleteStockMovementTransaction(movementId);
+      setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p));
+      setMovements((prev) => prev.filter((m) => m.id !== result.deletedMovementId));
+      showToast('Movimentação excluída e saldo de estoque estornado!', 'info');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao excluir movimentação', 'warning');
+      throw err;
+    }
   };
+
   const handleDeliverKit = async (kitToDeliver: DailyKit, retrievedBy: string, deliveredBy: string, date: string, time: string, saveAsDefault?: boolean) => {
     try {
-      if (saveAsDefault) { await saveDailyKitToFirestore(kitToDeliver); setDailyKit(kitToDeliver); saveDailyKit(kitToDeliver); }
+      if (saveAsDefault) {
+        await saveDailyKitToFirestore(kitToDeliver);
+        setDailyKit(kitToDeliver);
+        saveDailyKit(kitToDeliver);
+      }
       const result = await executeDailyKitTransaction(kitToDeliver, retrievedBy, deliveredBy, date, time);
-      setProducts((prev) => prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p)); setMovements((prev) => [...result.movements, ...prev.filter((m) => !result.movements.some((r) => r.id === m.id))]);
+      setProducts((prev) => prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p));
+      setMovements((prev) => [...result.movements, ...prev.filter((m) => !result.movements.some((r) => r.id === m.id))]);
       showToast(`⚡ Kit Diário da Cozinha baixado com sucesso! (${result.deliveredCount} itens atualizados)${saveAsDefault ? ' - Novo modelo padrão salvo!' : ''}`, 'success');
-    } catch (err: any) { showToast(err.message || 'Não foi possível baixar o Kit Diário.', 'warning'); }
+    } catch (err: any) {
+      showToast(err.message || 'Não foi possível baixar o Kit Diário.', 'warning');
+      throw err;
+    }
   };
   const handleSaveProduct = async (updatedProd: Product) => { try { await saveProductToFirestore(updatedProd); setProducts((prev) => prev.map((p) => p.id === updatedProd.id ? updatedProd : p)); showToast(`Produto ${updatedProd.name} atualizado e sincronizado online!`, 'info'); } catch (err: any) { showToast(err.message || 'Erro ao salvar produto.', 'warning'); } };
   const handleAddProduct = async (newProdData: Omit<Product, 'id' | 'lastUpdated'>) => { const newProd: Product = { ...newProdData, id: `prod-${Date.now()}`, lastUpdated: new Date().toISOString() }; try { await saveProductToFirestore(newProd); setProducts((prev) => [newProd, ...prev]); showToast(`Novo produto ${newProd.name} cadastrado com sucesso!`, 'success'); } catch (err: any) { showToast(err.message || 'Erro ao cadastrar produto.', 'warning'); } };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, ArrowDownLeft, ArrowUpRight, ShieldCheck, Clock, User, Building2, Package, Sparkles, AlertTriangle } from 'lucide-react';
+import { X, ArrowDownLeft, ArrowUpRight, ShieldCheck, Clock, User, Building2, Package, Sparkles, AlertTriangle, Scale } from 'lucide-react';
 import { Product, StockMovement } from '../types';
 import { calculateDaysRemaining, verifyProductAudit, formatDaysRemainingText } from '../utils/storage';
 
@@ -176,44 +176,69 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
               <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
                 {prodMovements.map((mov) => {
                   const isEntry = mov.type === 'entrada';
+                  const isAjuste = mov.type === 'ajuste';
                   return (
                     <div key={mov.id} className="relative group">
                       {/* Node circle */}
                       <div
                         className={`absolute -left-6 top-1 w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] ${
-                          isEntry
+                          isAjuste
+                            ? 'bg-purple-950 border-purple-500 text-purple-400'
+                            : isEntry
                             ? 'bg-emerald-950 border-emerald-500 text-emerald-400'
                             : 'bg-amber-950 border-amber-500 text-amber-400'
                         }`}
                       >
-                        {isEntry ? '+' : '-'}
+                        {isAjuste ? '⚖️' : isEntry ? '+' : '-'}
                       </div>
 
-                      <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-3 text-xs space-y-1.5 hover:bg-slate-800/70 transition-colors">
+                      <div className={`border rounded-xl p-3 text-xs space-y-1.5 transition-colors ${
+                        isAjuste 
+                          ? 'bg-purple-950/20 border-purple-800/60 hover:bg-purple-950/40' 
+                          : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/70'
+                      }`}>
                         <div className="flex items-center justify-between flex-wrap gap-1">
                           <div className="flex items-center gap-2">
                             <span
                               className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                                isEntry
+                                isAjuste
+                                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                  : isEntry
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                   : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                               }`}
                             >
-                              {isEntry ? `Entrada (${mov.entryType || 'Compra'})` : `Saída: ${mov.sector}`}
+                              {isAjuste ? 'Ajuste de Inventário' : isEntry ? `Entrada (${mov.entryType || 'Compra'})` : `Saída: ${mov.sector}`}
                             </span>
                             <span className="text-slate-400">
                               {mov.date} às {mov.time || '00:00'}
                             </span>
                           </div>
 
-                          <span className={`font-black text-sm ${isEntry ? 'text-emerald-400' : 'text-amber-400'}`}>
-                            {isEntry ? '+' : '-'}{mov.quantity} {mov.unit}
+                          <span className={`font-black text-sm ${
+                            isAjuste ? 'text-purple-400' : isEntry ? 'text-emerald-400' : 'text-amber-400'
+                          }`}>
+                            {isAjuste 
+                              ? `${(mov.difference || 0) > 0 ? '+' : ''}${mov.difference !== undefined ? mov.difference : mov.quantity} ${mov.unit}`
+                              : `${isEntry ? '+' : '-'}${mov.quantity} ${mov.unit}`}
                           </span>
                         </div>
 
                         {/* Details */}
                         <div className="text-slate-300 text-xs space-y-1 pt-1 border-t border-slate-800">
-                          {isEntry ? (
+                          {isAjuste ? (
+                            <p className="flex items-center gap-1.5 text-slate-400 flex-wrap">
+                              <Scale className="w-3.5 h-3.5 text-purple-400" />
+                              <span>Motivo: <strong className="text-slate-200">{mov.reason || 'Conferência física'}</strong></span>
+                              <span className="text-slate-600">|</span>
+                              <span>Resp.: <strong className="text-slate-200">{mov.responsible || 'Admin'}</strong></span>
+                              {mov.previousStock !== undefined && mov.physicalStock !== undefined && (
+                                <span className="text-slate-500">
+                                  ({mov.previousStock} → {mov.physicalStock} {mov.unit})
+                                </span>
+                              )}
+                            </p>
+                          ) : isEntry ? (
                             <p className="flex items-center gap-1.5 text-slate-400">
                               <User className="w-3.5 h-3.5 text-slate-500" />
                               <span>Fornecedor/Doador: <strong>{mov.supplierOrDonor || 'Não informado'}</strong></span>
@@ -239,6 +264,7 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
                     </div>
                   );
                 })}
+
               </div>
             )}
           </div>

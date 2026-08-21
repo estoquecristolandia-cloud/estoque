@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ArrowUpRight, Check, AlertCircle, Building2, Camera, Barcode, Clock, Plus, Trash2, Layers } from 'lucide-react';
+import { X, ArrowUpRight, Check, AlertCircle, Building2, Camera, Barcode, Clock, Plus, Trash2, Layers, Loader2 } from 'lucide-react';
 import { Product, Sector, Missionary, KitchenShift } from '../types';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { getTodayDateString, getNowTimeString } from '../utils/storage';
@@ -24,7 +24,7 @@ interface ExitModalProps {
     date: string,
     time: string,
     notes: string
-  ) => void;
+  ) => Promise<void> | void;
   onSubmit?: (
     product: Product,
     quantity: number,
@@ -34,7 +34,7 @@ interface ExitModalProps {
     date: string,
     time: string,
     notes: string
-  ) => void;
+  ) => Promise<void> | void;
 }
 
 const SECTORS: Sector[] = [
@@ -83,6 +83,7 @@ export const ExitModal: React.FC<ExitModalProps> = ({
   const [time, setTime] = useState<string>(getNowTimeString());
   const [notes, setNotes] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [activeScanningRowId, setActiveScanningRowId] = useState<string | null>(null);
 
@@ -155,8 +156,9 @@ export const ExitModal: React.FC<ExitModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
     if (!retrievedBy.trim()) {
       setError('Informe o nome da pessoa que retirou o(s) produto(s).');
@@ -194,15 +196,24 @@ export const ExitModal: React.FC<ExitModalProps> = ({
       return;
     }
 
-    if (onSubmitBatch) {
-      onSubmitBatch(preparedItems, sector, retrievedBy, deliveredBy, date, time, notes);
-    } else if (onSubmit) {
-      preparedItems.forEach((item) => {
-        onSubmit(item.product, item.quantity, sector, retrievedBy, deliveredBy, date, time, notes);
-      });
-    }
+    try {
+      setIsSubmitting(true);
+      setError('');
 
-    onClose();
+      if (onSubmitBatch) {
+        await onSubmitBatch(preparedItems, sector, retrievedBy.trim(), deliveredBy.trim(), date, time, notes.trim());
+      } else if (onSubmit) {
+        for (const item of preparedItems) {
+          await onSubmit(item.product, item.quantity, sector, retrievedBy.trim(), deliveredBy.trim(), date, time, notes.trim());
+        }
+      }
+
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || 'Erro ao registrar saída do estoque.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -521,16 +532,27 @@ export const ExitModal: React.FC<ExitModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg shadow-amber-600/30 cursor-pointer flex items-center gap-1.5"
+                disabled={isSubmitting}
+                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg shadow-amber-600/30 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
               >
-                <Check className="w-4 h-4" />
-                <span>Confirmar Saída ({items.length} item{items.length > 1 ? 's' : ''})</span>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Processando Baixa...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Confirmar Saída ({items.length} item{items.length > 1 ? 's' : ''})</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

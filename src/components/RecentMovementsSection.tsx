@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowDownLeft, ArrowUpRight, History, Calendar, Clock, User, Building2, ArrowRight } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, History, Calendar, Clock, User, Building2, ArrowRight, Scale } from 'lucide-react';
 import { StockMovement, Product } from '../types';
 import { UserRole } from '../firebase';
 
@@ -80,6 +80,7 @@ export const RecentMovementsSection: React.FC<RecentMovementsSectionProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {recentList.map((m) => {
               const isEntry = m.type === 'entrada';
+              const isAjuste = m.type === 'ajuste';
               const unit = getProductUnit(m.productId);
 
               return (
@@ -87,7 +88,9 @@ export const RecentMovementsSection: React.FC<RecentMovementsSectionProps> = ({
                   key={m.id}
                   onClick={() => onOpenProductTimeline?.(m.productId)}
                   className={`p-3 sm:p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer ${
-                    isEntry
+                    isAjuste
+                      ? 'bg-purple-50/40 dark:bg-purple-950/20 border-purple-200/70 dark:border-purple-900/40 hover:border-purple-400'
+                      : isEntry
                       ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200/70 dark:border-emerald-900/40 hover:border-emerald-400'
                       : 'bg-blue-50/40 dark:bg-blue-950/20 border-blue-200/70 dark:border-blue-900/40 hover:border-blue-400'
                   }`}
@@ -96,12 +99,16 @@ export const RecentMovementsSection: React.FC<RecentMovementsSectionProps> = ({
                     {/* Badge Icon */}
                     <div
                       className={`w-9 h-9 rounded-xl shrink-0 flex items-center justify-center font-bold ${
-                        isEntry
+                        isAjuste
+                          ? 'bg-purple-600 text-white shadow-xs'
+                          : isEntry
                           ? 'bg-emerald-600 text-white shadow-xs'
                           : 'bg-blue-600 text-white shadow-xs'
                       }`}
                     >
-                      {isEntry ? (
+                      {isAjuste ? (
+                        <Scale className="w-5 h-5" />
+                      ) : isEntry ? (
                         <ArrowDownLeft className="w-5 h-5" />
                       ) : (
                         <ArrowUpRight className="w-5 h-5" />
@@ -113,12 +120,14 @@ export const RecentMovementsSection: React.FC<RecentMovementsSectionProps> = ({
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span
                           className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                            isEntry
+                            isAjuste
+                              ? 'bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300'
+                              : isEntry
                               ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
                               : 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300'
                           }`}
                         >
-                          {isEntry ? 'Entrada' : 'Saída'}
+                          {isAjuste ? 'Ajuste' : isEntry ? 'Entrada' : 'Saída'}
                         </span>
                         <h4 className="text-xs font-black text-slate-900 dark:text-white truncate max-w-[160px] sm:max-w-[200px]" title={m.productName}>
                           {m.productName}
@@ -134,7 +143,11 @@ export const RecentMovementsSection: React.FC<RecentMovementsSectionProps> = ({
                         <span className="text-slate-300 dark:text-slate-600">•</span>
 
                         <span className="flex items-center gap-1 truncate max-w-[130px]">
-                          {isEntry ? (
+                          {isAjuste ? (
+                            <span title={m.reason || 'Inventário'}>
+                              {m.reason || 'Inventário Físico'}
+                            </span>
+                          ) : isEntry ? (
                             <span title={m.supplierOrDonor || 'Doação/Compra'}>
                               {m.supplierOrDonor || 'Doação / Compra'}
                             </span>
@@ -153,12 +166,17 @@ export const RecentMovementsSection: React.FC<RecentMovementsSectionProps> = ({
                   <div className="text-right shrink-0">
                     <div
                       className={`text-sm sm:text-base font-black ${
-                        isEntry
+                        isAjuste
+                          ? 'text-purple-600 dark:text-purple-400'
+                          : isEntry
                           ? 'text-emerald-600 dark:text-emerald-400'
                           : 'text-blue-600 dark:text-blue-400'
                       }`}
                     >
-                      {isEntry ? '+' : '-'}{m.quantity} <span className="text-[10px] font-bold text-slate-500">{unit}</span>
+                      {isAjuste
+                        ? `${(m.difference || 0) > 0 ? '+' : ''}${m.difference !== undefined ? m.difference : m.quantity}`
+                        : `${isEntry ? '+' : '-'}${m.quantity}`}{' '}
+                      <span className="text-[10px] font-bold text-slate-500">{unit}</span>
                     </div>
 
                     <div className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center justify-end gap-1 mt-0.5">
@@ -172,6 +190,7 @@ export const RecentMovementsSection: React.FC<RecentMovementsSectionProps> = ({
               );
             })}
           </div>
+
         </div>
       )}
     </div>
