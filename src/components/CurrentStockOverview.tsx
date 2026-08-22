@@ -28,6 +28,7 @@ interface CurrentStockOverviewProps {
   onOpenExit: (product: Product) => void;
   onOpenTimeline: (productId: string) => void;
   onOpenPhysicalInventory?: () => void;
+  onOpenReconciliationPreview?: () => void;
   onForceSyncPhysicalStock?: () => void;
 }
 
@@ -38,6 +39,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
   onOpenExit,
   onOpenTimeline,
   onOpenPhysicalInventory,
+  onOpenReconciliationPreview,
   onForceSyncPhysicalStock,
 }) => {
   const isAdmin = userRole === 'admin';
@@ -140,6 +142,17 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
             >
               <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
               Crítico/Zerado: {criticalProducts.length}
+            </button>
+          )}
+
+          {onOpenReconciliationPreview && (
+            <button
+              onClick={onOpenReconciliationPreview}
+              className="px-3 py-1.5 rounded-2xl text-xs font-black bg-amber-500/10 dark:bg-amber-950/40 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ml-auto"
+              title="Abrir Prévia da Conciliação Física dos 14 produtos (Marco Zero)"
+            >
+              <Scale className="w-3.5 h-3.5 text-amber-500" />
+              <span>Prévia Marco Zero</span>
             </button>
           )}
         </div>

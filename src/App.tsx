@@ -23,6 +23,7 @@ import { AuthModal } from './components/AuthModal';
 import { MissionaryManagerModal } from './components/MissionaryManagerModal';
 import { WhatsAppAlertModal } from './components/WhatsAppAlertModal';
 import { PhysicalInventoryModal } from './components/PhysicalInventoryModal';
+import { PhysicalReconciliationPreviewModal } from './components/PhysicalReconciliationPreviewModal';
 import { LoginScreen } from './components/LoginScreen';
 import { ToastContainer } from './components/ToastContainer';
 import { toast } from './utils/toast';
@@ -54,6 +55,7 @@ export default function App() {
   const [isMissionariesModalOpen, setIsMissionariesModalOpen] = useState(false);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [isPhysicalInventoryOpen, setIsPhysicalInventoryOpen] = useState(false);
+  const [isReconciliationPreviewOpen, setIsReconciliationPreviewOpen] = useState(false);
   const [timelineProduct, setTimelineProduct] = useState<Product | null>(null);
   const [selectedProductForAction, setSelectedProductForAction] = useState<Product | null>(null);
   const [actionInitialDate, setActionInitialDate] = useState<string | null>(null);
@@ -188,6 +190,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenKitModal={() => setIsKitModalOpen(true)}
         onOpenPhysicalInventory={() => setIsPhysicalInventoryOpen(true)}
+        onOpenReconciliationPreview={() => setIsReconciliationPreviewOpen(true)}
         onOpenMissionariesModal={() => setIsMissionariesModalOpen(true)}
         onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
         onResetData={handleResetData}
@@ -237,12 +240,13 @@ export default function App() {
               onOpenExit={(p) => handleOpenExitModal(p)}
               onOpenTimeline={handleOpenTimelineById}
               onOpenPhysicalInventory={() => setIsPhysicalInventoryOpen(true)}
+              onOpenReconciliationPreview={() => setIsReconciliationPreviewOpen(true)}
               onForceSyncPhysicalStock={handleForceSyncPhysicalInventory}
             />
 
             <DashboardCharts products={products} movements={movements} />
           </motion.div>}
-          {activeTab === 'products' && <ProductManager products={products} onOpenTimeline={handleOpenTimeline} onOpenEntry={handleOpenEntryModal} onOpenExit={handleOpenExitModal} onSaveProduct={handleSaveProduct} onAddProduct={handleAddProduct} userRole={currentUser.role} />}
+          {activeTab === 'products' && <ProductManager products={products} onOpenTimeline={handleOpenTimeline} onOpenEntry={handleOpenEntryModal} onOpenExit={handleOpenExitModal} onSaveProduct={handleSaveProduct} onAddProduct={handleAddProduct} userRole={currentUser.role} onOpenReconciliationPreview={() => setIsReconciliationPreviewOpen(true)} />}
           {activeTab === 'entries' && <div className="space-y-6"><div className="flex items-center justify-between bg-white border border-slate-200 rounded-3xl p-6 shadow-sm"><div><h2 className="text-lg font-bold text-slate-900">Entradas no Estoque (Compras e Doações)</h2><p className="text-xs text-slate-500">Rastreio de todos os mantimentos recebidos na Cristolândia</p></div>{currentUser.role === 'admin' && <button onClick={() => handleOpenEntryModal(null)} className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer">+ Nova Entrada</button>}</div><MovementsHistory movements={movements.filter((m) => m.type === 'entrada')} products={products} userRole={currentUser.role} onOpenProductTimeline={handleOpenTimelineById} onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)} onOpenExitForDate={(d) => handleOpenExitModal(null, d)} onUpdateMovement={handleUpdateMovement} onDeleteMovement={handleDeleteMovement} /></div>}
           {activeTab === 'exits' && <div className="space-y-6"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm"><div><h2 className="text-lg font-bold text-slate-900">Saídas do Estoque por Setor</h2><p className="text-xs text-slate-500">Entrega de mantimentos para a Cozinha, Casa Masculina, Casa Feminina e Eventos</p></div><div className="flex items-center gap-2"><button onClick={() => setIsKitModalOpen(true)} className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer flex items-center gap-2"><Utensils className="w-4 h-4" /><span>{currentUser.role === 'admin' ? '+ Kit Cozinha Diário' : 'Visualizar Kit Cozinha'}</span></button>{currentUser.role === 'admin' && <button onClick={() => handleOpenExitModal(null)} className="px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer">Nova Saída</button>}</div></div><MovementsHistory movements={movements.filter((m) => m.type === 'saida')} products={products} userRole={currentUser.role} onOpenProductTimeline={handleOpenTimelineById} onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)} onOpenExitForDate={(d) => handleOpenExitModal(null, d)} onUpdateMovement={handleUpdateMovement} onDeleteMovement={handleDeleteMovement} /></div>}
           {activeTab === 'meals' && <MealManager meals={meals} missionaries={missionaries} userRole={currentUser.role} currentUserDisplayName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'} onSaveMealRecord={handleSaveMealRecord} onDeleteMealRecord={handleDeleteMealRecord} />}
@@ -266,6 +270,23 @@ export default function App() {
           inventoryAudits={inventoryAudits}
           inventorySessions={inventorySessions}
           onClose={() => setIsPhysicalInventoryOpen(false)}
+          onNotify={(msg, type) => {
+            if (type === 'error') showToast(msg, 'warning');
+            else if (type === 'warning') showToast(msg, 'warning');
+            else if (type === 'info') showToast(msg, 'info');
+            else showToast(msg, 'success');
+          }}
+        />
+      )}
+      {isReconciliationPreviewOpen && (
+        <PhysicalReconciliationPreviewModal
+          isOpen={isReconciliationPreviewOpen}
+          products={products}
+          userRole={currentUser.role}
+          currentUserName={currentUser.displayName || 'Marconi Castro'}
+          currentUserEmail={currentUser.email}
+          currentUserUid={currentUser.uid}
+          onClose={() => setIsReconciliationPreviewOpen(false)}
           onNotify={(msg, type) => {
             if (type === 'error') showToast(msg, 'warning');
             else if (type === 'warning') showToast(msg, 'warning');

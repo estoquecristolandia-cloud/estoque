@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale } from 'lucide-react';
+import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye } from 'lucide-react';
 import { AppUserProfile, ROLE_LABELS } from '../firebase';
 
 interface HeaderProps {
@@ -7,6 +7,7 @@ interface HeaderProps {
   setActiveTab: (tab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports') => void;
   onOpenKitModal: () => void;
   onOpenPhysicalInventory?: () => void;
+  onOpenReconciliationPreview?: () => void;
   onOpenMissionariesModal?: () => void;
   onOpenWhatsAppModal?: () => void;
   onResetData?: () => void;
@@ -22,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   onOpenKitModal,
   onOpenPhysicalInventory,
+  onOpenReconciliationPreview,
   onOpenMissionariesModal,
   onOpenWhatsAppModal,
   onResetData,
@@ -173,6 +175,19 @@ export const Header: React.FC<HeaderProps> = ({
             })}
 
             <div className="pt-4 border-t border-slate-800 flex flex-col gap-2">
+              {onOpenReconciliationPreview && (
+                <button
+                  onClick={() => {
+                    onOpenReconciliationPreview();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full py-2.5 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-bold hover:bg-amber-500/30 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Eye className="w-4 h-4 text-amber-400" />
+                  <span>🔍 Prévia da Conciliação Física</span>
+                </button>
+              )}
+
               {onOpenPhysicalInventory && (
                 <button
                   onClick={() => {
@@ -293,6 +308,17 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Footer Actions */}
         <div className="mt-auto space-y-2 pt-4 border-t border-slate-800">
+          {onOpenReconciliationPreview && (
+            <button
+              onClick={onOpenReconciliationPreview}
+              className="w-full py-2.5 bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/60 text-amber-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              title="Abrir Prévia da Conciliação Física dos 14 produtos (Marco Zero)"
+            >
+              <Eye className="w-4 h-4 text-amber-400" />
+              <span>🔍 Prévia de Conciliação</span>
+            </button>
+          )}
+
           {onOpenPhysicalInventory && (
             <button
               onClick={onOpenPhysicalInventory}

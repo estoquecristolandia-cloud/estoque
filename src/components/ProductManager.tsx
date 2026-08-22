@@ -45,6 +45,7 @@ interface ProductManagerProps {
   onSaveProduct: (product: Product) => void;
   onAddProduct: (product: Omit<Product, 'id' | 'lastUpdated'>) => void;
   userRole?: UserRole;
+  onOpenReconciliationPreview?: () => void;
 }
 
 const CATEGORIES: Category[] = [
@@ -67,6 +68,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   onSaveProduct,
   onAddProduct,
   userRole = 'admin',
+  onOpenReconciliationPreview,
 }) => {
   // Only admin (Marconi Castro) can edit/add/delete products or register entries/exits
   const isAdmin = userRole === 'admin';
@@ -538,7 +540,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       ) : (
         /* Executive Table View (Para Direção / Reunião de Estoque) */
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+          <div className="p-4 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-extrabold flex items-center gap-2">
                 <Table className="w-4 h-4 text-amber-400" />
@@ -548,9 +550,21 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 Visão consolidada do saldo físico atual e autonomia projetada para tomadas de decisão.
               </p>
             </div>
-            <span className="text-xs font-bold px-3 py-1 bg-slate-800 rounded-lg text-emerald-400 border border-slate-700">
-              {filteredProducts.length} itens
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {onOpenReconciliationPreview && (
+                <button
+                  onClick={onOpenReconciliationPreview}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title="Abrir Prévia da Conciliação Física dos 14 produtos (Marco Zero)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Prévia da Conciliação Física</span>
+                </button>
+              )}
+              <span className="text-xs font-bold px-3 py-1 bg-slate-800 rounded-lg text-emerald-400 border border-slate-700">
+                {filteredProducts.length} itens
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
