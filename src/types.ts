@@ -16,6 +16,7 @@ export interface Missionary { id: string; name: string; role: string; sector: Se
 
 export interface Product {
   id: string; name: string; category: Category; unit: Unit; currentStock: number; minStock: number;
+  idealStock?: number;
   dailyAvgConsumption: number; alertDays?: number; usageFrequency?: string; location: string;
   expirationDate?: string; barcode?: string; lastUpdated: string; lastOperationId?: string; updatedAt?: any;
 }

@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Product, StockMovement, Sector } from '../types';
+import { UserRole } from '../firebase';
 import { calculateDaysRemaining, verifyProductAudit, getTodayDateString } from '../utils/storage';
 import { generateInventoryPDF, generateMovementsDetailedPDF } from '../utils/pdfExport';
 import { runStockMathematicalAudit } from '../utils/stockAuditor';
+import { PurchaseForecastReport } from './PurchaseForecastReport';
 import {
   FileText,
   Printer,
@@ -32,6 +34,9 @@ import {
 interface ReportsViewProps {
   products: Product[];
   movements: StockMovement[];
+  inventoryAudits?: any[];
+  userRole?: UserRole;
+  userName?: string;
 }
 
 interface ProductInSector {
@@ -57,7 +62,7 @@ interface SectorDetails {
   responsibles: Record<string, ResponsibleInSector>;
 }
 
-export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements }) => {
+export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, inventoryAudits = [], userRole, userName }) => {
   const [activeReportTab, setActiveReportTab] = useState<'daily_ledger' | 'product' | 'sector' | 'person' | 'shopping' | 'audit'>('daily_ledger');
   const [bufferDays, setBufferDays] = useState<number>(30); // Target buffer days e.g. 15 or 30 days
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<string>('todos');
@@ -509,7 +514,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements })
           }`}
         >
           <ShoppingCart className="w-4 h-4" />
-          <span>🛒 Previsão de Compras</span>
+          <span>📄 Relatório de Compras / Previsão de Estoque</span>
         </button>
 
         <button
@@ -824,109 +829,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements })
         </div>
       )}
 
-      {/* TAB 1: SHOPPING RECOMMENDATION LIST */}
+      {/* TAB 1: SHOPPING & PURCHASE FORECAST REPORT */}
       {activeReportTab === 'shopping' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <ShoppingCart className="w-5 h-5 text-amber-500" />
-                Previsão de Compras para Abastecimento
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Cálculo automático da quantidade de cada produto necessária para manter a Cristolândia abastecida.
-              </p>
-            </div>
-
-            {/* Buffer Selector & WhatsApp Action */}
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={handleDirectWhatsAppChefeMarcos}
-                className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
-                title="Abrir WhatsApp diretamente com o Chefe Marcos (+55 62 99974-6823)"
-              >
-                <span>📲 Enviar Alerta ao Chefe Marcos</span>
-              </button>
-
-              <button
-                onClick={handleCopyWhatsAppText}
-                className="px-3.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm border border-slate-200 dark:border-slate-700"
-                title="Copiar lista de necessidades formatada para grupos de WhatsApp"
-              >
-                <span>📋 {copiedWhatsApp ? 'Copiado para WhatsApp!' : 'Copiar Pedido Geral'}</span>
-              </button>
-
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-slate-500">Reserva:</span>
-                <button
-                  onClick={() => setBufferDays(15)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    bufferDays === 15 ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                  }`}
-                >
-                  15 Dias
-                </button>
-                <button
-                  onClick={() => setBufferDays(30)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    bufferDays === 30 ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                  }`}
-                >
-                  30 Dias
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                  <th className="py-3 px-3">Produto</th>
-                  <th className="py-3 px-3">Estoque Atual</th>
-                  <th className="py-3 px-3">Consumo Diário</th>
-                  <th className="py-3 px-3">Autonomia (Dias)</th>
-                  <th className="py-3 px-3">Mínimo</th>
-                  <th className="py-3 px-3 text-right">Comprar p/ {bufferDays} Dias</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {shoppingList.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="py-3.5 px-3 font-bold text-slate-900 dark:text-white">
-                      {item.name}
-                    </td>
-                    <td className="py-3.5 px-3 font-semibold text-slate-700 dark:text-slate-300">
-                      {item.currentStock} {item.unit}
-                    </td>
-                    <td className="py-3.5 px-3 text-slate-500">
-                      {item.dailyAvgConsumption} {item.unit}/dia
-                    </td>
-                    <td className="py-3.5 px-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold ${
-                          item.daysRemaining <= 3
-                            ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
-                            : item.daysRemaining <= 7
-                            ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
-                            : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
-                        }`}
-                      >
-                        {item.daysRemaining} dias
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-3 text-slate-500">
-                      {item.minStock} {item.unit}
-                    </td>
-                    <td className="py-3.5 px-3 text-right font-black text-amber-600 dark:text-amber-400 text-sm">
-                      +{item.neededQtyForBuffer} {item.unit}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <PurchaseForecastReport
+          products={products}
+          movements={movements}
+          inventoryAudits={inventoryAudits}
+          userRole={userRole}
+          userName={userName}
+        />
       )}
 
       {/* TAB 2: SECTOR REPORT */}

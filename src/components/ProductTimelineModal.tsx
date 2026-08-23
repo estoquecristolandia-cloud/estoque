@@ -1,11 +1,13 @@
 import React from 'react';
 import { X, ArrowDownLeft, ArrowUpRight, ShieldCheck, Clock, User, Building2, Package, Sparkles, AlertTriangle, Scale } from 'lucide-react';
 import { Product, StockMovement } from '../types';
+import { UserRole } from '../firebase';
 import { calculateDaysRemaining, verifyProductAudit, formatDaysRemainingText } from '../utils/storage';
 
 interface ProductTimelineModalProps {
   product: Product | null;
   movements: StockMovement[];
+  userRole?: UserRole;
   onClose: () => void;
   onOpenEntry: (product: Product) => void;
   onOpenExit: (product: Product) => void;
@@ -14,10 +16,12 @@ interface ProductTimelineModalProps {
 export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
   product,
   movements,
+  userRole = 'viewer',
   onClose,
   onOpenEntry,
   onOpenExit,
 }) => {
+  const isAdmin = userRole === 'admin';
   if (!product) return null;
 
   const prodMovements = movements.filter((m) => m.productId === product.id);
@@ -148,26 +152,28 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
                 Histórico Cronológico de Movimentações ({prodMovements.length})
               </h4>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenEntry(product);
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 text-xs font-bold border border-emerald-500/30 transition-colors cursor-pointer"
-                >
-                  + Entrada
-                </button>
-                <button
-                  onClick={() => {
-                    onClose();
-                    onOpenExit(product);
-                  }}
-                  className="px-2.5 py-1 rounded-lg bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 text-xs font-bold border border-amber-500/30 transition-colors cursor-pointer"
-                >
-                  - Saída
-                </button>
-              </div>
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenEntry(product);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 text-xs font-bold border border-emerald-500/30 transition-colors cursor-pointer"
+                  >
+                    + Entrada
+                  </button>
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenExit(product);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 text-xs font-bold border border-amber-500/30 transition-colors cursor-pointer"
+                  >
+                    - Saída
+                  </button>
+                </div>
+              )}
             </div>
 
             {prodMovements.length === 0 ? (

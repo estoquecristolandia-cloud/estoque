@@ -35,12 +35,13 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const roleMeta = ROLE_LABELS[currentUser?.role || 'admin'];
+  const isAdmin = currentUser?.role === 'admin';
+  const roleMeta = ROLE_LABELS[currentUser?.role || 'viewer'];
 
-  const navItems = [
+  const baseNavItems = [
     {
       id: 'dashboard' as const,
-      label: 'Painel Principal',
+      label: isAdmin ? 'Painel Principal' : 'Painel de Consulta',
       icon: LayoutDashboard,
       activeColor: 'bg-blue-600/20 text-blue-400',
     },
@@ -52,29 +53,35 @@ export const Header: React.FC<HeaderProps> = ({
     },
     {
       id: 'entries' as const,
-      label: 'Entradas',
+      label: isAdmin ? 'Entradas' : 'Extrato de Entradas',
       icon: ArrowDownLeft,
       activeColor: 'bg-emerald-600/20 text-emerald-400',
     },
     {
       id: 'exits' as const,
-      label: 'Saídas',
+      label: isAdmin ? 'Saídas' : 'Extrato de Saídas',
       icon: ArrowUpRight,
       activeColor: 'bg-amber-600/20 text-amber-400',
     },
     {
       id: 'meals' as const,
-      label: 'Refeições (Café/Alm/Lanch/Jant)',
+      label: isAdmin ? 'Refeições (Café/Alm/Lanch/Jant)' : 'Refeições Servidas',
       icon: UtensilsCrossed,
       activeColor: 'bg-amber-500/20 text-amber-400',
     },
-    {
-      id: 'reports' as const,
-      label: 'Relatórios',
-      icon: FileText,
-      activeColor: 'bg-indigo-600/20 text-indigo-400',
-    },
   ];
+
+  const navItems = isAdmin
+    ? [
+        ...baseNavItems,
+        {
+          id: 'reports' as const,
+          label: 'Relatórios & Auditoria',
+          icon: FileText,
+          activeColor: 'bg-indigo-600/20 text-indigo-400',
+        },
+      ]
+    : baseNavItems;
 
   return (
     <>
@@ -113,13 +120,15 @@ export const Header: React.FC<HeaderProps> = ({
             <User className="w-3.5 h-3.5 text-blue-400" />
             <span className="truncate max-w-[80px]">{currentUser?.displayName?.split(' ')[0] || 'Perfil'}</span>
           </button>
-          <button
-            onClick={onOpenKitModal}
-            className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-lg text-xs font-black flex items-center gap-1 shadow-sm"
-          >
-            <Utensils className="w-3.5 h-3.5" />
-            <span>Kit</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={onOpenKitModal}
+              className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-lg text-xs font-black flex items-center gap-1 shadow-sm cursor-pointer"
+            >
+              <Utensils className="w-3.5 h-3.5" />
+              <span>Kit</span>
+            </button>
+          )}
           {onLogout && (
             <button
               onClick={onLogout}
@@ -175,7 +184,7 @@ export const Header: React.FC<HeaderProps> = ({
             })}
 
             <div className="pt-4 border-t border-slate-800 flex flex-col gap-2">
-              {onOpenReconciliationPreview && (
+              {isAdmin && onOpenReconciliationPreview && (
                 <button
                   onClick={() => {
                     onOpenReconciliationPreview();
@@ -188,7 +197,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               )}
 
-              {onOpenPhysicalInventory && (
+              {isAdmin && onOpenPhysicalInventory && (
                 <button
                   onClick={() => {
                     onOpenPhysicalInventory();
@@ -201,7 +210,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               )}
 
-              {onOpenWhatsAppModal && (
+              {isAdmin && onOpenWhatsAppModal && (
                 <button
                   onClick={() => {
                     onOpenWhatsAppModal();
@@ -214,7 +223,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               )}
 
-              {onOpenMissionariesModal && (
+              {isAdmin && onOpenMissionariesModal && (
                 <button
                   onClick={() => {
                     onOpenMissionariesModal();
@@ -308,7 +317,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Footer Actions */}
         <div className="mt-auto space-y-2 pt-4 border-t border-slate-800">
-          {onOpenReconciliationPreview && (
+          {isAdmin && onOpenReconciliationPreview && (
             <button
               onClick={onOpenReconciliationPreview}
               className="w-full py-2.5 bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/60 text-amber-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
@@ -319,7 +328,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {onOpenPhysicalInventory && (
+          {isAdmin && onOpenPhysicalInventory && (
             <button
               onClick={onOpenPhysicalInventory}
               className="w-full py-2.5 bg-purple-950/60 hover:bg-purple-900/80 border border-purple-700/60 text-purple-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
@@ -330,7 +339,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {onOpenWhatsAppModal && (
+          {isAdmin && onOpenWhatsAppModal && (
             <button
               onClick={onOpenWhatsAppModal}
               className="w-full py-2.5 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-700/60 text-emerald-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
@@ -341,15 +350,17 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          <button
-            onClick={onOpenKitModal}
-            className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl text-xs font-black shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Utensils className="w-4 h-4" />
-            <span>{currentUser?.role === 'admin' ? '+ Kit Cozinha Diário' : 'Visualizar Kit Cozinha'}</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={onOpenKitModal}
+              className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl text-xs font-black shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Utensils className="w-4 h-4" />
+              <span>+ Kit Cozinha Diário</span>
+            </button>
+          )}
 
-          {onOpenMissionariesModal && (
+          {isAdmin && onOpenMissionariesModal && (
             <button
               onClick={onOpenMissionariesModal}
               className="w-full py-2.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-amber-400 rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 cursor-pointer"

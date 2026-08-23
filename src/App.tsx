@@ -99,6 +99,10 @@ export default function App() {
   const handleOpenTimelineById = (productId: string) => { const p = products.find((prod) => prod.id === productId); if (p) setTimelineProduct(p); };
 
   const handleAddEntry = async (product: Product, quantity: number, entryType: EntryType, supplierOrDonor: string, receivedBy: string, date: string, time: string, notes: string) => {
+    if (currentUser?.role !== 'admin') {
+      showToast('Apenas o Administrador do Estoque pode registrar entradas.', 'warning');
+      return;
+    }
     try {
       const result = await executeEntryTransaction(product.id, quantity, entryType, supplierOrDonor, receivedBy, date, time, notes);
       setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p));
@@ -111,6 +115,10 @@ export default function App() {
   };
 
   const handleAddExit = async (product: Product, quantity: number, sector: Sector, retrievedBy: string, deliveredBy: string, date: string, time: string, notes: string) => {
+    if (currentUser?.role !== 'admin') {
+      showToast('Apenas o Administrador do Estoque pode registrar saídas.', 'warning');
+      return;
+    }
     try {
       const result = await executeExitTransaction(product.id, quantity, sector, retrievedBy, deliveredBy, date, time, notes);
       setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p));
@@ -123,6 +131,10 @@ export default function App() {
   };
 
   const handleAddBatchExit = async (items: Array<{ product: Product; quantity: number }>, sector: Sector, retrievedBy: string, deliveredBy: string, date: string, time: string, notes: string) => {
+    if (currentUser?.role !== 'admin') {
+      showToast('Apenas o Administrador do Estoque pode registrar saídas.', 'warning');
+      return;
+    }
     try {
       const result = await executeBatchExitTransaction(items.map((item) => ({ productId: item.product.id, quantity: item.quantity })), sector, retrievedBy, deliveredBy, date, time, notes);
       setProducts((prev) => prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p));
@@ -136,6 +148,10 @@ export default function App() {
   };
 
   const handleUpdateMovement = async (movementId: string, updatedData: Partial<StockMovement> & { productId: string; quantity: number; type: 'entrada' | 'saida' }) => {
+    if (currentUser?.role !== 'admin') {
+      showToast('Apenas o Administrador do Estoque pode alterar movimentações.', 'warning');
+      return;
+    }
     try {
       const result = await updateStockMovementTransaction(movementId, updatedData);
       setProducts((prev) => prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p));
@@ -148,6 +164,10 @@ export default function App() {
   };
 
   const handleDeleteMovement = async (movementId: string) => {
+    if (currentUser?.role !== 'admin') {
+      showToast('Apenas o Administrador do Estoque pode excluir movimentações.', 'warning');
+      return;
+    }
     try {
       const result = await deleteStockMovementTransaction(movementId);
       setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p));
@@ -160,6 +180,10 @@ export default function App() {
   };
 
   const handleDeliverKit = async (kitToDeliver: DailyKit, retrievedBy: string, deliveredBy: string, date: string, time: string, saveAsDefault?: boolean) => {
+    if (currentUser?.role !== 'admin') {
+      showToast('Apenas o Administrador do Estoque pode efetivar baixa do Kit Cozinha.', 'warning');
+      return;
+    }
     try {
       if (saveAsDefault) {
         await saveDailyKitToFirestore(kitToDeliver);
@@ -175,8 +199,33 @@ export default function App() {
       throw err;
     }
   };
-  const handleSaveProduct = async (updatedProd: Product) => { try { await saveProductToFirestore(updatedProd); setProducts((prev) => prev.map((p) => p.id === updatedProd.id ? updatedProd : p)); showToast(`Produto ${updatedProd.name} atualizado e sincronizado online!`, 'info'); } catch (err: any) { showToast(err.message || 'Erro ao salvar produto.', 'warning'); } };
-  const handleAddProduct = async (newProdData: Omit<Product, 'id' | 'lastUpdated'>) => { const newProd: Product = { ...newProdData, id: `prod-${Date.now()}`, lastUpdated: new Date().toISOString() }; try { await saveProductToFirestore(newProd); setProducts((prev) => [newProd, ...prev]); showToast(`Novo produto ${newProd.name} cadastrado com sucesso!`, 'success'); } catch (err: any) { showToast(err.message || 'Erro ao cadastrar produto.', 'warning'); } };
+  const handleSaveProduct = async (updatedProd: Product) => {
+    if (currentUser?.role !== 'admin') {
+      showToast('Apenas o Administrador do Estoque pode editar dados cadastrais de produtos.', 'warning');
+      return;
+    }
+    try {
+      await saveProductToFirestore(updatedProd);
+      setProducts((prev) => prev.map((p) => p.id === updatedProd.id ? updatedProd : p));
+      showToast(`Produto ${updatedProd.name} atualizado e sincronizado online!`, 'info');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao salvar produto.', 'warning');
+    }
+  };
+  const handleAddProduct = async (newProdData: Omit<Product, 'id' | 'lastUpdated'>) => {
+    if (currentUser?.role !== 'admin') {
+      showToast('Apenas o Administrador do Estoque pode cadastrar novos produtos.', 'warning');
+      return;
+    }
+    const newProd: Product = { ...newProdData, id: `prod-${Date.now()}`, lastUpdated: new Date().toISOString() };
+    try {
+      await saveProductToFirestore(newProd);
+      setProducts((prev) => [newProd, ...prev]);
+      showToast(`Novo produto ${newProd.name} cadastrado com sucesso!`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Erro ao cadastrar produto.', 'warning');
+    }
+  };
   const handleForceSyncPhysicalInventory = () => showToast('A sincronização física automática está desativada para proteger o estoque real.', 'warning');
 
   if (!authResolved || !currentUser) return <LoginScreen onLoginSuccess={(user) => setCurrentUser(user)} />;
@@ -250,16 +299,53 @@ export default function App() {
           {activeTab === 'entries' && <div className="space-y-6"><div className="flex items-center justify-between bg-white border border-slate-200 rounded-3xl p-6 shadow-sm"><div><h2 className="text-lg font-bold text-slate-900">Entradas no Estoque (Compras e Doações)</h2><p className="text-xs text-slate-500">Rastreio de todos os mantimentos recebidos na Cristolândia</p></div>{currentUser.role === 'admin' && <button onClick={() => handleOpenEntryModal(null)} className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer">+ Nova Entrada</button>}</div><MovementsHistory movements={movements.filter((m) => m.type === 'entrada')} products={products} userRole={currentUser.role} onOpenProductTimeline={handleOpenTimelineById} onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)} onOpenExitForDate={(d) => handleOpenExitModal(null, d)} onUpdateMovement={handleUpdateMovement} onDeleteMovement={handleDeleteMovement} /></div>}
           {activeTab === 'exits' && <div className="space-y-6"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm"><div><h2 className="text-lg font-bold text-slate-900">Saídas do Estoque por Setor</h2><p className="text-xs text-slate-500">Entrega de mantimentos para a Cozinha, Casa Masculina, Casa Feminina e Eventos</p></div><div className="flex items-center gap-2"><button onClick={() => setIsKitModalOpen(true)} className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer flex items-center gap-2"><Utensils className="w-4 h-4" /><span>{currentUser.role === 'admin' ? '+ Kit Cozinha Diário' : 'Visualizar Kit Cozinha'}</span></button>{currentUser.role === 'admin' && <button onClick={() => handleOpenExitModal(null)} className="px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer">Nova Saída</button>}</div></div><MovementsHistory movements={movements.filter((m) => m.type === 'saida')} products={products} userRole={currentUser.role} onOpenProductTimeline={handleOpenTimelineById} onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)} onOpenExitForDate={(d) => handleOpenExitModal(null, d)} onUpdateMovement={handleUpdateMovement} onDeleteMovement={handleDeleteMovement} /></div>}
           {activeTab === 'meals' && <MealManager meals={meals} missionaries={missionaries} userRole={currentUser.role} currentUserDisplayName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'} onSaveMealRecord={handleSaveMealRecord} onDeleteMealRecord={handleDeleteMealRecord} />}
-          {activeTab === 'reports' && <ReportsView products={products} movements={movements} />}
+          {activeTab === 'reports' && (
+            currentUser.role === 'admin' ? (
+              <ReportsView
+                products={products}
+                movements={movements}
+                inventoryAudits={inventoryAudits}
+                userRole={currentUser.role}
+                userName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'}
+              />
+            ) : (
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm space-y-4">
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-3xl mx-auto">
+                  🔒
+                </div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                  Acesso Restrito à Administração
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  A Central de Relatórios Administrativos e Auditoria Contábil é de uso exclusivo do gestor do estoque. Utilize as abas de Consulta de Produtos, Extrato de Entradas, Saídas e Refeições.
+                </p>
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer inline-flex items-center gap-2"
+                >
+                  Voltar ao Painel de Consulta
+                </button>
+              </div>
+            )
+          )}
         </AnimatePresence>
       </main>
-      {timelineProduct && <ProductTimelineModal product={timelineProduct} movements={movements} onClose={() => setTimelineProduct(null)} onOpenEntry={(p) => handleOpenEntryModal(p)} onOpenExit={(p) => handleOpenExitModal(p)} />}
-      {isEntryModalOpen && <EntryModal products={products} selectedProduct={selectedProductForAction} initialDate={actionInitialDate || undefined} onClose={() => { setIsEntryModalOpen(false); setSelectedProductForAction(null); setActionInitialDate(null); }} onSubmit={handleAddEntry} />}
-      {isExitModalOpen && <ExitModal products={products} selectedProduct={selectedProductForAction} initialDate={actionInitialDate || undefined} missionaries={missionaries} onClose={() => { setIsExitModalOpen(false); setSelectedProductForAction(null); setActionInitialDate(null); }} onSubmitBatch={handleAddBatchExit} onSubmit={handleAddExit} />}
+      {timelineProduct && (
+        <ProductTimelineModal
+          product={timelineProduct}
+          movements={movements}
+          userRole={currentUser.role}
+          onClose={() => setTimelineProduct(null)}
+          onOpenEntry={(p) => handleOpenEntryModal(p)}
+          onOpenExit={(p) => handleOpenExitModal(p)}
+        />
+      )}
+      {isEntryModalOpen && currentUser.role === 'admin' && <EntryModal products={products} selectedProduct={selectedProductForAction} initialDate={actionInitialDate || undefined} onClose={() => { setIsEntryModalOpen(false); setSelectedProductForAction(null); setActionInitialDate(null); }} onSubmit={handleAddEntry} />}
+      {isExitModalOpen && currentUser.role === 'admin' && <ExitModal products={products} selectedProduct={selectedProductForAction} initialDate={actionInitialDate || undefined} missionaries={missionaries} onClose={() => { setIsExitModalOpen(false); setSelectedProductForAction(null); setActionInitialDate(null); }} onSubmitBatch={handleAddBatchExit} onSubmit={handleAddExit} />}
       {isKitModalOpen && <DailyKitModal products={products} kit={dailyKit} missionaries={missionaries} userRole={currentUser.role} onClose={() => setIsKitModalOpen(false)} onSubmitKit={handleDeliverKit} />}
-      <MissionaryManagerModal isOpen={isMissionariesModalOpen} onClose={() => setIsMissionariesModalOpen(false)} missionaries={missionaries} onSaveMissionaries={handleSaveMissionaries} />
-      <WhatsAppAlertModal isOpen={isWhatsAppModalOpen} onClose={() => setIsWhatsAppModalOpen(false)} products={products} />
-      {isPhysicalInventoryOpen && (
+      {isMissionariesModalOpen && currentUser.role === 'admin' && <MissionaryManagerModal isOpen={isMissionariesModalOpen} onClose={() => setIsMissionariesModalOpen(false)} missionaries={missionaries} onSaveMissionaries={handleSaveMissionaries} />}
+      {isWhatsAppModalOpen && currentUser.role === 'admin' && <WhatsAppAlertModal isOpen={isWhatsAppModalOpen} onClose={() => setIsWhatsAppModalOpen(false)} products={products} />}
+      {isPhysicalInventoryOpen && currentUser.role === 'admin' && (
         <PhysicalInventoryModal
           isOpen={isPhysicalInventoryOpen}
           products={products}
@@ -278,7 +364,7 @@ export default function App() {
           }}
         />
       )}
-      {isReconciliationPreviewOpen && (
+      {isReconciliationPreviewOpen && currentUser.role === 'admin' && (
         <PhysicalReconciliationPreviewModal
           isOpen={isReconciliationPreviewOpen}
           products={products}
