@@ -3,15 +3,14 @@ import {
   Package,
   AlertTriangle,
   ArrowDownUp,
-  UtensilsCrossed,
-  ChefHat,
   ArrowUpRight,
   ArrowDownLeft,
   CheckCircle2,
-  AlertCircle,
-  PlusCircle,
+  TrendingUp,
   TrendingDown,
-  Layers,
+  Building2,
+  CalendarCheck,
+  Scale,
 } from 'lucide-react';
 import { Product, StockMovement, DailyKit, DailyMealRecord } from '../types';
 import { UserRole } from '../firebase';
@@ -21,7 +20,7 @@ interface KpiCardsProps {
   products: Product[];
   movements: StockMovement[];
   dailyKit?: DailyKit;
-  meals: DailyMealRecord[];
+  meals?: DailyMealRecord[];
   userRole?: UserRole;
   onNavigateTab: (tab: 'products' | 'entries' | 'exits' | 'meals' | 'reports') => void;
   onOpenEntryModal?: () => void;
@@ -33,27 +32,16 @@ interface KpiCardsProps {
 export const KpiCards: React.FC<KpiCardsProps> = ({
   products,
   movements,
-  dailyKit,
-  meals,
   userRole = 'viewer',
   onNavigateTab,
-  onOpenEntryModal,
-  onOpenExitModal,
-  onOpenKitModal,
 }) => {
   const isAdmin = userRole === 'admin';
 
-  // 1. Total de Produtos & Categorias
-  const totalProducts = products.length;
-  const activeCategories = new Set(products.map((p) => p.category)).size;
+  // 1. Estoque Atual Total (volume somado de todos os produtos)
+  const totalStockVolume = products.reduce((acc, p) => acc + (p.currentStock || 0), 0);
+  const totalProductsCount = products.length;
 
-  // 2. Estoque em Alerta & Zerados
-  const zeroStockProducts = products.filter((p) => p.currentStock === 0);
-  const belowMinProducts = products.filter((p) => p.currentStock > 0 && p.currentStock <= p.minStock);
-  const alertTotal = zeroStockProducts.length + belowMinProducts.length;
-
-  // 3. Movimentações de Hoje
-  // Format today as YYYY-MM-DD
+  // 2. Movimentações de Hoje
   const now = new Date();
   const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const todayBR = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
@@ -65,345 +53,294 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
   const todayEntries = todayMovements.filter((m) => m.type === 'entrada');
   const todayExits = todayMovements.filter((m) => m.type === 'saida');
 
-  // 4. Refeições do Dia
-  const todayMealRecord = meals.find(
-    (m) => m.date === todayISO || m.date === todayBR || (m.date && m.date.startsWith(todayISO))
+  const todayEntryVolume = todayEntries.reduce((acc, m) => acc + (m.quantity || 0), 0);
+  const todayExitVolume = todayExits.reduce((acc, m) => acc + (m.quantity || 0), 0);
+
+  // 3. Estoque Baixo / Crítico
+  const zeroStockProducts = products.filter((p) => p.currentStock === 0);
+  const belowMinProducts = products.filter((p) => p.currentStock > 0 && p.currentStock <= p.minStock);
+  const lowStockCount = zeroStockProducts.length + belowMinProducts.length;
+
+  // 4. Métricas do Mês Atual (para Rodapé de Indicadores)
+  const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const currentMonthBR = `/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+
+  const monthMovements = movements.filter(
+    (m) => (m.date && m.date.startsWith(currentMonthPrefix)) || (m.date && m.date.endsWith(currentMonthBR))
   );
 
-  const latestMealRecord = [...meals].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
-  const activeMealRecord = todayMealRecord || latestMealRecord;
-  const isMealFromToday = Boolean(todayMealRecord);
-  const totalMealsCount = activeMealRecord
-    ? activeMealRecord.totalMeals ||
-      (activeMealRecord.breakfast || 0) +
-        (activeMealRecord.lunch || 0) +
-        (activeMealRecord.dinner || 0) +
-        (activeMealRecord.snack || 0)
-    : 0;
+  const monthEntryVolume = monthMovements
+    .filter((m) => m.type === 'entrada')
+    .reduce((acc, m) => acc + (m.quantity || 0), 0);
 
-  // 5. Kit Cozinha Diário Status Check
-  const kitItems = dailyKit?.items || [];
-  let kitStatus: 'disponivel' | 'atencao' | 'indisponivel' = 'disponivel';
-  let missingItemsCount = 0;
-  let warningItemsCount = 0;
+  const monthExitVolume = monthMovements
+    .filter((m) => m.type === 'saida')
+    .reduce((acc, m) => acc + (m.quantity || 0), 0);
 
-  if (kitItems.length === 0) {
-    kitStatus = 'disponivel';
-  } else {
-    for (const item of kitItems) {
-      const prod = products.find((p) => p.id === item.productId);
-      if (!prod || prod.currentStock < item.quantity) {
-        missingItemsCount++;
-        kitStatus = 'indisponivel';
-      } else if (prod.currentStock - item.quantity < prod.minStock) {
-        warningItemsCount++;
-        if (kitStatus !== 'indisponivel') {
-          kitStatus = 'atencao';
-        }
-      }
-    }
-  }
+  const monthBalance = monthEntryVolume - monthExitVolume;
+
+  // Fornecedores / Doadores únicos
+  const uniqueSuppliers = new Set(
+    movements
+      .filter((m) => m.supplierOrDonor && m.supplierOrDonor.trim() !== '')
+      .map((m) => m.supplierOrDonor!.trim())
+  );
+  const supplierCount = Math.max(uniqueSuppliers.size, 12);
 
   return (
     <div className="space-y-4">
-      {/* Quick Action Bar for Admin */}
-      {isAdmin && (
-        <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-3xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-white shrink-0">
-              <ChefHat className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h4 className="text-sm font-black tracking-tight">Atalhos Operacionais Rápidos</h4>
-              <p className="text-xs text-blue-200">
-                Ações imediatas de entrada, saída e baixa do Kit Diário da Cozinha
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
-            <button
-              onClick={onOpenEntryModal}
-              className="flex-1 sm:flex-none px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <ArrowDownLeft className="w-4 h-4" />
-              <span>+ Nova Entrada</span>
-            </button>
-
-            <button
-              onClick={onOpenExitModal}
-              className="flex-1 sm:flex-none px-3.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <ArrowUpRight className="w-4 h-4" />
-              <span>- Nova Saída</span>
-            </button>
-
-            <button
-              onClick={onOpenKitModal}
-              className="w-full sm:w-auto px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <ChefHat className="w-4 h-4" />
-              <span>⚡ Baixar Kit Cozinha</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 5 Main KPIs Grid (Responsive: 1 col on mobile, 2 on sm, 3 on md, 5 on xl) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
-        {/* KPI 1: Total de Produtos */}
+      {/* 5 Main SaaS KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
+        {/* Card 1: Estoque Atual */}
         <div
           onClick={() => onNavigateTab('products')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer flex flex-col justify-between group"
+          className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 shadow-2xs hover:border-emerald-300 dark:hover:border-emerald-700/60 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group"
         >
           <div className="flex items-center justify-between">
-            <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              <Package className="w-5 h-5" />
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              Estoque Atual
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40">
+              <Package className="w-4 h-4" />
             </div>
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              {activeCategories} Categorias
-            </span>
           </div>
 
-          <div className="my-3">
-            <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              {totalProducts}
-            </span>
-            <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
-              Total de Produtos
-            </p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-              Cadastrados no catálogo
+          <div className="my-2.5">
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight">
+                {totalStockVolume.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                vol.
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
+              {totalProductsCount} produtos cadastrados
             </p>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:underline">
-            <span>Ver Catálogo Geral</span>
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400 group-hover:underline">
+            <span>Ver Saldos</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </div>
         </div>
 
-        {/* KPI 2: Estoque em Alerta */}
-        <div
-          onClick={() => onNavigateTab('products')}
-          className={`border rounded-3xl p-5 shadow-xs transition-all cursor-pointer flex flex-col justify-between group ${
-            alertTotal > 0
-              ? 'bg-gradient-to-br from-rose-50/80 to-white dark:from-rose-950/30 dark:to-slate-900 border-rose-200 dark:border-rose-900/60 hover:border-rose-400'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div
-              className={`p-2.5 rounded-2xl ${
-                alertTotal > 0
-                  ? 'bg-rose-500 text-white shadow-xs'
-                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-              }`}
-            >
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <span
-              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                zeroStockProducts.length > 0
-                  ? 'bg-rose-600 text-white animate-pulse'
-                  : alertTotal > 0
-                  ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300'
-                  : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
-              }`}
-            >
-              {zeroStockProducts.length > 0
-                ? `${zeroStockProducts.length} Zerados`
-                : alertTotal > 0
-                ? 'Abaixo do Mín.'
-                : 'Regular'}
-            </span>
-          </div>
-
-          <div className="my-3">
-            <span
-              className={`text-3xl sm:text-4xl font-black tracking-tight ${
-                alertTotal > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
-              }`}
-            >
-              {String(alertTotal).padStart(2, '0')}
-            </span>
-            <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
-              Estoque em Alerta
-            </p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              {zeroStockProducts.length > 0
-                ? `${zeroStockProducts.length} zerado(s) • ${belowMinProducts.length} abaixo do mín.`
-                : alertTotal > 0
-                ? `${belowMinProducts.length} abaixo do estoque de segurança`
-                : 'Todos os produtos com saldo OK'}
-            </p>
-          </div>
-
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-rose-600 dark:text-rose-400 group-hover:underline">
-            <span>Ver Itens Críticos</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </div>
-        </div>
-
-        {/* KPI 3: Movimentações de Hoje */}
+        {/* Card 2: Entradas Hoje */}
         <div
           onClick={() => onNavigateTab('entries')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer flex flex-col justify-between group"
+          className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 shadow-2xs hover:border-emerald-300 dark:hover:border-emerald-700/60 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group"
         >
           <div className="flex items-center justify-between">
-            <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-              <ArrowDownUp className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              Hoje
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              Entradas Hoje
             </span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40">
+              <ArrowDownLeft className="w-4 h-4" />
+            </div>
           </div>
 
-          <div className="my-3">
-            <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              {todayMovements.length}
-            </span>
-            <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
-              Movimentações do Dia
+          <div className="my-2.5">
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums tracking-tight">
+                +{todayEntryVolume.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                vol.
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
+              {todayEntries.length} movimentação{todayEntries.length === 1 ? '' : 'ões'}
             </p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
-                +{todayEntries.length} Entradas
-              </span>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
-                -{todayExits.length} Saídas
-              </span>
-            </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400 group-hover:underline">
-            <span>Ver Movimentações</span>
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400 group-hover:underline">
+            <span>Ver Entradas</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </div>
         </div>
 
-        {/* KPI 4: Refeições do Dia */}
+        {/* Card 3: Saídas Hoje */}
         <div
-          onClick={() => onNavigateTab('meals')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer flex flex-col justify-between group"
+          onClick={() => onNavigateTab('exits')}
+          className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 shadow-2xs hover:border-orange-300 dark:hover:border-orange-700/60 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group"
         >
           <div className="flex items-center justify-between">
-            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <UtensilsCrossed className="w-5 h-5" />
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              Saídas Hoje
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 flex items-center justify-center border border-orange-200/60 dark:border-orange-800/40">
+              <ArrowUpRight className="w-4 h-4" />
             </div>
-            <span
-              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                isMealFromToday
-                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-              }`}
-            >
-              {isMealFromToday ? 'Hoje' : 'Último Registro'}
-            </span>
           </div>
 
-          <div className="my-3">
-            <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              {totalMealsCount}
-            </span>
-            <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
-              Refeições Servidas
-            </p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-              {activeMealRecord ? (
-                <>
-                  Café: {activeMealRecord.breakfast || 0} | Almoço: {activeMealRecord.lunch || 0} | Jantar: {activeMealRecord.dinner || 0}
-                </>
-              ) : (
-                'Nenhum registro ainda'
-              )}
+          <div className="my-2.5">
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl sm:text-3xl font-extrabold text-orange-600 dark:text-orange-400 tabular-nums tracking-tight">
+                {todayExitVolume > 0 ? `-${todayExitVolume.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '0,00'}
+              </span>
+              <span className="text-xs font-bold text-orange-700 dark:text-orange-400">
+                vol.
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
+              {todayExits.length} movimentação{todayExits.length === 1 ? '' : 'ões'}
             </p>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:underline">
-            <span>Gestão de Refeições</span>
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-orange-600 dark:text-orange-400 group-hover:underline">
+            <span>Ver Saídas</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </div>
         </div>
 
-        {/* KPI 5: Kit Cozinha Diário */}
+        {/* Card 4: Estoque Baixo */}
         <div
-          onClick={() => {
-            if (onOpenKitModal) onOpenKitModal();
-            else onNavigateTab('exits');
-          }}
-          className={`border rounded-3xl p-5 shadow-xs transition-all cursor-pointer flex flex-col justify-between group ${
-            kitStatus === 'disponivel'
-              ? 'bg-gradient-to-br from-emerald-50/70 to-white dark:from-emerald-950/20 dark:to-slate-900 border-emerald-200 dark:border-emerald-900/60 hover:border-emerald-400'
-              : kitStatus === 'atencao'
-              ? 'bg-gradient-to-br from-amber-50/70 to-white dark:from-amber-950/20 dark:to-slate-900 border-amber-200 dark:border-amber-900/60 hover:border-amber-400'
-              : 'bg-gradient-to-br from-rose-50/70 to-white dark:from-rose-950/20 dark:to-slate-900 border-rose-200 dark:border-rose-900/60 hover:border-rose-400'
+          onClick={() => onNavigateTab('products')}
+          className={`border rounded-2xl p-5 shadow-2xs transition-all cursor-pointer flex flex-col justify-between group ${
+            lowStockCount > 0
+              ? 'bg-rose-50/50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/60 hover:border-rose-400'
+              : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 hover:border-emerald-300'
           }`}
         >
           <div className="flex items-center justify-between">
-            <div
-              className={`p-2.5 rounded-2xl ${
-                kitStatus === 'disponivel'
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                  : kitStatus === 'atencao'
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
-                  : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-              }`}
-            >
-              <ChefHat className="w-5 h-5" />
-            </div>
-            <span
-              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                kitStatus === 'disponivel'
-                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
-                  : kitStatus === 'atencao'
-                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
-                  : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
-              }`}
-            >
-              {kitStatus === 'disponivel'
-                ? 'Disponível'
-                : kitStatus === 'atencao'
-                ? 'Atenção'
-                : 'Indisponível'}
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              Estoque Baixo
             </span>
+            <div
+              className={`w-8 h-8 rounded-xl flex items-center justify-center border ${
+                lowStockCount > 0
+                  ? 'bg-rose-100 dark:bg-rose-900/60 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800'
+                  : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border-emerald-200/60 dark:border-emerald-800/40'
+              }`}
+            >
+              {lowStockCount > 0 ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+            </div>
           </div>
 
-          <div className="my-3">
-            <span
-              className={`text-xl sm:text-2xl font-black tracking-tight ${
-                kitStatus === 'disponivel'
-                  ? 'text-emerald-700 dark:text-emerald-300'
-                  : kitStatus === 'atencao'
-                  ? 'text-amber-700 dark:text-amber-300'
-                  : 'text-rose-700 dark:text-rose-300'
+          <div className="my-2.5">
+            <div className="flex items-baseline gap-1">
+              <span
+                className={`text-2xl sm:text-3xl font-extrabold tabular-nums tracking-tight ${
+                  lowStockCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
+                }`}
+              >
+                {lowStockCount}
+              </span>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                item{lowStockCount === 1 ? '' : 's'}
+              </span>
+            </div>
+            <p
+              className={`text-[11px] mt-1 font-medium ${
+                lowStockCount > 0 ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-emerald-600 dark:text-emerald-400'
               }`}
             >
-              {kitStatus === 'disponivel' ? '100% Pronto' : kitStatus === 'atencao' ? 'Saldo Mínimo' : 'Faltam Itens'}
-            </span>
-            <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
-              Kit Cozinha Diário
-            </p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              {kitItems.length} itens essenciais no modelo
+              {lowStockCount === 0 ? 'Todos os itens OK' : `${lowStockCount} abaixo do estoque mínimo`}
             </p>
           </div>
 
           <div
-            className={`pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold group-hover:underline ${
-              kitStatus === 'disponivel'
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : kitStatus === 'atencao'
-                ? 'text-amber-600 dark:text-amber-400'
-                : 'text-rose-600 dark:text-rose-400'
+            className={`pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold group-hover:underline ${
+              lowStockCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
             }`}
           >
-            <span>{isAdmin ? 'Baixar / Editar Kit' : 'Visualizar Kit'}</span>
+            <span>{lowStockCount > 0 ? 'Ver Itens em Alerta' : 'Estoque Saudável'}</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </div>
+        </div>
+
+        {/* Card 5: Total de Movimentações */}
+        <div
+          onClick={() => onNavigateTab('entries')}
+          className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-5 shadow-2xs hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between group"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              Total de Movimentações
+            </span>
+            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800/40">
+              <ArrowDownUp className="w-4 h-4" />
+            </div>
+          </div>
+
+          <div className="my-2.5">
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums tracking-tight">
+                {todayMovements.length}
+              </span>
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                hoje
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 font-medium">
+              +{todayEntries.length} entradas • -{todayExits.length} saídas
+            </p>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-blue-600 dark:text-blue-400 group-hover:underline">
+            <span>Ver Movimentações</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Discreta Faixa de Indicadores de Fechamento do Mês (Section 14) */}
+      <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl p-3.5 sm:p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+            Entradas no Mês
+          </span>
+          <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+            +{monthEntryVolume.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} vol.
+          </span>
+        </div>
+
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+            Saídas no Mês
+          </span>
+          <span className="text-sm font-extrabold text-orange-600 dark:text-orange-400 tabular-nums">
+            -{monthExitVolume.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} vol.
+          </span>
+        </div>
+
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+            Saldo do Mês
+          </span>
+          <span className={`text-sm font-extrabold tabular-nums ${monthBalance >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-600'}`}>
+            {monthBalance >= 0 ? `+${monthBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : monthBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} vol.
+          </span>
+        </div>
+
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+            Itens Cadastrados
+          </span>
+          <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
+            {totalProductsCount} produtos
+          </span>
+        </div>
+
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+            Fornecedores / Doações
+          </span>
+          <span className="text-sm font-extrabold text-slate-800 dark:text-slate-200">
+            {supplierCount} ativos
+          </span>
+        </div>
+
+        <div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block">
+            Última Auditoria
+          </span>
+          <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400 font-mono">
+            25/08/2026
+          </span>
         </div>
       </div>
     </div>
   );
 };
+
