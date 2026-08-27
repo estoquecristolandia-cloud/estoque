@@ -30,6 +30,12 @@ import {
   ShieldCheck,
   AlertTriangle,
 } from 'lucide-react';
+import { PageHeader } from './ui/PageHeader';
+import { Card } from './ui/Card';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
+import { SearchInput } from './ui/SearchInput';
+import { StatCard } from './ui/StatCard';
 
 interface ReportsViewProps {
   products: Product[];
@@ -101,152 +107,142 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
     return { startDate: customStartDate || '2026-08-01', endDate: customEndDate || todayStr };
   }, [datePreset, customStartDate, customEndDate, todayStr]);
 
+  // Filtered movements based on date range
   const filteredMovements = useMemo(() => {
     return movements.filter((m) => {
-      if (startDate && m.date < startDate) return false;
-      if (endDate && m.date > endDate) return false;
-      return true;
+      if (!m.date) return false;
+      return m.date >= startDate && m.date <= endDate;
     });
   }, [movements, startDate, endDate]);
 
-  // Grouped Movements for Day by Day Ledger
-  const ledgerGroupedDays = useMemo(() => {
-    let list = filteredMovements;
-    if (ledgerTypeFilter !== 'all') {
-      list = list.filter((m) => m.type === ledgerTypeFilter);
-    }
-    if (ledgerSearchTerm.trim()) {
-      const q = ledgerSearchTerm.toLowerCase();
-      list = list.filter(
-        (m) =>
-          m.productName.toLowerCase().includes(q) ||
-          (m.retrievedBy && m.retrievedBy.toLowerCase().includes(q)) ||
-          (m.receivedBy && m.receivedBy.toLowerCase().includes(q)) ||
-          (m.supplierOrDonor && m.supplierOrDonor.toLowerCase().includes(q)) ||
-          (m.sector && m.sector.toLowerCase().includes(q)) ||
-          (m.notes && m.notes.toLowerCase().includes(q))
-      );
-    }
+  // Calculations for Daily Ledger
+  const { ledgerGroupedDays, periodTotalEntriesQty, periodTotalExitsQty, periodTotalEntriesCount, periodTotalExitsCount } = useMemo(() => {
+    let entriesQty = 0;
+    let exitsQty = 0;
+    let entriesCount = 0;
+    let exitsCount = 0;
 
-    const map: Record<string, StockMovement[]> = {};
-    list.forEach((m) => {
-      if (!map[m.date]) map[m.date] = [];
-      map[m.date].push(m);
+    const term = ledgerSearchTerm.toLowerCase().trim();
+    const list = filteredMovements.filter((m) => {
+      // Type filter
+      if (ledgerTypeFilter !== 'all' && m.type !== ledgerTypeFilter) return false;
+      // Search term filter
+      if (term) {
+        const prod = (m.productName || '').toLowerCase();
+        const resp = (m.retrievedBy || m.receivedBy || m.deliveredBy || '').toLowerCase();
+        const sec = (m.sector || m.supplierOrDonor || '').toLowerCase();
+        const notes = (m.notes || '').toLowerCase();
+        return prod.includes(term) || resp.includes(term) || sec.includes(term) || notes.includes(term);
+      }
+      return true;
     });
 
-    const sortedDates = Object.keys(map).sort().reverse();
-    return sortedDates.map((dateStr) => {
-      const items = map[dateStr].sort((a, b) => (b.time || '').localeCompare(a.time || ''));
-      const entriesCount = items.filter((m) => m.type === 'entrada').length;
-      const exitsCount = items.filter((m) => m.type === 'saida').length;
-      const entriesVolume = items.filter((m) => m.type === 'entrada').reduce((s, m) => s + m.quantity, 0);
-      const exitsVolume = items.filter((m) => m.type === 'saida').reduce((s, m) => s + m.quantity, 0);
+    // Count period totals based on all filtered movements for accurate balance
+    filteredMovements.forEach((m) => {
+      if (m.type === 'entrada') {
+        entriesQty += m.quantity;
+        entriesCount += 1;
+      } else if (m.type === 'saida') {
+        exitsQty += m.quantity;
+        exitsCount += 1;
+      }
+    });
 
-      // Date label formatting
+    // Group items by date descending (most recent first)
+    const groupedMap: Record<string, StockMovement[]> = {};
+    list.forEach((m) => {
+      if (!groupedMap[m.date]) {
+        groupedMap[m.date] = [];
+      }
+      groupedMap[m.date].push(m);
+    });
+
+    // Sort days descending
+    const sortedDates = Object.keys(groupedMap).sort((a, b) => b.localeCompare(a));
+
+    const dayGroups = sortedDates.map((dateStr) => {
+      const items = groupedMap[dateStr].sort((a, b) => (b.time || '').localeCompare(a.time || ''));
+      let dayEntries = 0;
+      let dayExits = 0;
+      let dayEntriesCount = 0;
+      let dayExitsCount = 0;
+
+      items.forEach((item) => {
+        if (item.type === 'entrada') {
+          dayEntries += item.quantity;
+          dayEntriesCount += 1;
+        } else if (item.type === 'saida') {
+          dayExits += item.quantity;
+          dayExitsCount += 1;
+        }
+      });
+
+      // Format date
       let dateLabel = dateStr;
       try {
-        const [yr, mo, dy] = dateStr.split('-');
-        const dObj = new Date(parseInt(yr, 10), parseInt(mo, 10) - 1, parseInt(dy, 10));
-        const weekDay = dObj.toLocaleDateString('pt-BR', { weekday: 'long' });
-        const capitalizedWeekday = weekDay.charAt(0).toUpperCase() + weekDay.slice(1);
-        dateLabel = `${dy}/${mo}/${yr} — ${capitalizedWeekday}`;
-      } catch {
-        // fallback
-      }
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        const weekdays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+        const weekday = weekdays[dateObj.getDay()];
+        dateLabel = `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y} (${weekday})`;
+      } catch {}
 
       return {
         dateStr,
         dateLabel,
         items,
-        entriesCount,
-        exitsCount,
-        entriesVolume,
-        exitsVolume,
+        entriesVolume: dayEntries,
+        exitsVolume: dayExits,
+        entriesCount: dayEntriesCount,
+        exitsCount: dayExitsCount,
       };
     });
+
+    return {
+      ledgerGroupedDays: dayGroups,
+      periodTotalEntriesQty: entriesQty,
+      periodTotalExitsQty: exitsQty,
+      periodTotalEntriesCount: entriesCount,
+      periodTotalExitsCount: exitsCount,
+    };
   }, [filteredMovements, ledgerTypeFilter, ledgerSearchTerm]);
 
-  // Overall metrics in filtered period
-  const periodTotalEntriesQty = useMemo(
-    () => filteredMovements.filter((m) => m.type === 'entrada').reduce((s, m) => s + m.quantity, 0),
-    [filteredMovements]
-  );
-  const periodTotalExitsQty = useMemo(
-    () => filteredMovements.filter((m) => m.type === 'saida').reduce((s, m) => s + m.quantity, 0),
-    [filteredMovements]
-  );
-  const periodTotalEntriesCount = useMemo(
-    () => filteredMovements.filter((m) => m.type === 'entrada').length,
-    [filteredMovements]
-  );
-  const periodTotalExitsCount = useMemo(
-    () => filteredMovements.filter((m) => m.type === 'saida').length,
-    [filteredMovements]
-  );
-
-  // Calculate Shopping Recommendations
-  const shoppingList = products
-    .map((p) => {
+  // Dynamic Shopping Prediction Calculation
+  const shoppingForecast = useMemo(() => {
+    return products.map((p) => {
       const days = calculateDaysRemaining(p);
-      const neededQtyForBuffer = Math.max(0, Math.ceil(p.dailyAvgConsumption * bufferDays - p.currentStock));
+      const targetStockForBuffer = Math.ceil(p.dailyAvgConsumption * bufferDays);
+      const neededQtyForBuffer = Math.max(0, targetStockForBuffer - p.currentStock);
+      let status: 'CRITICO' | 'ATENCAO' | 'CONFORTAVEL' = 'CONFORTAVEL';
+
+      if (p.currentStock <= p.minStock || days <= 3) {
+        status = 'CRITICO';
+      } else if (days <= 7 || p.currentStock < targetStockForBuffer) {
+        status = 'ATENCAO';
+      }
+
       return {
         ...p,
         daysRemaining: days,
+        targetStockForBuffer,
         neededQtyForBuffer,
+        status,
       };
-    })
-    .filter((p) => p.neededQtyForBuffer > 0 || p.daysRemaining <= 10)
-    .sort((a, b) => a.daysRemaining - b.daysRemaining);
+    });
+  }, [products, bufferDays]);
 
-  const handleCopyWhatsAppText = () => {
-    let msg = `*CRISTOLÂNDIA - PEDIDO DE DOAÇÕES DE ALIMENTOS*\n`;
-    msg += `*Meta de Abastecimento:* ${bufferDays} dias\n\n`;
-    msg += `Paz do Senhor! Para mantermos a cozinha e padaria da Cristolândia supridas, compartilhamos nossa lista de necessidades:\n\n`;
-
-    const criticals = shoppingList.filter((item) => item.daysRemaining <= 5);
-    const warnings = shoppingList.filter((item) => item.daysRemaining > 5);
-
-    if (criticals.length > 0) {
-      msg += `🚨 *ITENS URGENTES (REPOSIÇÃO IMEDIATA):*\n`;
-      criticals.forEach((item) => {
-        msg += `• *${item.name}*: +${item.neededQtyForBuffer} ${item.unit} (Resta para ${item.daysRemaining} dias)\n`;
-      });
-      msg += `\n`;
-    }
-
-    if (warnings.length > 0) {
-      msg += `🟡 *OUTROS SUPRIMENTOS:*\n`;
-      warnings.forEach((item) => {
-        msg += `• *${item.name}*: +${item.neededQtyForBuffer} ${item.unit}\n`;
-      });
-      msg += `\n`;
-    }
-
-    msg += `📍 *Local de Recebimento:* Cristolândia - Central de Abastecimento\n`;
-    msg += `Agradecemos pelo apoio e generosidade com a obra missionária! 🙏✨`;
-
-    navigator.clipboard.writeText(msg);
-    setCopiedWhatsApp(true);
-    setTimeout(() => setCopiedWhatsApp(false), 3000);
-  };
-
-  const handleDirectWhatsAppChefeMarcos = () => {
-    const feijao = products.find((p) => p.id === 'prod-feijao');
-    const criticals = shoppingList.filter((item) => item.daysRemaining <= 5);
+  const handleSendWhatsAppOrder = () => {
+    const criticals = shoppingForecast.filter((p) => p.status === 'CRITICO' || p.neededQtyForBuffer > 0);
+    const feijao = products.find((p) => p.name.toLowerCase().includes('feijão') || p.name.toLowerCase().includes('feijao'));
 
     let msg = `🏛️ *JUNTA DE MISSÕES NACIONAIS - CRISTOLÂNDIA (LEM/BA)*\n`;
-    msg += `📋 *ALERTA OFICIAL DE ESTOQUE & COMPRAS*\n\n`;
-    msg += `Prezado *Chefe Marcos*,\n`;
-    msg += `Segue o comunicado oficial do Almoxarifado / Estoque:\n\n`;
+    msg += `📋 *RELATÓRIO GERENCIAL & PREVISÃO DE COMPRAS*\n\n`;
 
-    msg += `🚨 *ITEM EM NÍVEL CRÍTICO DE REPOSIÇÃO:*\n`;
     if (feijao) {
-      const daily = feijao.dailyAvgConsumption || 9;
-      const days = (feijao.currentStock / daily).toFixed(1);
-      msg += `• *Produto:* Feijão Carioca\n`;
-      msg += `• *Estoque Físico Atual:* *${feijao.currentStock} kg*\n`;
-      msg += `• *Estoque Mínimo:* ${feijao.minStock} kg\n`;
-      msg += `• *Consumo Médio:* ${daily} kg/dia\n`;
+      const days = calculateDaysRemaining(feijao);
+      msg += `🚨 *STATUS DO FEIJÃO CARIOCA (ALERTA CRÍTICO):*\n`;
+      msg += `• *Estoque Atual:* ${feijao.currentStock} ${feijao.unit}\n`;
+      msg += `• *Consumo Médio:* ${feijao.dailyAvgConsumption} ${feijao.unit}/dia\n`;
       msg += `• *Autonomia Estimada:* *~${days} dias*\n\n`;
     }
 
@@ -408,52 +404,44 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
   return (
     <div className="space-y-6">
       {/* Top Header & Export Toolbar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <FileText className="w-6 h-6 text-indigo-500" />
-            Central de Relatórios & Extratos de Estoque
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Extratos diários cronológicos com todas as entradas e saídas, balanço por produto, setor e previsão de compras.
-          </p>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => generateMovementsDetailedPDF(filteredMovements, 'Extrato Oficial de Entradas e Saídas (Dia a Dia)', startDate, endDate)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 cursor-pointer transition-all hover:scale-[1.02]"
-            title="Baixar Extrato Completo com todas as Entradas e Saídas Dia a Dia em PDF"
-          >
-            <FileText className="w-4 h-4" />
-            <span>📄 Baixar Extrato Dia a Dia (PDF)</span>
-          </button>
-          <button
-            onClick={() => generateInventoryPDF(products, movements, 'Relatório Oficial de Auditoria e Controle de Estoque')}
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 cursor-pointer transition-all"
-            title="Baixar Relatório de Saldo e Inventário Atual em PDF"
-          >
-            <PackageCheck className="w-4 h-4 text-indigo-500" />
-            <span>📦 PDF Saldo do Estoque</span>
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800 cursor-pointer transition-all"
-            title="Baixar planilha formatada para Excel com todas as movimentações"
-          >
-            <Download className="w-4 h-4 text-emerald-600" />
-            <span>Exportar Excel (CSV)</span>
-          </button>
-          <button
-            onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Imprimir</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Central de Relatórios & Extratos de Estoque"
+        subtitle="Extratos diários cronológicos com todas as entradas e saídas, balanço por produto, setor e previsão de compras"
+        badgeText="Auditoria & Prestação de Contas"
+        badgeVariant="primary"
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="warning"
+              onClick={() => generateMovementsDetailedPDF(filteredMovements, 'Extrato Oficial de Entradas e Saídas (Dia a Dia)', startDate, endDate)}
+              icon={<FileText className="w-4 h-4" />}
+            >
+              Extrato Dia a Dia (PDF)
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => generateInventoryPDF(products, movements, 'Relatório Oficial de Auditoria e Controle de Estoque')}
+              icon={<PackageCheck className="w-4 h-4 text-indigo-500" />}
+            >
+              PDF Saldo do Estoque
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleExportCSV}
+              icon={<Download className="w-4 h-4 text-emerald-600" />}
+            >
+              Exportar CSV
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handlePrint}
+              icon={<Printer className="w-4 h-4" />}
+            >
+              Imprimir
+            </Button>
+          </div>
+        }
+      />
 
       {/* Report Sub-Tabs */}
       <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-none border-b border-slate-200 dark:border-slate-800">
@@ -461,85 +449,85 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
           onClick={() => setActiveReportTab('daily_ledger')}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
             activeReportTab === 'daily_ledger'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              ? 'bg-amber-500 text-slate-950 shadow-xs'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <History className="w-4 h-4" />
-          <span>📋 Extrato Dia a Dia (Entradas & Saídas)</span>
+          <span>Extrato Dia a Dia (Entradas & Saídas)</span>
         </button>
 
         <button
           onClick={() => setActiveReportTab('product')}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
             activeReportTab === 'product'
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <PackageCheck className="w-4 h-4" />
-          <span>📦 Balanço por Produto (Saldos)</span>
+          <span>Balanço por Produto (Saldos)</span>
         </button>
 
         <button
           onClick={() => setActiveReportTab('sector')}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
             activeReportTab === 'sector'
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Building2 className="w-4 h-4" />
-          <span>🏢 Relatório por Setor (Alimentos & Destino)</span>
+          <span>Relatório por Setor (Destino)</span>
         </button>
 
         <button
           onClick={() => setActiveReportTab('person')}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
             activeReportTab === 'person'
-              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Users className="w-4 h-4" />
-          <span>👤 Relatório por Responsável</span>
+          <span>Relatório por Responsável</span>
         </button>
 
         <button
           onClick={() => setActiveReportTab('shopping')}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
             activeReportTab === 'shopping'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              ? 'bg-amber-500 text-slate-950 shadow-xs'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <ShoppingCart className="w-4 h-4" />
-          <span>📄 Relatório de Compras / Previsão de Estoque</span>
+          <span>Previsão de Compras</span>
         </button>
 
         <button
           onClick={() => setActiveReportTab('audit')}
           className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
             activeReportTab === 'audit'
-              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           <Scale className="w-4 h-4" />
-          <span>⚖️ Auditoria & Consistência Matemática</span>
+          <span>Auditoria Matemática</span>
         </button>
       </div>
 
       {/* Global Date Filter Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+      <Card id="reports-date-filter-bar" className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+          <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
             <Calendar className="w-4 h-4" />
           </div>
           <div>
-            <span className="font-extrabold text-slate-900 dark:text-white block">Filtro de Período do Relatório</span>
+            <span className="font-extrabold text-slate-900 dark:text-white block">Filtro de Período</span>
             <span className="text-[11px] text-slate-500 dark:text-slate-400">
-              Exibindo registros de <strong className="text-indigo-600 dark:text-indigo-400 font-black">{startDate}</strong> até <strong className="text-indigo-600 dark:text-indigo-400 font-black">{endDate}</strong> ({filteredMovements.length} movimentações no período)
+              Registros de <strong className="text-blue-600 dark:text-blue-400 font-black">{startDate}</strong> até <strong className="text-blue-600 dark:text-blue-400 font-black">{endDate}</strong> ({filteredMovements.length} movimentações no período)
             </span>
           </div>
         </div>
@@ -549,51 +537,51 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
             onClick={() => setDatePreset('all')}
             className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all ${
               datePreset === 'all'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            📅 Todo o Período (Desde 01/08)
+            Todo o Período
           </button>
           <button
             onClick={() => setDatePreset('month')}
             className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all ${
               datePreset === 'month'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            📆 Este Mês
+            Este Mês
           </button>
           <button
             onClick={() => setDatePreset('7days')}
             className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all ${
               datePreset === '7days'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            ⏱️ Últimos 7 dias
+            Últimos 7 dias
           </button>
           <button
             onClick={() => setDatePreset('today')}
             className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all ${
               datePreset === 'today'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            🎯 Hoje
+            Hoje
           </button>
           <button
             onClick={() => setDatePreset('custom')}
             className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all ${
               datePreset === 'custom'
-                ? 'bg-indigo-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-xs'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
             }`}
           >
-            🗓️ Personalizado
+            Personalizado
           </button>
         </div>
 
@@ -619,58 +607,51 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* TAB 0: DAILY LEDGER (EXTRATO DIA A DIA) */}
       {activeReportTab === 'daily_ledger' && (
         <div className="space-y-6">
           {/* Summary Metrics Bar for the period */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black">
-                <Layers className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Total de Lançamentos</span>
-                <span className="text-xl font-black text-slate-900 dark:text-white">{filteredMovements.length}</span>
-              </div>
-            </div>
+            <StatCard
+              id="stat-ledger-total"
+              label="Total de Lançamentos"
+              value={filteredMovements.length}
+              subtext="Movimentações registradas no período"
+              icon={<Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
+              variant="default"
+            />
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black">
-                <ArrowDownLeft className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Total de Entradas (+)</span>
-                <span className="text-xl font-black text-slate-900 dark:text-white">
-                  +{periodTotalEntriesQty.toLocaleString('pt-BR')} <span className="text-xs font-bold text-slate-400">({periodTotalEntriesCount} itens)</span>
-                </span>
-              </div>
-            </div>
+            <StatCard
+              id="stat-ledger-entries"
+              label="Total de Entradas (+)"
+              value={`+${periodTotalEntriesQty.toLocaleString('pt-BR')}`}
+              unit={`(${periodTotalEntriesCount} itens)`}
+              subtext="Recebimentos e doações"
+              icon={<ArrowDownLeft className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
+              variant="default"
+            />
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center font-black">
-                <ArrowUpRight className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider block">Total de Saídas (-)</span>
-                <span className="text-xl font-black text-slate-900 dark:text-white">
-                  -{periodTotalExitsQty.toLocaleString('pt-BR')} <span className="text-xs font-bold text-slate-400">({periodTotalExitsCount} itens)</span>
-                </span>
-              </div>
-            </div>
+            <StatCard
+              id="stat-ledger-exits"
+              label="Total de Saídas (-)"
+              value={`-${periodTotalExitsQty.toLocaleString('pt-BR')}`}
+              unit={`(${periodTotalExitsCount} itens)`}
+              subtext="Consumo dos setores e cozinha"
+              icon={<ArrowUpRight className="w-5 h-5 text-rose-600 dark:text-rose-400" />}
+              variant="default"
+            />
           </div>
 
           {/* Ledger Search & Type Filter Bar */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Filtrar por produto, responsável, setor ou observação..."
+          <Card id="ledger-filter-card" className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="w-full sm:w-96">
+              <SearchInput
+                id="ledger-search-input"
                 value={ledgerSearchTerm}
-                onChange={(e) => setLedgerSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs"
+                onChange={setLedgerSearchTerm}
+                placeholder="Filtrar por produto, responsável, setor ou observação..."
               />
             </div>
 
@@ -680,7 +661,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                 onClick={() => setLedgerTypeFilter('all')}
                 className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all ${
                   ledgerTypeFilter === 'all'
-                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-sm'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                 }`}
               >
@@ -690,7 +671,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                 onClick={() => setLedgerTypeFilter('entrada')}
                 className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all flex items-center gap-1 ${
                   ledgerTypeFilter === 'entrada'
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-emerald-600 text-white shadow-xs'
                     : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100'
                 }`}
               >
@@ -701,7 +682,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                 onClick={() => setLedgerTypeFilter('saida')}
                 className={`px-3 py-1.5 rounded-xl font-bold cursor-pointer transition-all flex items-center gap-1 ${
                   ledgerTypeFilter === 'saida'
-                    ? 'bg-rose-600 text-white shadow-sm'
+                    ? 'bg-rose-600 text-white shadow-xs'
                     : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 hover:bg-rose-100'
                 }`}
               >
@@ -709,23 +690,24 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                 <span>Saídas</span>
               </button>
             </div>
-          </div>
+          </Card>
 
           {/* Grouped Days List */}
           {ledgerGroupedDays.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center shadow-sm">
+            <Card id="ledger-empty" className="p-12 text-center">
               <Calendar className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
               <h4 className="text-base font-bold text-slate-700 dark:text-slate-300">Nenhum lançamento encontrado</h4>
               <p className="text-xs text-slate-400 mt-1">
                 Não há movimentações com os filtros selecionados para o período de {startDate} até {endDate}.
               </p>
-            </div>
+            </Card>
           ) : (
             <div className="space-y-5">
               {ledgerGroupedDays.map((dayGroup) => (
-                <div
+                <Card
+                  id={`day-group-${dayGroup.dateStr}`}
                   key={dayGroup.dateStr}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden"
+                  className="overflow-hidden p-0"
                 >
                   {/* Day Header */}
                   <div className="bg-slate-900 text-white p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -779,15 +761,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                             </td>
                             <td className="py-3 px-3">
                               {m.type === 'entrada' ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <Badge variant="success">
                                   <ArrowDownLeft className="w-3 h-3 text-emerald-500" />
                                   ENTRADA
-                                </span>
+                                </Badge>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                <Badge variant="danger">
                                   <ArrowUpRight className="w-3 h-3 text-rose-500" />
                                   SAÍDA
-                                </span>
+                                </Badge>
                               )}
                             </td>
                             <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
@@ -822,7 +804,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                       </tbody>
                     </table>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           )}
@@ -842,11 +824,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
 
       {/* TAB 2: SECTOR REPORT */}
       {activeReportTab === 'sector' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-6">
+        <Card id="reports-sector-card" className="p-6 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-indigo-500" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-blue-500" />
                 Relatório de Consumo por Setor
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -860,7 +842,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
               <select
                 value={selectedSectorFilter}
                 onChange={(e) => setSelectedSectorFilter(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white font-bold focus:outline-none focus:border-blue-500"
               >
                 <option value="todos">Todos os Setores ({sectorNamesList.length})</option>
                 {sectorNamesList.map((sec) => (
@@ -886,7 +868,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700/60 gap-2">
                       <div className="flex items-center gap-2.5">
-                        <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 font-bold">
+                        <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-bold">
                           <Building2 className="w-4 h-4" />
                         </div>
                         <div>
@@ -898,7 +880,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                       </div>
                       <div className="text-right">
                         <span className="text-xs text-slate-500 block">Volume Total do Setor</span>
-                        <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">
+                        <span className="text-base font-black text-blue-600 dark:text-blue-400">
                           {sec.totalVol.toLocaleString('pt-BR')} vol.
                         </span>
                       </div>
@@ -933,7 +915,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                                       key={rName}
                                       className="inline-flex items-center gap-1 text-[11px] font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700"
                                     >
-                                      <UserCheck className="w-3 h-3 text-indigo-500" />
+                                      <UserCheck className="w-3 h-3 text-blue-500" />
                                       {rName} ({rQty} {p.unit})
                                     </span>
                                   ))}
@@ -948,16 +930,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                 );
               })}
           </div>
-        </div>
+        </Card>
       )}
 
       {/* TAB 3: PRODUCT AUDIT REPORT */}
       {activeReportTab === 'product' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+        <Card id="reports-product-card" className="p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <PackageCheck className="w-5 h-5 text-indigo-500" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <PackageCheck className="w-5 h-5 text-blue-500" />
                 Balanço Geral de Movimentações por Produto
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -1000,7 +982,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                       <td className="py-3.5 px-3 font-bold text-rose-600 dark:text-rose-400">
                         -{audit.totalExits} {p.unit}
                       </td>
-                      <td className="py-3.5 px-3 font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                      <td className="py-3.5 px-3 font-black text-blue-600 dark:text-blue-400 text-sm">
                         {audit.calculatedBalance} {p.unit}
                       </td>
                       <td className="py-3.5 px-3 font-black text-slate-900 dark:text-white text-sm">
@@ -1009,19 +991,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                       <td className="py-3.5 px-3">
                         {audit.isBalanced ? (
                           <div className="flex flex-col items-start gap-1">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                            <Badge variant="success">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                               Saldo Perfeito
-                            </span>
+                            </Badge>
                             <span className="text-[10px] text-slate-400 font-mono">
                               ({audit.initialStock} + {audit.totalEntries} - {audit.totalExits} = {audit.calculatedBalance} {p.unit})
                             </span>
                           </div>
                         ) : (
                           <div className="flex flex-col items-start gap-1">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
+                            <Badge variant="warning">
                               Divergência: {audit.discrepancy} {p.unit}
-                            </span>
+                            </Badge>
                           </div>
                         )}
                       </td>
@@ -1031,14 +1013,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* TAB 4: PERSON / RESPONSIBLE REPORT */}
       {activeReportTab === 'person' && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <Users className="w-5 h-5 text-indigo-500" />
+        <Card id="reports-person-card" className="p-6 space-y-4">
+          <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-500" />
             Rastreio de Retiradas por Responsável
           </h3>
 
@@ -1068,7 +1050,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                     <td className="py-3.5 px-3 text-slate-500 max-w-xs">
                       <span className="truncate block text-xs">{data.itemsList.join(', ')}</span>
                     </td>
-                    <td className="py-3.5 px-3 text-right font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                    <td className="py-3.5 px-3 text-right font-black text-blue-600 dark:text-blue-400 text-sm">
                       {data.totalRetrieved} vol.
                     </td>
                   </tr>
@@ -1076,79 +1058,61 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* TAB 6: PURE READ-ONLY MATHEMATICAL AUDIT */}
       {activeReportTab === 'audit' && (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6">
           {/* Summary KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-1">
-                <span>Status Global do Motor</span>
-                <ShieldCheck className={`w-4 h-4 ${mathematicalAuditReport.overallStatus === 'CONSISTENTE' ? 'text-emerald-500' : 'text-rose-500'}`} />
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-xl font-black ${mathematicalAuditReport.overallStatus === 'CONSISTENTE' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                  {mathematicalAuditReport.overallStatus === 'CONSISTENTE' ? '100% CONSISTENTE' : 'DIVERGÊNCIAS DETECTADAS'}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                {mathematicalAuditReport.consistentProductsCount} de {mathematicalAuditReport.totalProducts} produtos matematicamente exatos
-              </p>
-            </div>
+            <StatCard
+              id="stat-audit-status"
+              label="Status Global do Motor"
+              value={mathematicalAuditReport.overallStatus === 'CONSISTENTE' ? '100% CONSISTENTE' : 'DIVERGÊNCIAS DETECTADAS'}
+              subtext={`${mathematicalAuditReport.consistentProductsCount} de ${mathematicalAuditReport.totalProducts} produtos matematicamente exatos`}
+              icon={<ShieldCheck className={`w-5 h-5 ${mathematicalAuditReport.overallStatus === 'CONSISTENTE' ? 'text-emerald-500' : 'text-rose-500'}`} />}
+              variant="default"
+            />
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-1">
-                <span>Produtos com Marco Zero</span>
-                <Scale className="w-4 h-4 text-indigo-500" />
-              </div>
-              <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">
-                {mathematicalAuditReport.productsWithMarcoZeroCount} / {mathematicalAuditReport.totalProducts}
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Ancorados no inventário físico oficial
-              </p>
-            </div>
+            <StatCard
+              id="stat-audit-marco-zero"
+              label="Produtos com Marco Zero"
+              value={`${mathematicalAuditReport.productsWithMarcoZeroCount} / ${mathematicalAuditReport.totalProducts}`}
+              subtext="Ancorados no inventário físico oficial"
+              icon={<Scale className="w-5 h-5 text-blue-500" />}
+              variant="default"
+            />
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-1">
-                <span>Movimentações Auditadas</span>
-                <Layers className="w-4 h-4 text-amber-500" />
-              </div>
-              <div className="text-xl font-black text-slate-900 dark:text-white">
-                {mathematicalAuditReport.totalMovementsAnalyzed}
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Entradas, saídas e ajustes no histórico
-              </p>
-            </div>
+            <StatCard
+              id="stat-audit-movements"
+              label="Movimentações Auditadas"
+              value={mathematicalAuditReport.totalMovementsAnalyzed}
+              subtext="Entradas, saídas e ajustes no histórico"
+              icon={<Layers className="w-5 h-5 text-amber-500" />}
+              variant="default"
+            />
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-1">
-                <span>Suspeitas de Duplicidade</span>
-                <AlertTriangle className={`w-4 h-4 ${mathematicalAuditReport.totalDuplicatesDetected === 0 ? 'text-emerald-500' : 'text-amber-500'}`} />
-              </div>
-              <div className={`text-xl font-black ${mathematicalAuditReport.totalDuplicatesDetected === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                {mathematicalAuditReport.totalDuplicatesDetected}
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                {mathematicalAuditReport.totalDuplicatesDetected === 0 ? 'Nenhuma duplicidade detectada' : 'Registros com mesmo carimbo'}
-              </p>
-            </div>
+            <StatCard
+              id="stat-audit-duplicates"
+              label="Suspeitas de Duplicidade"
+              value={mathematicalAuditReport.totalDuplicatesDetected}
+              subtext={mathematicalAuditReport.totalDuplicatesDetected === 0 ? 'Nenhuma duplicidade detectada' : 'Registros com mesmo carimbo'}
+              icon={<AlertTriangle className={`w-5 h-5 ${mathematicalAuditReport.totalDuplicatesDetected === 0 ? 'text-emerald-500' : 'text-amber-500'}`} />}
+              variant="default"
+            />
           </div>
 
           {/* Detailed Audit Table */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm space-y-4">
+          <Card id="reports-mathematical-audit-table" className="p-6 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Scale className="w-5 h-5 text-indigo-500" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Scale className="w-5 h-5 text-blue-500" />
                   Diagnóstico Contábil de Estoque (Somente Leitura)
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Fórmula: <code className="font-mono text-indigo-600 dark:text-indigo-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">Saldo Reconstruído = Base (Marco Zero) + Entradas - Saídas ± Ajustes</code>
+                  Fórmula: <code className="font-mono text-blue-600 dark:text-blue-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">Saldo Reconstruído = Base (Marco Zero) + Entradas - Saídas ± Ajustes</code>
                 </p>
               </div>
               <span className="text-[11px] text-slate-400 font-mono">
@@ -1165,7 +1129,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                     <th className="py-3 px-3 text-emerald-600 dark:text-emerald-400">Entradas (+)</th>
                     <th className="py-3 px-3 text-rose-600 dark:text-rose-400">Saídas (-)</th>
                     <th className="py-3 px-3 text-amber-600 dark:text-amber-400">Ajustes (±)</th>
-                    <th className="py-3 px-3 text-indigo-600 dark:text-indigo-400">Saldo Reconstruído</th>
+                    <th className="py-3 px-3 text-blue-600 dark:text-blue-400">Saldo Reconstruído</th>
                     <th className="py-3 px-3 font-bold text-slate-900 dark:text-white">currentStock Atual</th>
                     <th className="py-3 px-3">Diferença</th>
                     <th className="py-3 px-3">Status</th>
@@ -1181,7 +1145,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                       <td className="py-3.5 px-3">
                         {diag.hasMarcoZero ? (
                           <div>
-                            <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                            <span className="font-bold text-blue-600 dark:text-blue-400">
                               {diag.marcoZeroStock} {diag.unit}
                             </span>
                             <span className="block text-[10px] text-slate-400">{diag.marcoZeroDate}</span>
@@ -1199,7 +1163,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                       <td className="py-3.5 px-3 font-bold text-amber-600 dark:text-amber-400">
                         {diag.totalAdjustments >= 0 ? `+${diag.totalAdjustments}` : diag.totalAdjustments} {diag.unit}
                       </td>
-                      <td className="py-3.5 px-3 font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                      <td className="py-3.5 px-3 font-black text-blue-600 dark:text-blue-400 text-sm">
                         {diag.reconstructedBalance} {diag.unit}
                       </td>
                       <td className="py-3.5 px-3 font-black text-slate-900 dark:text-white text-sm">
@@ -1216,15 +1180,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                       </td>
                       <td className="py-3.5 px-3">
                         {diag.status === 'OK' ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                          <Badge variant="success">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                             OK (Exato)
-                          </span>
+                          </Badge>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-1 rounded-lg border border-rose-200 dark:border-rose-800">
+                          <Badge variant="danger">
                             <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
                             DIVERGENTE
-                          </span>
+                          </Badge>
                         )}
                       </td>
                     </tr>
@@ -1232,7 +1196,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
                 </tbody>
               </table>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

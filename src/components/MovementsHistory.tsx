@@ -2,6 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { StockMovement, Product, Sector, EntryType } from '../types';
 import { UserRole } from '../firebase';
 import { getTodayDateString } from '../utils/storage';
+import { ModalWrapper } from './ui/ModalWrapper';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
+import { SearchInput } from './ui/SearchInput';
+import { Card } from './ui/Card';
+import { EmptyState } from './ui/EmptyState';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -19,6 +25,8 @@ import {
   CheckCircle2,
   Plus,
   Scale,
+  Clock,
+  Building,
 } from 'lucide-react';
 
 interface MovementsHistoryProps {
@@ -84,10 +92,10 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'entrada' | 'saida' | 'ajuste'>('all');
   const [sectorFilter, setSectorFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('all'); // 'all', 'today', 'yesterday', '7days', '30days', or custom
+  const [dateFilter, setDateFilter] = useState<string>('all');
   const [customDate, setCustomDate] = useState<string>('');
 
-  // Track collapsed days (by default all days open)
+  // Track collapsed days
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
   // Editing state
@@ -253,7 +261,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
       groupsMap[d].push(m);
     });
 
-    // Sort dates in descending order (newest date first)
+    // Sort dates descending
     const sortedDates = Object.keys(groupsMap).sort((a, b) => b.localeCompare(a));
 
     return sortedDates.map((dateKey) => {
@@ -285,70 +293,69 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Filter Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
+      {/* Top Filter Card */}
+      <Card className="p-4 space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-            <input
-              type="text"
-              placeholder="Buscar por produto, fornecedor, quem retirou ou observação..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2 text-xs sm:text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
+          {/* Search Input */}
+          <SearchInput
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Buscar por produto, fornecedor, quem retirou ou nota..."
+          />
 
           {/* Type Filter Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-              <button
-                onClick={() => setTypeFilter('all')}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  typeFilter === 'all'
-                    ? 'bg-slate-900 text-white dark:bg-slate-700'
-                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                Todos ({movements.length})
-              </button>
-              <button
-                onClick={() => setTypeFilter('entrada')}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  typeFilter === 'entrada' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-emerald-600'
-                }`}
-              >
-                + Entradas
-              </button>
-              <button
-                onClick={() => setTypeFilter('saida')}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  typeFilter === 'saida' ? 'bg-amber-600 text-white' : 'text-slate-500 hover:text-amber-600'
-                }`}
-              >
-                - Saídas
-              </button>
-              <button
-                onClick={() => setTypeFilter('ajuste')}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  typeFilter === 'ajuste' ? 'bg-purple-600 text-white' : 'text-slate-500 hover:text-purple-600'
-                }`}
-              >
-                ⚖️ Ajustes
-              </button>
-            </div>
+          <div className="inline-flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shrink-0">
+            <button
+              onClick={() => setTypeFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                typeFilter === 'all'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
+                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              Todos ({movements.length})
+            </button>
+            <button
+              onClick={() => setTypeFilter('entrada')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                typeFilter === 'entrada'
+                  ? 'bg-emerald-600 text-white shadow-2xs'
+                  : 'text-slate-500 hover:text-emerald-600'
+              }`}
+            >
+              + Entradas
+            </button>
+            <button
+              onClick={() => setTypeFilter('saida')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                typeFilter === 'saida'
+                  ? 'bg-orange-600 text-white shadow-2xs'
+                  : 'text-slate-500 hover:text-orange-600'
+              }`}
+            >
+              - Saídas
+            </button>
+            <button
+              onClick={() => setTypeFilter('ajuste')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                typeFilter === 'ajuste'
+                  ? 'bg-purple-600 text-white shadow-2xs'
+                  : 'text-slate-500 hover:text-purple-600'
+              }`}
+            >
+              ⚖️ Ajustes
+            </button>
           </div>
         </div>
 
-        {/* Second Row: Sector & Date Quick Presets */}
+        {/* Second Row: Sector & Date Presets */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             {/* Sector Dropdown */}
             <select
               value={sectorFilter}
               onChange={(e) => setSectorFilter(e.target.value)}
-              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-300 focus:outline-none"
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="all">🏢 Todos os Setores</option>
               <option value="Cozinha">Cozinha</option>
@@ -364,11 +371,11 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
               <option value="Outros">Outros</option>
             </select>
 
-            {/* Date Preset Selector */}
+            {/* Date Selector */}
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-300 focus:outline-none"
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
               <option value="all">📅 Todas as Datas</option>
               <option value="today">Hoje</option>
@@ -383,7 +390,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                 type="date"
                 value={customDate}
                 onChange={(e) => setCustomDate(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1 text-xs text-slate-900 dark:text-white"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 dark:text-white"
               />
             )}
           </div>
@@ -394,7 +401,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
               onClick={expandAllDays}
               className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
             >
-              Expandir Dias
+              Expandir Todos
             </button>
             <span className="text-slate-300 dark:text-slate-700">•</span>
             <button
@@ -405,25 +412,25 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
             </button>
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* Summary Volume Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+      {/* Summary Volume Ribbon */}
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xs">
         <div className="flex items-center gap-2">
-          <CalendarDays className="w-4 h-4 text-blue-500" />
+          <CalendarDays className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           <span>
-            Total Filtrado: <strong>{filteredMovements.length}</strong> registro(s) distribuídos em{' '}
+            Total Filtrado: <strong>{filteredMovements.length}</strong> registro(s) em{' '}
             <strong>{groupedMovements.length}</strong> dia(s)
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+        <div className="flex items-center gap-2">
+          <Badge variant="emerald" size="md">
             + {totalEntriesVolume} vol. em entradas
-          </span>
-          <span className="text-amber-600 dark:text-amber-400 font-extrabold bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
+          </Badge>
+          <Badge variant="orange" size="md">
             - {totalExitsVolume} vol. em saídas
-          </span>
+          </Badge>
         </div>
       </div>
 
@@ -433,31 +440,31 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
           const isCollapsed = !!collapsedDays[group.date];
 
           return (
-            <div
+            <Card
               key={group.date}
-              className={`bg-white dark:bg-slate-900 border rounded-2xl overflow-hidden shadow-sm transition-all ${
+              className={`overflow-hidden transition-all ${
                 group.dayMeta.isToday
                   ? 'border-blue-300 dark:border-blue-800/80 ring-1 ring-blue-500/20'
-                  : 'border-slate-200 dark:border-slate-800'
+                  : ''
               }`}
             >
-              {/* Day Header Banner / Accordion Control */}
+              {/* Day Header Banner */}
               <div
                 onClick={() => toggleDayCollapse(group.date)}
                 className={`p-4 flex items-center justify-between cursor-pointer select-none transition-colors ${
                   group.dayMeta.isToday
                     ? 'bg-blue-50/60 dark:bg-blue-950/40 hover:bg-blue-100/60 dark:hover:bg-blue-950/60'
-                    : 'bg-slate-50/80 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    : 'bg-slate-50/70 dark:bg-slate-800/50 hover:bg-slate-100/80 dark:hover:bg-slate-800'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`p-2 rounded-xl shrink-0 ${
+                    className={`p-2.5 rounded-xl shrink-0 ${
                       group.dayMeta.isToday
-                        ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/20'
+                        ? 'bg-blue-600 text-white font-bold shadow-2xs'
                         : group.dayMeta.isYesterday
-                        ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400'
-                        : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                        ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
+                        : 'bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
                     }`}
                   >
                     <Calendar className="w-4 h-4" />
@@ -470,9 +477,9 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                       </h3>
 
                       {group.dayMeta.isToday && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-600 text-white animate-pulse">
+                        <Badge variant="blue" size="sm" pulse>
                           Hoje
-                        </span>
+                        </Badge>
                       )}
 
                       <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -489,7 +496,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                       )}
 
                       {group.exitsCount > 0 && (
-                        <span className="text-amber-600 dark:text-amber-400 font-bold">
+                        <span className="text-orange-600 dark:text-orange-400 font-bold">
                           - {group.exitsVolume} vol. ({group.exitsCount} saída{group.exitsCount > 1 ? 's' : ''})
                         </span>
                       )}
@@ -503,7 +510,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                       {onOpenEntryForDate && (
                         <button
                           onClick={() => onOpenEntryForDate(group.date)}
-                          className="px-2.5 py-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                          className="px-2.5 py-1 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                           title={`Adicionar lançamento de Entrada no dia ${group.dayMeta.dayNumStr || group.date}`}
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -515,7 +522,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                       {onOpenExitForDate && (
                         <button
                           onClick={() => onOpenExitForDate(group.date)}
-                          className="px-2.5 py-1 text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                          className="px-2.5 py-1 text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white rounded-xl flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                           title={`Adicionar lançamento de Saída no dia ${group.dayMeta.dayNumStr || group.date}`}
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -537,15 +544,14 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
 
               {/* Day Movements List */}
               {!isCollapsed && (
-                <div>
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800">
-                    {group.movements.map((m) => {
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800">
+                  {group.movements.map((m) => {
                     const isEntry = m.type === 'entrada';
                     const isAjuste = m.type === 'ajuste';
                     return (
                       <div
                         key={m.id}
-                        className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                        className={`p-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
                           isAjuste ? 'bg-purple-50/20 dark:bg-purple-950/10' : ''
                         }`}
                       >
@@ -556,7 +562,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                                 ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800'
                                 : isEntry
                                 ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
-                                : 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
+                                : 'bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800'
                             }`}
                           >
                             {isAjuste ? (
@@ -572,29 +578,25 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                             <div className="flex items-center gap-2 flex-wrap">
                               <button
                                 onClick={() => onOpenProductTimeline?.(m.productId)}
-                                className="font-black text-sm text-slate-900 dark:text-white hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer"
+                                className="font-extrabold text-sm text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
                               >
                                 {m.productName}
                               </button>
 
-                              <span
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  isAjuste
-                                    ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
-                                    : isEntry
-                                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
-                                    : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
-                                }`}
+                              <Badge
+                                variant={isAjuste ? 'purple' : isEntry ? 'emerald' : 'orange'}
+                                size="sm"
                               >
                                 {isAjuste
                                   ? 'AJUSTE DE INVENTÁRIO'
                                   : isEntry
                                   ? `ENTRADA (${m.entryType || 'Compra'})`
                                   : `SAÍDA: ${m.sector}`}
-                              </span>
+                              </Badge>
 
-                              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                                🕒 {m.time || '00:00'}
+                              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-slate-400" />
+                                {m.time || '00:00'}
                               </span>
                             </div>
 
@@ -638,18 +640,17 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                                   ? 'text-purple-600 dark:text-purple-400'
                                   : isEntry
                                   ? 'text-emerald-600 dark:text-emerald-400'
-                                  : 'text-amber-600 dark:text-amber-400'
+                                  : 'text-orange-600 dark:text-orange-400'
                               }`}
                             >
                               {isAjuste
                                 ? `${(m.difference || 0) > 0 ? '+' : ''}${m.difference !== undefined ? m.difference : m.quantity} ${m.unit}`
                                 : `${isEntry ? '+' : '-'}${m.quantity} ${m.unit}`}
                             </span>
-                            <span className="text-[10px] text-slate-400">
-                              ID: {m.id.substring(0, 12)}
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              ID: {m.id.substring(0, 10)}
                             </span>
                           </div>
-
 
                           {/* Actions: Edit & Delete (Admin Only) */}
                           {isAdmin && (
@@ -658,7 +659,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                                 <button
                                   onClick={() => handleStartEdit(m)}
                                   title="Editar esta movimentação"
-                                  className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/60 transition-colors cursor-pointer"
+                                  className="p-1.5 rounded-xl text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/60 transition-colors cursor-pointer"
                                 >
                                   <Pencil className="w-4 h-4" />
                                 </button>
@@ -668,7 +669,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                                 <button
                                   onClick={() => setDeletingMovement(m)}
                                   title="Excluir movimentação"
-                                  className="p-2 rounded-xl text-slate-600 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-950/60 transition-colors cursor-pointer"
+                                  className="p-1.5 rounded-xl text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-rose-950/60 transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -679,78 +680,33 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                       </div>
                     );
                   })}
-                  </div>
-
-                  {/* Day Footer Action Bar for Retroactive Launches (Admin Only) */}
-                  {isAdmin && (onOpenEntryForDate || onOpenExitForDate) && (
-                    <div className="bg-slate-50/80 dark:bg-slate-800/30 p-3 text-xs flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-slate-100 dark:border-slate-800">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">
-                        Esqueceu de lançar algum item no dia <strong>{group.dayMeta.dayNumStr || group.date}</strong>?
-                      </span>
-                      <div className="flex items-center gap-2">
-                        {onOpenEntryForDate && (
-                          <button
-                            onClick={() => onOpenEntryForDate(group.date)}
-                            className="px-3 py-1.5 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-950/80 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-300 font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Adicionar Entrada no dia {group.dayMeta.dayNumStr || group.date}</span>
-                          </button>
-                        )}
-                        {onOpenExitForDate && (
-                          <button
-                            onClick={() => onOpenExitForDate(group.date)}
-                            className="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/80 dark:hover:bg-amber-900 text-amber-800 dark:text-amber-300 font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Adicionar Saída no dia {group.dayMeta.dayNumStr || group.date}</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
-            </div>
+            </Card>
           );
         })}
 
         {groupedMovements.length === 0 && (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center space-y-2">
-            <Layers className="w-10 h-10 text-slate-300 mx-auto" />
-            <h4 className="font-bold text-slate-700 dark:text-slate-300">Nenhuma movimentação para os filtros selecionados</h4>
-            <p className="text-xs text-slate-400">Tente buscar por outro produto, limpar o filtro de busca ou alterar a data.</p>
-          </div>
+          <EmptyState
+            icon={<Layers className="w-10 h-10" />}
+            title="Nenhuma movimentação encontrada"
+            description="Nenhum registro corresponde aos filtros ou período selecionados."
+          />
         )}
       </div>
 
       {/* EDIT MOVEMENT MODAL */}
-      {editingMovement && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-xl">
-                  <Pencil className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
-                    Editar Movimentação de Estoque
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    ID: {editingMovement.id.substring(0, 16)}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setEditingMovement(null)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
+      <ModalWrapper
+        isOpen={!!editingMovement}
+        onClose={() => setEditingMovement(null)}
+        title="Editar Movimentação de Estoque"
+        subtitle={`Registro ID: ${editingMovement?.id?.substring(0, 16) || ''}`}
+        icon={<Pencil className="w-5 h-5" />}
+        iconBgColor="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
+        maxWidth="lg"
+      >
+        {editingMovement && (
+          <div className="space-y-4">
             <div className="p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-200">
               <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div>
@@ -835,7 +791,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Data da Lançamento
+                    Data do Lançamento
                   </label>
                   <input
                     type="date"
@@ -968,7 +924,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Ex: Correção de quantidade lançada errado durante contagem"
+                  placeholder="Ex: Correção de quantidade lançada durante contagem"
                   value={editFormData.notes || ''}
                   onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
@@ -976,92 +932,96 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <Button
                   type="button"
+                  variant="outline"
+                  size="md"
                   onClick={() => setEditingMovement(null)}
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  disabled={isSavingEdit}
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold shadow-md cursor-pointer flex items-center gap-2 disabled:opacity-50"
+                  variant="primary"
+                  size="md"
+                  isLoading={isSavingEdit}
+                  leftIcon={<Save className="w-4 h-4" />}
                 >
-                  <Save className="w-4 h-4" />
-                  <span>{isSavingEdit ? 'Salvando...' : 'Salvar Alterações'}</span>
-                </button>
+                  Salvar Alterações
+                </Button>
               </div>
             </form>
           </div>
-        </div>
-      )}
+        )}
+      </ModalWrapper>
 
       {/* DELETE CONFIRMATION MODAL */}
-      {deletingMovement && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
-              <div className="p-3 bg-red-100 dark:bg-red-950/80 rounded-2xl">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
+      <ModalWrapper
+        isOpen={!!deletingMovement}
+        onClose={() => setDeletingMovement(null)}
+        title="Excluir Movimentação?"
+        subtitle="Esta ação irá recalcular o estoque físico do produto automaticamente"
+        icon={<AlertTriangle className="w-5 h-5 text-rose-600" />}
+        iconBgColor="bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400"
+        maxWidth="md"
+      >
+        {deletingMovement && (
+          <div className="space-y-4 text-xs">
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200">
               <div>
-                <h3 className="font-black text-lg text-slate-900 dark:text-white">
-                  Excluir Movimentação?
-                </h3>
-                <p className="text-xs text-slate-500">Esta ação irá recalcular o estoque do produto.</p>
+                <span className="text-slate-400 block text-[11px]">Produto:</span>
+                <strong className="text-sm font-extrabold text-slate-900 dark:text-white">
+                  {deletingMovement.productName}
+                </strong>
               </div>
-            </div>
-
-            <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl space-y-2 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-200">
-              <div>
-                <span className="text-slate-400 block">Produto:</span>
-                <strong className="text-sm font-extrabold">{deletingMovement.productName}</strong>
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200 dark:border-slate-700">
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/80 dark:border-slate-700">
                 <div>
-                  <span className="text-slate-400 block">Tipo:</span>
-                  <span className={`font-extrabold uppercase ${deletingMovement.type === 'entrada' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  <span className="text-slate-400 block text-[11px]">Tipo:</span>
+                  <span className={`font-extrabold uppercase ${deletingMovement.type === 'entrada' ? 'text-emerald-600' : 'text-orange-600'}`}>
                     {deletingMovement.type}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 block">Quantidade:</span>
-                  <strong className="font-extrabold">{deletingMovement.quantity} {deletingMovement.unit}</strong>
+                  <span className="text-slate-400 block text-[11px]">Quantidade:</span>
+                  <strong className="font-extrabold text-slate-900 dark:text-white">
+                    {deletingMovement.quantity} {deletingMovement.unit}
+                  </strong>
                 </div>
               </div>
               <div>
-                <span className="text-slate-400 block">Data/Hora:</span>
+                <span className="text-slate-400 block text-[11px]">Data/Hora:</span>
                 <span>{deletingMovement.date} às {deletingMovement.time || '00:00'}</span>
               </div>
             </div>
 
-            <div className="text-xs text-slate-500 dark:text-slate-400 bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800/60">
+            <div className="text-xs text-slate-600 dark:text-slate-400 bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-800/60">
               ℹ️ Se for uma <strong>Entrada</strong>, a quantidade será subtraída do estoque. Se for uma <strong>Saída</strong>, a quantidade será devolvida ao estoque.
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <Button
                 type="button"
+                variant="outline"
+                size="md"
                 onClick={() => setDeletingMovement(null)}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer text-xs"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="danger"
+                size="md"
+                isLoading={isDeleting}
+                leftIcon={<Trash2 className="w-4 h-4" />}
                 onClick={handleConfirmDelete}
-                disabled={isDeleting}
-                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold shadow-md cursor-pointer flex items-center gap-2 text-xs disabled:opacity-50"
               >
-                <Trash2 className="w-4 h-4" />
-                <span>{isDeleting ? 'Excluindo...' : 'Confirmar Exclusão'}</span>
-              </button>
+                Confirmar Exclusão
+              </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalWrapper>
     </div>
   );
 };

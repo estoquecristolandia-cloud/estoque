@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { X, ArrowUpRight, Check, AlertCircle, Building2, Camera, Barcode, Clock, Plus, Trash2, Layers, Loader2 } from 'lucide-react';
+import { ArrowUpRight, Check, AlertCircle, Camera, Clock, Plus, Trash2, Layers, Loader2 } from 'lucide-react';
 import { Product, Sector, Missionary, KitchenShift } from '../types';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { getTodayDateString, getNowTimeString } from '../utils/storage';
+import { ModalWrapper } from './ui/ModalWrapper';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
 
 export interface ExitItem {
   rowId: string;
@@ -91,7 +94,6 @@ export const ExitModal: React.FC<ExitModalProps> = ({
   const sectorMissionaries = missionaries.filter((m) => m.sector === sector);
 
   const handleAddItemRow = () => {
-    // Pick first product that isn't already added if possible
     const usedProductIds = new Set(items.map((i) => i.productId));
     const availableProd = products.find((p) => !usedProductIds.has(p.id) && p.currentStock > 0) || products[0];
 
@@ -123,7 +125,6 @@ export const ExitModal: React.FC<ExitModalProps> = ({
       if (activeScanningRowId) {
         handleUpdateItem(activeScanningRowId, 'productId', matchedProd.id);
       } else {
-        // Append new row with matched product
         setItems((prev) => [
           ...prev,
           {
@@ -139,7 +140,6 @@ export const ExitModal: React.FC<ExitModalProps> = ({
     }
   };
 
-  // Auto set default retriever based on sector / shift
   const handleSectorChange = (sec: Sector) => {
     setSector(sec);
     const available = missionaries.filter((m) => m.sector === sec);
@@ -169,7 +169,6 @@ export const ExitModal: React.FC<ExitModalProps> = ({
       return;
     }
 
-    // Validate all item rows
     const preparedItems: Array<{ product: Product; quantity: number }> = [];
 
     for (let i = 0; i < items.length; i++) {
@@ -181,11 +180,11 @@ export const ExitModal: React.FC<ExitModalProps> = ({
       }
       const qtyNum = parseFloat(row.quantity);
       if (isNaN(qtyNum) || qtyNum <= 0) {
-        setError(`Informe uma quantidade válida maior que zero para o produto "${prod.name}" (Item #${i + 1}).`);
+        setError(`Informe uma quantidade válida maior que zero para "${prod.name}" (Item #${i + 1}).`);
         return;
       }
       if (qtyNum > prod.currentStock) {
-        setError(`Estoque insuficiente para "${prod.name}"! Saldo disponível: ${prod.currentStock} ${prod.unit}.`);
+        setError(`Estoque insuficiente para "${prod.name}"! Saldo atual disponível: ${prod.currentStock} ${prod.unit}.`);
         return;
       }
       preparedItems.push({ product: prod, quantity: qtyNum });
@@ -217,8 +216,7 @@ export const ExitModal: React.FC<ExitModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      {/* Camera Barcode Scanner Modal */}
+    <>
       <BarcodeScannerModal
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
@@ -226,48 +224,34 @@ export const ExitModal: React.FC<ExitModalProps> = ({
         products={products}
       />
 
-      <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-900">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-600/20 border border-amber-500/30 text-amber-400">
-              <ArrowUpRight className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white">Nova Saída do Estoque</h3>
-              <p className="text-xs text-slate-400">
-                Registrar saída de <strong>um ou mais produtos</strong> para o setor de destino
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+      <ModalWrapper
+        isOpen={true}
+        onClose={onClose}
+        title="Nova Saída do Estoque"
+        subtitle="Registrar entrega de mantimentos por setor de destino"
+        icon={<ArrowUpRight className="w-5 h-5 text-orange-600 dark:text-orange-400" />}
+        iconBgColor="bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400"
+        maxWidth="2xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+            <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Destination Sector & Retriever Information */}
-          <div className="bg-slate-800/50 p-3.5 rounded-2xl border border-slate-800 space-y-3">
+          {/* Sector & Retriever Information */}
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Setor de Destino <span className="text-rose-400">*</span>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Setor de Destino <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={sector}
                   onChange={(e) => handleSectorChange(e.target.value as Sector)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white font-bold focus:outline-none focus:border-amber-500"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
                 >
                   {SECTORS.map((sec) => (
                     <option key={sec} value={sec}>
@@ -278,15 +262,15 @@ export const ExitModal: React.FC<ExitModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Quem Retirou (Missionário / Resp.) <span className="text-rose-400">*</span>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Quem Retirou (Missionário / Resp.) <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
                   placeholder="Ex: Missionário Carlos Silva"
                   value={retrievedBy}
                   onChange={(e) => setRetrievedBy(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
                   required
                 />
               </div>
@@ -295,16 +279,16 @@ export const ExitModal: React.FC<ExitModalProps> = ({
             {/* Quick Missionary Suggestions */}
             {sectorMissionaries.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[10px] text-slate-400 font-semibold">Responsáveis cadastrados:</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">Responsáveis cadastrados:</span>
                 {sectorMissionaries.map((m) => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => setRetrievedBy(m.name)}
-                    className={`text-[10px] px-2 py-0.5 rounded-md font-medium border cursor-pointer transition-colors ${
+                    className={`text-[10px] px-2.5 py-1 rounded-lg font-medium border cursor-pointer transition-colors ${
                       retrievedBy === m.name
-                        ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
-                        : 'bg-slate-900 text-slate-300 border-slate-700 hover:bg-slate-700'
+                        ? 'bg-orange-500 text-white font-bold border-orange-500'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                     }`}
                   >
                     {m.name.replace('Missionário ', 'Miss. ').replace('Missionária ', 'Miss. ')}
@@ -314,12 +298,12 @@ export const ExitModal: React.FC<ExitModalProps> = ({
             )}
           </div>
 
-          {/* Kitchen Shift Selection if Cozinha */}
+          {/* Kitchen Shift Selection */}
           {sector === 'Cozinha' && (
-            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between gap-2">
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-2xl flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="text-xs font-extrabold text-amber-300">
+                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
                   Turno da Cozinha:
                 </span>
               </div>
@@ -331,7 +315,7 @@ export const ExitModal: React.FC<ExitModalProps> = ({
                   const matched = missionaries.find((m) => m.sector === 'Cozinha' && m.shift === s);
                   if (matched) setRetrievedBy(matched.name);
                 }}
-                className="bg-slate-900 border border-amber-500/40 rounded-lg px-3 py-1.5 text-xs font-bold text-amber-300 focus:outline-none focus:border-amber-400"
+                className="bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-xl px-3 py-1.5 text-xs font-bold text-amber-900 dark:text-amber-200 focus:outline-none"
               >
                 {KITCHEN_SHIFTS.map((s) => (
                   <option key={s} value={s}>
@@ -344,60 +328,59 @@ export const ExitModal: React.FC<ExitModalProps> = ({
 
           {/* Multi-Item List Section */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
               <div className="flex items-center gap-2">
-                <Layers className="w-4 h-4 text-amber-400" />
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-300">
+                <Layers className="w-4 h-4 text-orange-600" />
+                <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   Itens para Saída ({items.length})
                 </h4>
               </div>
 
               <div className="flex items-center gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<Camera className="w-3.5 h-3.5 text-amber-500" />}
                   onClick={() => {
                     setActiveScanningRowId(null);
                     setIsScannerOpen(true);
                   }}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold cursor-pointer transition-all"
                 >
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>Bipar Câmera</span>
-                </button>
+                  Bipar Câmera
+                </Button>
 
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
+                  leftIcon={<Plus className="w-3.5 h-3.5" />}
                   onClick={handleAddItemRow}
-                  className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold cursor-pointer transition-all"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Adicionar Outro Item</span>
-                </button>
+                  Adicionar Item
+                </Button>
               </div>
             </div>
 
             {/* List of Product Rows */}
-            <div className="space-y-2.5">
+            <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1">
               {items.map((rowItem, idx) => {
                 const selectedProd = products.find((p) => p.id === rowItem.productId);
 
                 return (
                   <div
                     key={rowItem.rowId}
-                    className="p-3 bg-slate-800/80 border border-slate-700/80 rounded-xl space-y-2"
+                    className="p-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-2"
                   >
-                    <div className="flex items-center justify-between text-xs text-slate-400">
-                      <span className="font-bold text-amber-400">Item #{idx + 1}</span>
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span className="font-bold text-orange-600 dark:text-orange-400">Item #{idx + 1}</span>
                       {selectedProd && (
-                        <span
-                          className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                            selectedProd.currentStock > 0
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                          }`}
+                        <Badge
+                          variant={selectedProd.currentStock > 0 ? 'emerald' : 'rose'}
+                          size="sm"
                         >
-                          Disponível: {selectedProd.currentStock} {selectedProd.unit}
-                        </span>
+                          Saldo: {selectedProd.currentStock} {selectedProd.unit}
+                        </Badge>
                       )}
                     </div>
 
@@ -407,7 +390,7 @@ export const ExitModal: React.FC<ExitModalProps> = ({
                         <select
                           value={rowItem.productId}
                           onChange={(e) => handleUpdateItem(rowItem.rowId, 'productId', e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                          className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-orange-500"
                         >
                           {products.map((p) => (
                             <option key={p.id} value={p.id} disabled={p.currentStock <= 0}>
@@ -418,7 +401,7 @@ export const ExitModal: React.FC<ExitModalProps> = ({
                       </div>
 
                       {/* Quantity Input */}
-                      <div className="w-32 shrink-0">
+                      <div className="w-28 sm:w-32 shrink-0">
                         <div className="relative">
                           <input
                             type="number"
@@ -426,7 +409,7 @@ export const ExitModal: React.FC<ExitModalProps> = ({
                             placeholder="Qtd"
                             value={rowItem.quantity}
                             onChange={(e) => handleUpdateItem(rowItem.rowId, 'quantity', e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-amber-500 pr-8"
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-extrabold focus:outline-none focus:border-orange-500 pr-8"
                             required
                           />
                           <span className="absolute right-2.5 top-2 text-[10px] font-bold text-slate-400 pointer-events-none">
@@ -443,7 +426,7 @@ export const ExitModal: React.FC<ExitModalProps> = ({
                           setIsScannerOpen(true);
                         }}
                         title="Bipar código de barras para este item"
-                        className="p-2 rounded-xl bg-slate-900 hover:bg-slate-700 border border-slate-700 text-amber-400 transition-colors cursor-pointer"
+                        className="p-2 rounded-xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-amber-500 transition-colors cursor-pointer"
                       >
                         <Camera className="w-3.5 h-3.5" />
                       </button>
@@ -453,7 +436,7 @@ export const ExitModal: React.FC<ExitModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleRemoveItemRow(rowItem.rowId)}
-                          className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-colors cursor-pointer"
+                          className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-800 transition-colors cursor-pointer"
                           title="Remover este item"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -464,48 +447,40 @@ export const ExitModal: React.FC<ExitModalProps> = ({
                 );
               })}
             </div>
-
-            {/* Quick Add Button underneath */}
-            <button
-              type="button"
-              onClick={handleAddItemRow}
-              className="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-dashed border-slate-700 hover:border-slate-500 rounded-xl text-xs font-bold text-slate-300 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4 text-amber-400" />
-              <span>+ Adicionar Mais Um Produto a Esta Saída</span>
-            </button>
           </div>
 
           {/* Delivered By, Date & Time */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Entregue por (Resp. Estoque) <span className="text-rose-400">*</span>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Entregue por (Resp. Estoque) <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 placeholder="Ex: Marconi Castro"
                 value={deliveredBy}
                 onChange={(e) => setDeliveredBy(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Data / Horário</label>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Data / Horário
+              </label>
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
                 />
                 <input
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  className="bg-slate-800 border border-slate-700 rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
                 />
               </div>
             </div>
@@ -513,52 +488,46 @@ export const ExitModal: React.FC<ExitModalProps> = ({
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Observações (opcional)</label>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              Observações (opcional)
+            </label>
             <input
               type="text"
-              placeholder="Ex: Mantimentos solicitados para a semana"
+              placeholder="Ex: Mantimentos para preparação do almoço da semana"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-orange-500"
             />
           </div>
 
           {/* Footer buttons */}
-          <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-800">
-            <span className="text-xs text-slate-400">
+          <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <span className="text-xs text-slate-500">
               Total: <strong>{items.length}</strong> produto(s)
             </span>
             <div className="flex items-center gap-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="md"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer disabled:opacity-50"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg shadow-amber-600/30 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                variant="orange"
+                size="md"
+                isLoading={isSubmitting}
+                leftIcon={<Check className="w-4 h-4" />}
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Processando Baixa...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Confirmar Saída ({items.length} item{items.length > 1 ? 's' : ''})</span>
-                  </>
-                )}
-              </button>
+                Confirmar Saída ({items.length})
+              </Button>
             </div>
           </div>
         </form>
-      </div>
-    </div>
+      </ModalWrapper>
+    </>
   );
 };
-
