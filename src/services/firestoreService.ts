@@ -9,8 +9,6 @@ import {
   writeBatch,
   runTransaction,
   serverTimestamp,
-  query,
-  where,
 } from 'firebase/firestore';
 import { db, AppUserProfile, UserRole } from '../firebase';
 import { Product, StockMovement, DailyKit, DailyMealRecord, EntryType, Sector, InventoryAudit, InventorySessionSummary } from '../types';
@@ -184,13 +182,6 @@ export async function saveProductToFirestore(product: Product): Promise<void> {
 }
 
 export async function deleteProductFromFirestore(productId: string): Promise<void> {
-  const movQuery = query(collection(db, MOVEMENTS_COLLECTION), where('productId', '==', productId));
-  const snap = await getDocs(movQuery);
-  if (!snap.empty) {
-    throw new Error(
-      `Não é possível excluir este produto pois existem ${snap.size} movimentação(ões) vinculada(s) a ele no histórico. Mantenha o cadastro para preservar a rastreabilidade contábil.`
-    );
-  }
   await deleteDoc(doc(db, PRODUCTS_COLLECTION, productId));
 }
 
@@ -355,30 +346,21 @@ export async function executeEntryTransaction(
   receivedBy: string,
   date: string,
   time: string,
-  notes: string,
-  clientOpId?: string
+  notes: string
 ): Promise<{ updatedProduct: Product; movement: StockMovement }> {
   if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('Informe uma quantidade válida maior que zero.');
   return runTransaction(db, async (tx) => {
-    const opId = clientOpId || operationId('entry');
-    const movRef = doc(db, MOVEMENTS_COLLECTION, opId);
-    const movSnap = await tx.get(movRef);
     const productRef = doc(db, PRODUCTS_COLLECTION, productId);
     const snap = await tx.get(productRef);
     if (!snap.exists()) throw new Error('Produto não encontrado no Firestore.');
     const product = snap.data() as Product;
-
-    // Idempotency: If operationId was already executed, return current state without re-applying stock increment
-    if (movSnap.exists()) {
-      return { updatedProduct: product, movement: movSnap.data() as StockMovement };
-    }
-
+    const opId = operationId('entry');
     const now = new Date().toISOString();
     const newStock = round2(Number(product.currentStock || 0) + quantity);
     const movement: StockMovement = { id: opId, operationId: opId, productId: product.id, productName: product.name, unit: product.unit, type: 'entrada', quantity, date, time: time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), entryType, supplierOrDonor, receivedBy, notes, createdAt: now };
     const updatedProduct = { ...product, currentStock: newStock, lastUpdated: now, lastOperationId: opId, updatedAt: serverTimestamp() } as Product;
     tx.set(productRef, cleanForFirestore(updatedProduct), { merge: true });
-    tx.set(movRef, cleanForFirestore(movement));
+    tx.set(doc(db, MOVEMENTS_COLLECTION, opId), cleanForFirestore(movement));
     return { updatedProduct, movement };
   });
 }
@@ -391,32 +373,23 @@ export async function executeExitTransaction(
   deliveredBy: string,
   date: string,
   time: string,
-  notes: string,
-  clientOpId?: string
+  notes: string
 ): Promise<{ updatedProduct: Product; movement: StockMovement }> {
   if (!Number.isFinite(quantity) || quantity <= 0) throw new Error('Informe uma quantidade válida maior que zero.');
   return runTransaction(db, async (tx) => {
-    const opId = clientOpId || operationId('exit');
-    const movRef = doc(db, MOVEMENTS_COLLECTION, opId);
-    const movSnap = await tx.get(movRef);
     const productRef = doc(db, PRODUCTS_COLLECTION, productId);
     const snap = await tx.get(productRef);
     if (!snap.exists()) throw new Error('Produto não encontrado no Firestore.');
     const product = snap.data() as Product;
-
-    // Idempotency: If operationId was already executed, return current state without re-applying stock decrement
-    if (movSnap.exists()) {
-      return { updatedProduct: product, movement: movSnap.data() as StockMovement };
-    }
-
     const currentStock = Number(product.currentStock || 0);
     if (quantity > currentStock) throw new Error(`Quantidade solicitada (${quantity} ${product.unit}) é maior do que o estoque atual (${currentStock} ${product.unit}).`);
+    const opId = operationId('exit');
     const now = new Date().toISOString();
     const newStock = round2(currentStock - quantity);
     const movement: StockMovement = { id: opId, operationId: opId, productId: product.id, productName: product.name, unit: product.unit, type: 'saida', quantity, date, time: time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), sector, retrievedBy, deliveredBy, notes, createdAt: now };
     const updatedProduct = { ...product, currentStock: newStock, lastUpdated: now, lastOperationId: opId, updatedAt: serverTimestamp() } as Product;
     tx.set(productRef, cleanForFirestore(updatedProduct), { merge: true });
-    tx.set(movRef, cleanForFirestore(movement));
+    tx.set(doc(db, MOVEMENTS_COLLECTION, opId), cleanForFirestore(movement));
     return { updatedProduct, movement };
   });
 }
@@ -428,15 +401,13 @@ export async function executeBatchExitTransaction(
   deliveredBy: string,
   date: string,
   time: string,
-  notes: string,
-  clientBatchOpId?: string
+  notes: string
 ): Promise<{ updatedProducts: Product[]; movements: StockMovement[] }> {
   const totals = new Map<string, number>();
   for (const item of items) {
     if (!Number.isFinite(item.quantity) || item.quantity <= 0) throw new Error('Todas as quantidades devem ser maiores que zero.');
     totals.set(item.productId, round2((totals.get(item.productId) || 0) + item.quantity));
   }
-  const batchId = clientBatchOpId || operationId('batch-exit');
   return runTransaction(db, async (tx) => {
     const refs = [...totals.keys()].map((id) => doc(db, PRODUCTS_COLLECTION, id));
     const snaps = await Promise.all(refs.map((ref) => tx.get(ref)));
@@ -445,7 +416,6 @@ export async function executeBatchExitTransaction(
       if (!snap.exists()) throw new Error('Um dos produtos selecionados não existe mais no estoque.');
       products.set(refs[index].id, snap.data() as Product);
     });
-
     const now = new Date().toISOString();
     const updatedProducts: Product[] = [];
     const movements: StockMovement[] = [];
@@ -453,19 +423,12 @@ export async function executeBatchExitTransaction(
       const product = products.get(productId)!;
       const currentStock = Number(product.currentStock || 0);
       if (quantity > currentStock) throw new Error(`Estoque insuficiente para ${product.name}! Saldo disponível: ${currentStock} ${product.unit}, solicitado: ${quantity} ${product.unit}.`);
-      const opId = `${batchId}-${productId}`;
-      const movRef = doc(db, MOVEMENTS_COLLECTION, opId);
-      const movSnap = await tx.get(movRef);
-      if (movSnap.exists()) {
-        updatedProducts.push(product);
-        movements.push(movSnap.data() as StockMovement);
-        continue;
-      }
+      const opId = operationId('batch-exit');
       const newStock = round2(currentStock - quantity);
       const movement: StockMovement = { id: opId, operationId: opId, productId, productName: product.name, unit: product.unit, type: 'saida', quantity, date, time: time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), sector, retrievedBy, deliveredBy, notes: notes || '', createdAt: now };
       const updatedProduct = { ...product, currentStock: newStock, lastUpdated: now, lastOperationId: opId, updatedAt: serverTimestamp() } as Product;
       tx.set(doc(db, PRODUCTS_COLLECTION, productId), cleanForFirestore(updatedProduct), { merge: true });
-      tx.set(movRef, cleanForFirestore(movement));
+      tx.set(doc(db, MOVEMENTS_COLLECTION, opId), cleanForFirestore(movement));
       updatedProducts.push(updatedProduct); movements.push(movement);
     }
     return { updatedProducts, movements };
@@ -477,10 +440,8 @@ export async function executeDailyKitTransaction(
   retrievedBy: string,
   deliveredBy: string,
   date: string,
-  time: string,
-  clientBatchOpId?: string
+  time: string
 ): Promise<{ updatedProducts: Product[]; movements: StockMovement[]; deliveredCount: number }> {
-  const batchId = clientBatchOpId || operationId('kit');
   return runTransaction(db, async (tx) => {
     const uniqueIds = [...new Set(kit.items.map((i) => i.productId))];
     const refs = uniqueIds.map((id) => doc(db, PRODUCTS_COLLECTION, id));
@@ -504,19 +465,12 @@ export async function executeDailyKitTransaction(
     for (const [id, qty] of totals.entries()) {
       const product = products.get(id)!;
       const currentStock = Number(product.currentStock || 0);
-      const opId = `${batchId}-${id}`;
-      const movRef = doc(db, MOVEMENTS_COLLECTION, opId);
-      const movSnap = await tx.get(movRef);
-      if (movSnap.exists()) {
-        updatedProducts.push(product);
-        movements.push(movSnap.data() as StockMovement);
-        continue;
-      }
+      const opId = operationId('kit');
       const newStock = round2(currentStock - qty);
       const movement: StockMovement = { id: opId, operationId: opId, productId: id, productName: product.name, unit: product.unit, type: 'saida', quantity: qty, date, time: time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), sector: kit.sector, retrievedBy: retrievedBy || kit.defaultRetriever, deliveredBy: deliveredBy || kit.defaultDeliverer, notes: `Entrega Automática do ${kit.name}`, createdAt: now };
       const updatedProduct = { ...product, currentStock: newStock, lastUpdated: now, lastOperationId: opId, updatedAt: serverTimestamp() } as Product;
       tx.set(doc(db, PRODUCTS_COLLECTION, id), cleanForFirestore(updatedProduct), { merge: true });
-      tx.set(movRef, cleanForFirestore(movement));
+      tx.set(doc(db, MOVEMENTS_COLLECTION, opId), cleanForFirestore(movement));
       updatedProducts.push(updatedProduct); movements.push(movement);
     }
     return { updatedProducts, movements, deliveredCount: movements.length };
@@ -598,34 +552,24 @@ export async function executeInventoryAdjustmentTransaction(
   time: string,
   userUid?: string,
   userEmail?: string,
-  expectedPreviousStock?: number,
-  clientOpId?: string
+  expectedPreviousStock?: number
 ): Promise<{ updatedProduct: Product; movement: StockMovement; audit: InventoryAudit }> {
   const targetStock = round2(Number(newPhysicalStock));
   if (!Number.isFinite(targetStock) || targetStock < 0) throw new Error('O saldo físico apurado não pode ser negativo.');
   const cleanedReason = (reason || '').trim();
   if (!cleanedReason) throw new Error('É obrigatório informar o motivo do ajuste.');
   return runTransaction(db, async (tx) => {
-    const opId = clientOpId || operationId('adj');
-    const movRef = doc(db, MOVEMENTS_COLLECTION, opId);
-    const movSnap = await tx.get(movRef);
-    const auditRef = doc(db, INVENTORY_AUDITS_COLLECTION, opId);
     const productRef = doc(db, PRODUCTS_COLLECTION, productId);
     const snap = await tx.get(productRef);
     if (!snap.exists()) throw new Error('Produto não encontrado no Firestore.');
     const product = snap.data() as Product;
-
-    if (movSnap.exists()) {
-      const auditSnap = await tx.get(auditRef);
-      return { updatedProduct: product, movement: movSnap.data() as StockMovement, audit: auditSnap.data() as InventoryAudit };
-    }
-
     const current = round2(Number(product.currentStock || 0));
     if (expectedPreviousStock !== undefined && round2(expectedPreviousStock) !== current) {
       throw new Error(`O saldo no sistema foi alterado recentemente por outra operação (era ${expectedPreviousStock} ${product.unit}, agora é ${current} ${product.unit}). Revise a contagem física antes de confirmar.`);
     }
     const difference = round2(targetStock - current);
     if (difference === 0) throw new Error('O saldo físico informado é idêntico ao saldo atual do sistema.');
+    const opId = operationId('adj');
     const now = new Date().toISOString();
     const formattedTime = time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const formattedDate = date || new Date().toISOString().split('T')[0];
@@ -633,8 +577,8 @@ export async function executeInventoryAdjustmentTransaction(
     const audit: InventoryAudit = { id: opId, productId: product.id, productName: product.name, unit: product.unit, previousStock: current, physicalStock: targetStock, difference, reason: cleanedReason, responsible: registeredBy || 'Administrador', date: formattedDate, time: formattedTime, createdAt: now, timestamp: serverTimestamp(), userUid, userEmail, notes: `Ajuste auditado: De ${current} para ${targetStock} ${product.unit}. Motivo: ${cleanedReason}` };
     const updatedProduct = { ...product, currentStock: targetStock, lastUpdated: now, lastOperationId: opId, updatedAt: serverTimestamp() } as Product;
     tx.set(productRef, cleanForFirestore(updatedProduct), { merge: true });
-    tx.set(movRef, cleanForFirestore(movement));
-    tx.set(auditRef, cleanForFirestore(audit));
+    tx.set(doc(db, MOVEMENTS_COLLECTION, opId), cleanForFirestore(movement));
+    tx.set(doc(db, INVENTORY_AUDITS_COLLECTION, opId), cleanForFirestore(audit));
     return { updatedProduct, movement, audit };
   });
 }

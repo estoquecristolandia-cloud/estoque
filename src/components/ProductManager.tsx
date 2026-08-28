@@ -1,42 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Product, Category, Unit } from '../types';
 import { UserRole } from '../firebase';
 import { calculateDaysRemaining, getProductStockStatus, formatDaysRemainingText, getProductAlertDays } from '../utils/storage';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
-import { ModalWrapper } from './ui/ModalWrapper';
-import { PageHeader } from './ui/PageHeader';
-import { Button } from './ui/Button';
-import { Badge } from './ui/Badge';
-import { SearchInput } from './ui/SearchInput';
-import { Card } from './ui/Card';
-import { EmptyState } from './ui/EmptyState';
-import {
-  Search,
-  Plus,
-  Edit2,
-  History,
-  Package,
-  AlertTriangle,
-  MapPin,
-  Sparkles,
-  X,
-  Check,
-  Lock,
-  Camera,
-  Barcode,
-  Scan,
-  CheckCircle2,
-  BellRing,
-  Calendar,
-  LayoutGrid,
-  Table,
-  ArrowDownLeft,
-  ArrowUpRight,
-  TrendingDown,
-  ShieldAlert,
-  Clock,
-  Layers,
-} from 'lucide-react';
+import { Search, Plus, Edit2, History, Package, AlertTriangle, MapPin, Sparkles, X, Check, Lock, Camera, Barcode, Scan, CheckCircle2, BellRing, Calendar, LayoutGrid, Table } from 'lucide-react';
 
 export function getDetailedStockNote(p: Product): string | null {
   const nameLower = p.name.toLowerCase();
@@ -103,6 +70,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   userRole = 'admin',
   onOpenReconciliationPreview,
 }) => {
+  // Only admin (Marconi Castro) can edit/add/delete products or register entries/exits
   const isAdmin = userRole === 'admin';
   const canRegisterMovements = userRole === 'admin';
   const [searchTerm, setSearchTerm] = useState('');
@@ -193,7 +161,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
         openNewProductModal(code);
         setTimeout(() => setScanNotification(null), 6000);
       } else {
-        setScanNotification(`Código ${code} lido, porém o produto não foi encontrado.`);
+        setScanNotification(`Código ${code} lido, porém o produto não foi encontrado. Apenas o gestor Marconi Castro pode cadastrar novos itens.`);
         setTimeout(() => setScanNotification(null), 6000);
       }
     }
@@ -231,30 +199,19 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   };
 
   // Filter logic
-  const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      const matchesSearch =
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.barcode && p.barcode.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch =
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.barcode && p.barcode.toLowerCase().includes(searchTerm.toLowerCase()));
 
-      const matchesCat = selectedCategory === 'all' || p.category === selectedCategory;
+    const matchesCat = selectedCategory === 'all' || p.category === selectedCategory;
 
-      const status = getProductStockStatus(p);
-      const matchesStatus = statusFilter === 'all' || status === statusFilter;
+    const status = getProductStockStatus(p);
+    const matchesStatus = statusFilter === 'all' || status === statusFilter;
 
-      return matchesSearch && matchesCat && matchesStatus;
-    });
-  }, [products, searchTerm, selectedCategory, statusFilter]);
-
-  // Stock summary numbers
-  const summary = useMemo(() => {
-    const total = products.length;
-    const critical = products.filter((p) => getProductStockStatus(p) === 'critical').length;
-    const warning = products.filter((p) => getProductStockStatus(p) === 'warning').length;
-    const normal = total - critical - warning;
-    return { total, critical, warning, normal };
-  }, [products]);
+    return matchesSearch && matchesCat && matchesStatus;
+  });
 
   return (
     <div className="space-y-6">
@@ -265,202 +222,146 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
             <CheckCircle2 className="w-5 h-5 shrink-0 text-slate-950" />
             <span>{scanNotification}</span>
           </div>
-          <button onClick={() => setScanNotification(null)} className="p-1 hover:bg-amber-600 rounded-lg cursor-pointer">
+          <button onClick={() => setScanNotification(null)} className="p-1 hover:bg-amber-600 rounded-lg">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* Page Header */}
-      <PageHeader
-        title="Catálogo & Saldo de Estoque"
-        subtitle="Controle unificado de insumos, pontos de reposição, códigos EAN e autonomia projetada"
-        badge={{ text: `${products.length} itens cadastrados`, variant: 'emerald' }}
-        actions={
-          <>
-            <Button
-              variant="outline"
-              size="md"
-              leftIcon={<Camera className="w-4 h-4 text-amber-500" />}
-              onClick={() => setIsScannerOpen(true)}
-              title="Bipar código de barras pela câmera do celular"
+      {/* Top Action Bar & Filters */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+        {/* Search Input */}
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+          <input
+            type="text"
+            placeholder="Buscar por nome, código de barras ou local..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+          />
+        </div>
+
+        {/* Action Controls: Scanner + Status + New Product */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+          {/* Camera Scanner Button */}
+          <button
+            onClick={() => setIsScannerOpen(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all cursor-pointer whitespace-nowrap"
+            title="Bipar código de barras pela câmera do celular"
+          >
+            <Camera className="w-4 h-4" />
+            <span>Bipar Câmera</span>
+          </button>
+
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer whitespace-nowrap transition-all ${
+              statusFilter === 'all'
+                ? 'bg-slate-950 text-white dark:bg-blue-600 shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+            }`}
+          >
+            Todos ({products.length})
+          </button>
+
+          <button
+            onClick={() => setStatusFilter('critical')}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer whitespace-nowrap transition-all ${
+              statusFilter === 'critical'
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+            }`}
+          >
+            🚨 Críticos ({products.filter((p) => getProductStockStatus(p) === 'critical').length})
+          </button>
+
+          <button
+            onClick={() => setStatusFilter('warning')}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer whitespace-nowrap transition-all ${
+              statusFilter === 'warning'
+                ? 'bg-amber-600 text-white shadow-sm'
+                : 'bg-slate-100 dark:bg-slate-800 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+            }`}
+          >
+            🟡 Reposição ({products.filter((p) => getProductStockStatus(p) === 'warning').length})
+          </button>
+
+          {isAdmin ? (
+            <button
+              onClick={() => openNewProductModal()}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 cursor-pointer whitespace-nowrap"
             >
-              Bipar Câmera
-            </Button>
-
-            {onOpenReconciliationPreview && (
-              <Button
-                variant="outline"
-                size="md"
-                leftIcon={<Sparkles className="w-4 h-4 text-emerald-600" />}
-                onClick={onOpenReconciliationPreview}
-              >
-                Prévia Conciliação
-              </Button>
-            )}
-
-            {isAdmin ? (
-              <Button
-                variant="emerald"
-                size="md"
-                leftIcon={<Plus className="w-4 h-4" />}
-                onClick={() => openNewProductModal()}
-              >
-                Novo Produto
-              </Button>
-            ) : (
-              <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 text-xs font-semibold">
-                <Lock className="w-3.5 h-3.5" />
-                <span>Cadastro Restrito</span>
-              </div>
-            )}
-          </>
-        }
-      />
-
-      {/* Status KPI Quick Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div
-          onClick={() => setStatusFilter('all')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            statusFilter === 'all'
-              ? 'bg-slate-900 text-white dark:bg-slate-800 border-slate-900 shadow-sm'
-              : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 hover:border-slate-300'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider opacity-70">Total Geral</span>
-            <Package className="w-4 h-4 opacity-70" />
-          </div>
-          <p className="text-2xl font-black mt-1">{summary.total}</p>
-          <p className="text-[11px] opacity-70 mt-0.5">Itens em controle</p>
-        </div>
-
-        <div
-          onClick={() => setStatusFilter('normal')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            statusFilter === 'normal'
-              ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-              : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 hover:border-emerald-300'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-              Estoque Saudável
-            </span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{summary.normal}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Autonomia &gt; Reserva</p>
-        </div>
-
-        <div
-          onClick={() => setStatusFilter('warning')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            statusFilter === 'warning'
-              ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-              : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 hover:border-amber-300'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-              Ponto de Reposição
-            </span>
-            <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          </div>
-          <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">{summary.warning}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Comprar em breve</p>
-        </div>
-
-        <div
-          onClick={() => setStatusFilter('critical')}
-          className={`p-4 rounded-2xl border transition-all cursor-pointer ${
-            statusFilter === 'critical'
-              ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-              : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 hover:border-rose-300'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
-              Nível Crítico
-            </span>
-            <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-          </div>
-          <p className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">{summary.critical}</p>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Abaixo do mínimo</p>
+              <Plus className="w-4 h-4" />
+              <span>Novo Produto</span>
+            </button>
+          ) : (
+            <div className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 text-xs font-semibold whitespace-nowrap">
+              <Lock className="w-3.5 h-3.5" />
+              <span>Cadastro Restrito</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
-      <Card className="p-4 space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <SearchInput
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Buscar por nome, código EAN ou local de armazenamento..."
-          />
-
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl shrink-0 self-start md:self-auto border border-slate-200/80 dark:border-slate-700">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'grid'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Cards</span>
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'table'
-                  ? 'bg-blue-600 text-white shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Tabela de conferência rápida para chefia e reuniões"
-            >
-              <Table className="w-3.5 h-3.5" />
-              <span>Tabela Direção</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Categories Bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 scrollbar-none border-t border-slate-100 dark:border-slate-800">
+      {/* Categories Horizontal Selector + View Mode Switcher */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-none">
           <button
             onClick={() => setSelectedCategory('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               selectedCategory === 'all'
                 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
             }`}
           >
-            Todas as Categorias ({products.length})
+            Todas Categorias
           </button>
-          {CATEGORIES.map((cat) => {
-            const countInCat = products.filter((p) => p.category === cat).length;
-            if (countInCat === 0) return null;
-            return (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                  selectedCategory === cat
-                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
-                }`}
-              >
-                {cat} ({countInCat})
-              </button>
-            );
-          })}
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                selectedCategory === cat
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
         </div>
-      </Card>
 
-      {/* Grid or Table View */}
+        {/* View Switcher: Cards vs Executive Table */}
+        <div className="flex items-center bg-slate-200 dark:bg-slate-800 p-1 rounded-xl shrink-0 self-start sm:self-auto">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              viewMode === 'grid'
+                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>Cards</span>
+          </button>
+          <button
+            onClick={() => setViewMode('table')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              viewMode === 'table'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+            title="Tabela de conferência rápida para chefia e reuniões"
+          >
+            <Table className="w-3.5 h-3.5" />
+            <span>Tabela Direção</span>
+          </button>
+        </div>
+      </div>
+
       {viewMode === 'grid' ? (
+        /* Product Cards Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProducts.map((p) => {
             const days = calculateDaysRemaining(p);
@@ -468,31 +369,33 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
             const alertDaysNum = getProductAlertDays(p);
             const detailedNote = getDetailedStockNote(p);
 
+            let borderClass = 'border-slate-200 dark:border-slate-800';
             let statusBadge = (
-              <Badge variant="emerald" size="sm">
-                🟢 Saudável ({days}d)
-              </Badge>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                🟢 Normal ({days}d)
+              </span>
             );
 
             if (status === 'critical') {
+              borderClass = 'border-rose-300 dark:border-rose-800 bg-rose-50/20 dark:bg-rose-950/10';
               statusBadge = (
-                <Badge variant="rose" size="sm" icon={<AlertTriangle className="w-3 h-3" />}>
-                  🔴 Crítico ({days}d)
-                </Badge>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" /> 🔴 Crítico ({days}d)
+                </span>
               );
             } else if (status === 'warning') {
+              borderClass = 'border-amber-300 dark:border-amber-800 bg-amber-50/20 dark:bg-amber-950/10';
               statusBadge = (
-                <Badge variant="amber" size="sm">
-                  🟡 Reposição ({days}d)
-                </Badge>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                  🟡 Repor em breve ({days}d)
+                </span>
               );
             }
 
             return (
-              <Card
+              <div
                 key={p.id}
-                hoverEffect
-                className="p-5 flex flex-col justify-between"
+                className={`bg-white dark:bg-slate-900 border ${borderClass} rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between`}
               >
                 <div>
                   {/* Header card */}
@@ -501,168 +404,179 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                         {p.category}
                       </span>
-                      <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+                      <h3 className="text-lg font-extrabold text-slate-900 dark:text-white leading-snug">
                         {p.name}
                       </h3>
                     </div>
                     {statusBadge}
                   </div>
 
-                  {/* Barcode & Usage Frequency */}
+                  {/* Barcode & Usage Frequency Badges */}
                   <div className="flex flex-wrap items-center gap-1.5 mb-3">
                     {p.barcode ? (
-                      <Badge variant="slate" size="sm" icon={<Barcode className="w-3.5 h-3.5 text-amber-500" />}>
-                        EAN: {p.barcode}
-                      </Badge>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-mono text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                        <Barcode className="w-3.5 h-3.5 text-amber-500" />
+                        <span>EAN: {p.barcode}</span>
+                      </div>
                     ) : (
-                      <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                      <div className="inline-flex items-center gap-1 text-[10px] text-slate-400">
                         <Scan className="w-3 h-3" />
                         <span>Sem código</span>
-                      </span>
+                      </div>
                     )}
 
                     {p.usageFrequency && (
-                      <Badge variant="blue" size="sm" icon={<Calendar className="w-3 h-3" />}>
-                        {p.usageFrequency}
-                      </Badge>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
+                        <Calendar className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                        <span>Uso: {p.usageFrequency}</span>
+                      </div>
                     )}
                   </div>
 
-                  {/* Hero Stock Box */}
-                  <div className="bg-slate-50 dark:bg-slate-800/80 rounded-2xl p-4 border border-slate-200/90 dark:border-slate-700/80 mb-3">
-                    <div className="grid grid-cols-2 gap-3 divide-x divide-slate-200 dark:divide-slate-700">
-                      {/* Left: Current Stock */}
-                      <div className="pr-2">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-0.5">
-                          Estoque Atual
+                  {/* Hero Stock Box: Estoque Real & Autonomia Conciliados */}
+                  <div className="bg-slate-900 text-white dark:bg-slate-800/90 rounded-2xl p-4 border border-slate-800 dark:border-slate-700 shadow-inner mb-3">
+                    <div className="grid grid-cols-2 gap-3 divide-x divide-slate-700/80">
+                      {/* Lado Esquerdo: Estoque Real Atual */}
+                      <div className="pr-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">
+                          Estoque Real Atual
                         </span>
                         <div className="flex items-baseline gap-1">
-                          <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
+                          <span className="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight">
                             {p.currentStock}
                           </span>
-                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{p.unit}s</span>
+                          <span className="text-xs font-bold text-slate-300 uppercase">{p.unit}s</span>
                         </div>
                         {detailedNote && (
-                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium block mt-1 leading-tight">
+                          <span className="text-[10px] text-amber-300 font-semibold block mt-1 leading-tight">
                             💡 {detailedNote}
                           </span>
                         )}
                       </div>
 
-                      {/* Right: Autonomy */}
+                      {/* Lado Direito: Autonomia Estimada */}
                       <div className="pl-3">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block mb-0.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">
                           Autonomia
                         </span>
                         <div className="flex items-baseline gap-1">
                           <span
                             className={`text-2xl sm:text-3xl font-black tracking-tight ${
-                              days > 10 ? 'text-emerald-600 dark:text-emerald-400' : days > 3 ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
+                              days > 10 ? 'text-emerald-400' : days > 3 ? 'text-amber-400' : 'text-rose-400'
                             }`}
                           >
                             {days}
                           </span>
-                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                            {days === 1 ? 'dia' : 'dias'}
+                          <span className="text-xs font-bold text-slate-300">
+                            {days === 1 ? 'dia de uso' : 'dias de uso'}
                           </span>
                         </div>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block mt-1 font-medium">
-                          Média: <strong>{p.dailyAvgConsumption} {p.unit}/dia</strong>
+                        <span className="text-[10px] text-slate-400 block mt-1 font-medium">
+                          Consumo: <strong>{p.dailyAvgConsumption} {p.unit}/dia</strong>
                         </span>
                       </div>
                     </div>
 
-                    {/* Stock minimum / alert rule */}
-                    <div className="mt-3 pt-2 border-t border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between text-[10px]">
-                      <span className="text-slate-500 dark:text-slate-400">Reserva de Alerta:</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-300">
-                        {p.minStock} {p.unit} ({alertDaysNum}d de segurança)
+                    {/* Linha de Regra de Alerta/Mínimo */}
+                    <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
+                      <span className="text-slate-400 font-medium">Reserva Mínima (Aviso):</span>
+                      <span className="font-extrabold text-amber-300">
+                        {p.minStock} {p.unit} ({alertDaysNum}d de reserva)
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mb-4 min-w-0">
+                  <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 mb-4 min-w-0">
                     <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span className="truncate">{p.location}</span>
                   </div>
                 </div>
 
                 {/* Action buttons */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<History className="w-3.5 h-3.5 text-blue-600" />}
-                    onClick={() => onOpenTimeline(p)}
-                    className="flex-1"
-                  >
-                    Linha do Tempo
-                  </Button>
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                <button
+                  onClick={() => onOpenTimeline(p)}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-300 text-xs font-bold border border-blue-200 dark:border-blue-800/50 transition-colors cursor-pointer"
+                  title="Ver todo o histórico de compras, doações e saídas"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>Linha do Tempo</span>
+                </button>
 
-                  <div className="flex items-center gap-1">
-                    {canRegisterMovements && (
-                      <>
-                        <button
-                          onClick={() => onOpenEntry(p)}
-                          className="px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800 transition-colors cursor-pointer"
-                          title="Registrar Entrada (Compra/Doação)"
-                        >
-                          + Entrada
-                        </button>
-                        <button
-                          onClick={() => onOpenExit(p)}
-                          className="px-2.5 py-1.5 rounded-xl bg-orange-50 dark:bg-orange-950/60 hover:bg-orange-100 text-orange-700 dark:text-orange-300 font-bold text-xs border border-orange-200 dark:border-orange-800 transition-colors cursor-pointer"
-                          title="Registrar Saída por Setor"
-                        >
-                          - Saída
-                        </button>
-                      </>
-                    )}
-                    {isAdmin && (
+                <div className="flex items-center gap-1">
+                  {canRegisterMovements && (
+                    <>
                       <button
-                        onClick={() => openEditProductModal(p)}
-                        className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
-                        title="Editar produto"
+                        onClick={() => onOpenEntry(p)}
+                        className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-200 dark:border-emerald-800/50 cursor-pointer"
+                        title="Registrar Entrada (Compra/Doação)"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        + Entrada
                       </button>
-                    )}
-                  </div>
+                      <button
+                        onClick={() => onOpenExit(p)}
+                        className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 text-amber-600 dark:text-amber-400 font-bold text-xs border border-amber-200 dark:border-amber-800/50 cursor-pointer"
+                        title="Registrar Saída por Setor"
+                      >
+                        - Saída
+                      </button>
+                    </>
+                  )}
+                  {isAdmin && (
+                    <button
+                      onClick={() => openEditProductModal(p)}
+                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 cursor-pointer"
+                      title="Editar produto"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
-              </Card>
-            );
-          })}
-        </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
       ) : (
-        /* Executive Table View */
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-2xs overflow-hidden">
-          <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200/90 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        /* Executive Table View (Para Direção / Reunião de Estoque) */
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-4 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
-                <Table className="w-4 h-4 text-blue-600" />
-                <span>Tabela Executiva de Conferência de Estoque</span>
+              <h3 className="text-sm font-extrabold flex items-center gap-2">
+                <Table className="w-4 h-4 text-amber-400" />
+                <span>Tabela Executiva de Conferência de Estoque Real</span>
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Visão consolidada para reuniões de coordenação e decisões de compra.
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Visão consolidada do saldo físico atual e autonomia projetada para tomadas de decisão.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="blue" size="md">
-                {filteredProducts.length} itens listados
-              </Badge>
+            <div className="flex items-center gap-2 flex-wrap">
+              {onOpenReconciliationPreview && (
+                <button
+                  onClick={onOpenReconciliationPreview}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title="Abrir Prévia da Conciliação Física dos 14 produtos (Marco Zero)"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Prévia da Conciliação Física</span>
+                </button>
+              )}
+              <span className="text-xs font-bold px-3 py-1 bg-slate-800 rounded-lg text-emerald-400 border border-slate-700">
+                {filteredProducts.length} itens
+              </span>
             </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/60 dark:bg-slate-800/40 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                <tr className="bg-slate-100 dark:bg-slate-800/80 text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
                   <th className="p-3.5">Produto</th>
-                  <th className="p-3.5 bg-emerald-50/30 dark:bg-emerald-950/10 text-emerald-800 dark:text-emerald-300">Estoque Atual</th>
-                  <th className="p-3.5">Consumo Médio</th>
-                  <th className="p-3.5">Autonomia</th>
-                  <th className="p-3.5">Ponto de Reserva</th>
-                  <th className="p-3.5">Localização</th>
+                  <th className="p-3.5 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300">Estoque Real Atual</th>
+                  <th className="p-3.5">Consumo & Frequência</th>
+                  <th className="p-3.5">Autonomia Estimada</th>
+                  <th className="p-3.5">Ponto de Alerta</th>
+                  <th className="p-3.5">Local</th>
                   <th className="p-3.5 text-right">Ações</th>
                 </tr>
               </thead>
@@ -673,14 +587,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                   const detailedNote = getDetailedStockNote(p);
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="p-3.5 font-bold text-slate-900 dark:text-white">
                         <div className="flex flex-col">
                           <span className="text-sm font-black">{p.name}</span>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] text-slate-400 uppercase font-semibold">{p.category}</span>
+                            <span className="text-[10px] text-slate-400 uppercase">{p.category}</span>
                             {p.barcode && (
-                              <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded text-slate-600 dark:text-slate-400">
+                              <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">
                                 EAN: {p.barcode}
                               </span>
                             )}
@@ -688,12 +602,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                         </div>
                       </td>
 
-                      <td className="p-3.5 bg-emerald-50/20 dark:bg-emerald-950/5 font-black text-slate-900 dark:text-white">
+                      <td className="p-3.5 bg-emerald-50/30 dark:bg-emerald-950/10 font-black text-slate-900 dark:text-white">
                         <div className="flex items-baseline gap-1">
-                          <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400">
+                          <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
                             {p.currentStock}
                           </span>
-                          <span className="text-xs font-semibold text-slate-400 uppercase">{p.unit}s</span>
+                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{p.unit}s</span>
                         </div>
                         {detailedNote && (
                           <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium block mt-0.5">
@@ -704,18 +618,21 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
                       <td className="p-3.5 text-slate-700 dark:text-slate-300">
                         <div className="font-bold">{p.dailyAvgConsumption} {p.unit}/dia</div>
-                        <div className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold mt-0.5">
-                          {p.usageFrequency || 'Diário'}
+                        <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
+                          {p.usageFrequency || 'Uso Diário'}
                         </div>
                       </td>
 
                       <td className="p-3.5 font-bold">
-                        <Badge
-                          variant={days > 10 ? 'emerald' : days > 3 ? 'amber' : 'rose'}
-                          size="sm"
-                        >
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black ${
+                          days > 10
+                            ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
+                            : days > 3
+                            ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300'
+                            : 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300'
+                        }`}>
                           {days} {days === 1 ? 'dia' : 'dias'}
-                        </Badge>
+                        </span>
                       </td>
 
                       <td className="p-3.5 text-slate-600 dark:text-slate-400">
@@ -723,15 +640,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                         <span className="text-[10px] text-slate-400 block">({alertDaysNum}d de reserva)</span>
                       </td>
 
-                      <td className="p-3.5 text-slate-500 dark:text-slate-400 text-xs">
+                      <td className="p-3.5 text-slate-500 dark:text-slate-400 text-xs truncate max-w-[140px]">
                         {p.location}
                       </td>
 
                       <td className="p-3.5 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => onOpenTimeline(p)}
-                            className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-300 hover:bg-blue-100 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-300 hover:bg-blue-100 cursor-pointer"
                             title="Linha do Tempo"
                           >
                             <History className="w-3.5 h-3.5" />
@@ -740,14 +657,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                             <>
                               <button
                                 onClick={() => onOpenEntry(p)}
-                                className="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-bold text-xs hover:bg-emerald-100 transition-colors cursor-pointer"
+                                className="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 font-bold text-xs cursor-pointer"
                                 title="Entrada"
                               >
                                 +
                               </button>
                               <button
                                 onClick={() => onOpenExit(p)}
-                                className="px-2 py-1 rounded-lg bg-orange-50 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 font-bold text-xs hover:bg-orange-100 transition-colors cursor-pointer"
+                                className="px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 font-bold text-xs cursor-pointer"
                                 title="Saída"
                               >
                                 -
@@ -757,7 +674,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                           {isAdmin && (
                             <button
                               onClick={() => openEditProductModal(p)}
-                              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 cursor-pointer"
                               title="Editar"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -775,18 +692,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       )}
 
       {filteredProducts.length === 0 && (
-        <EmptyState
-          icon={<Package className="w-10 h-10" />}
-          title="Nenhum produto encontrado"
-          description="Nenhum item corresponde ao termo de busca ou filtros selecionados."
-          action={
-            isAdmin && (
-              <Button variant="primary" size="sm" onClick={() => openNewProductModal()}>
-                Cadastrar Novo Produto
-              </Button>
-            )
-          }
-        />
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center text-slate-500">
+          <Package className="w-12 h-12 mx-auto text-slate-400 mb-3" />
+          <p className="font-bold text-slate-700 dark:text-slate-300">Nenhum produto encontrado</p>
+          <p className="text-xs text-slate-400 mt-1">Tente ajustar o termo da busca ou bipar um novo código.</p>
+        </div>
       )}
 
       {/* Barcode Scanner Modal */}
@@ -798,214 +708,206 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       />
 
       {/* New/Edit Product Modal */}
-      <ModalWrapper
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingProd ? 'Editar Produto' : 'Cadastrar Novo Produto'}
-        subtitle="Preencha os detalhes e parâmetros de consumo do alimento"
-        icon={<Package className="w-5 h-5" />}
-        iconBgColor="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"
-        maxWidth="lg"
-      >
-        <form onSubmit={handleFormSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Nome do Alimento / Item *
-            </label>
-            <input
-              type="text"
-              placeholder="Ex: Arroz Tipo 1 ou Leite Integral"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-              required
-            />
-          </div>
-
-          {/* Barcode Field */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Código de Barras (EAN-13 / QrCode)
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Ex: 7891000100101"
-                value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
-                className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                leftIcon={<Camera className="w-3.5 h-3.5 text-amber-500" />}
-                onClick={() => setIsScannerOpen(true)}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-slate-800">
+              <h3 className="text-lg font-bold text-white">
+                {editingProd ? 'Editar Produto' : 'Cadastrar Novo Produto'}
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
               >
-                Bipar
-              </Button>
+                <X className="w-5 h-5" />
+              </button>
             </div>
+
+            <form onSubmit={handleFormSubmit} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Nome do Alimento / Item</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Arroz Tipo 1 ou Leite Integral"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+
+              {/* Barcode Field */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Código de Barras (EAN-13 / QrCode)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Ex: 7891000100101"
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs font-mono text-amber-400 focus:outline-none focus:border-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsScannerOpen(true)}
+                    className="px-3 py-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold hover:bg-amber-500/30 flex items-center gap-1"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Bipar</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Categoria</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as Category)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                  >
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Unidade</label>
+                  <select
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value as Unit)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                  >
+                    {UNITS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                    <span>Estoque Atual ({unit})</span>
+                    {editingProd && (
+                      <span className="text-[10px] text-amber-400 font-normal flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Gerenciado por Lançamentos
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    disabled={!!editingProd}
+                    value={currentStock}
+                    onChange={(e) => setCurrentStock(e.target.value)}
+                    className={`w-full border rounded-xl px-3 py-2 text-sm font-bold ${
+                      editingProd
+                        ? 'bg-slate-800/60 border-slate-700 text-emerald-400 cursor-not-allowed opacity-90'
+                        : 'bg-slate-800 border-slate-700 text-white focus:outline-none focus:border-emerald-500'
+                    }`}
+                  />
+                  {editingProd && (
+                    <span className="text-[10px] text-slate-400 block mt-1">
+                      Para alterar o saldo físico, faça uma Entrada, Saída ou Ajuste de Inventário.
+                    </span>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-amber-400 mb-1">Consumo Diário ({unit}/dia)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={dailyAvgConsumption}
+                    onChange={(e) => handleDailyConsumptionChange(e.target.value)}
+                    className="w-full bg-slate-800 border border-amber-500/40 rounded-xl px-3 py-2 text-sm text-amber-400 font-bold focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 bg-slate-800/50 p-3 rounded-xl border border-slate-700/60">
+                <div>
+                  <label className="block text-xs font-bold text-rose-300 mb-1 flex items-center gap-1">
+                    <BellRing className="w-3.5 h-3.5 text-rose-400" />
+                    Alerta em (Dias)
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    value={alertDays}
+                    onChange={(e) => handleAlertDaysChange(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-sm text-white font-bold focus:outline-none focus:border-rose-400"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-1">Gera alerta se durar menos que N dias</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Estoque Mínimo ({unit})</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={minStock}
+                    onChange={(e) => setMinStock(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-bold"
+                  />
+                  <span className="text-[10px] text-slate-400 block mt-1">= Consumo ({dailyAvgConsumption}) × {alertDays} dias</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Frequência / Padrão de Uso</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Diário, Quartas e Domingos..."
+                    value={usageFrequency}
+                    onChange={(e) => setUsageFrequency(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Local de Armazenamento</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Depósito Principal"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Salvar Produto</span>
+                </button>
+              </div>
+            </form>
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Categoria
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as Category)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
-              >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Unidade de Medida
-              </label>
-              <select
-                value={unit}
-                onChange={(e) => setUnit(e.target.value as Unit)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
-              >
-                {UNITS.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                <span>Estoque Atual ({unit})</span>
-                {editingProd && (
-                  <span className="text-[10px] text-slate-400 font-normal flex items-center gap-1">
-                    <Lock className="w-3 h-3" /> Bloqueado
-                  </span>
-                )}
-              </label>
-              <input
-                type="number"
-                step="any"
-                disabled={!!editingProd}
-                value={currentStock}
-                onChange={(e) => setCurrentStock(e.target.value)}
-                className={`w-full border rounded-xl px-3 py-2 text-sm font-bold ${
-                  editingProd
-                    ? 'bg-slate-100 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border-slate-200 dark:border-slate-700 cursor-not-allowed'
-                    : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white'
-                }`}
-              />
-              {editingProd && (
-                <span className="text-[10px] text-slate-400 block mt-1">
-                  Altere via Entrada, Saída ou Ajuste de Inventário.
-                </span>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Consumo Diário ({unit}/dia)
-              </label>
-              <input
-                type="number"
-                step="any"
-                value={dailyAvgConsumption}
-                onChange={(e) => handleDailyConsumptionChange(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700">
-            <div>
-              <label className="block text-xs font-bold text-rose-600 dark:text-rose-400 mb-1 flex items-center gap-1">
-                <BellRing className="w-3.5 h-3.5" />
-                Alerta em (Dias)
-              </label>
-              <input
-                type="number"
-                step="1"
-                min="1"
-                value={alertDays}
-                onChange={(e) => handleAlertDaysChange(e.target.value)}
-                className="w-full bg-white dark:bg-slate-900 border border-rose-300 dark:border-rose-800 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 dark:text-white"
-              />
-              <span className="text-[10px] text-slate-400 block mt-1">Alerta se durar menos que N dias</span>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Estoque Mínimo ({unit})
-              </label>
-              <input
-                type="number"
-                step="any"
-                value={minStock}
-                onChange={(e) => setMinStock(e.target.value)}
-                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 dark:text-white"
-              />
-              <span className="text-[10px] text-slate-400 block mt-1">= Consumo × {alertDays} dias</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Frequência de Uso
-              </label>
-              <input
-                type="text"
-                placeholder="Ex: Diário, Quartas/Domingos"
-                value={usageFrequency}
-                onChange={(e) => setUsageFrequency(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Local de Armazenamento
-              </label>
-              <input
-                type="text"
-                placeholder="Ex: Depósito Principal"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              onClick={() => setIsModalOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="md"
-              leftIcon={<Check className="w-4 h-4" />}
-            >
-              Salvar Produto
-            </Button>
-          </div>
-        </form>
-      </ModalWrapper>
+        </div>
+      )}
     </div>
   );
 };
+

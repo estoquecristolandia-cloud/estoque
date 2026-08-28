@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
-import { ArrowDownLeft, Check, Camera, Loader2, Package } from 'lucide-react';
+import { X, ArrowDownLeft, Check, Camera, Loader2 } from 'lucide-react';
 import { Product, EntryType } from '../types';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { getTodayDateString, getNowTimeString } from '../utils/storage';
-import { ModalWrapper } from './ui/ModalWrapper';
-import { Button } from './ui/Button';
 
 interface EntryModalProps {
   products: Product[];
@@ -89,7 +87,7 @@ export const EntryModal: React.FC<EntryModalProps> = ({
   };
 
   return (
-    <>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
       {/* Scanner Sub-Modal */}
       <BarcodeScannerModal
         isOpen={isScannerOpen}
@@ -98,18 +96,31 @@ export const EntryModal: React.FC<EntryModalProps> = ({
         products={products}
       />
 
-      <ModalWrapper
-        isOpen={true}
-        onClose={onClose}
-        title="Nova Entrada no Estoque"
-        subtitle="Registrar compras ou doações recebidas na Cristolândia"
-        icon={<ArrowDownLeft className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
-        iconBgColor="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
-        maxWidth="lg"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-900">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-600/20 border border-emerald-500/30 text-emerald-400">
+              <ArrowDownLeft className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Nova Entrada no Estoque</h3>
+              <p className="text-xs text-slate-400">Registrar compras ou doações recebidas</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {error && (
-            <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
               {error}
             </div>
           )}
@@ -117,19 +128,18 @@ export const EntryModal: React.FC<EntryModalProps> = ({
           {/* Product selection with Scanner trigger */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Produto <span className="text-rose-500">*</span>
+              <label className="text-xs font-semibold text-slate-300">
+                Produto <span className="text-rose-400">*</span>
               </label>
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                leftIcon={<Camera className="w-3.5 h-3.5 text-amber-500" />}
                 onClick={() => setIsScannerOpen(true)}
                 disabled={isSubmitting}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold cursor-pointer transition-all disabled:opacity-50"
               >
-                Bipar Câmera
-              </Button>
+                <Camera className="w-3.5 h-3.5" />
+                <span>Bipar Câmera</span>
+              </button>
             </div>
             <select
               value={productId}
@@ -138,7 +148,7 @@ export const EntryModal: React.FC<EntryModalProps> = ({
                 setError('');
               }}
               disabled={isSubmitting}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50"
             >
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -151,18 +161,14 @@ export const EntryModal: React.FC<EntryModalProps> = ({
           {/* Type & Quantity */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Tipo de Entrada
-              </label>
-              <div className="grid grid-cols-2 gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Tipo de Entrada</label>
+              <div className="grid grid-cols-2 gap-1.5 bg-slate-800 p-1 rounded-xl border border-slate-700">
                 <button
                   type="button"
                   onClick={() => setEntryType('Compra')}
                   disabled={isSubmitting}
                   className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                    entryType === 'Compra'
-                      ? 'bg-emerald-600 text-white shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    entryType === 'Compra' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   🛒 Compra
@@ -172,9 +178,7 @@ export const EntryModal: React.FC<EntryModalProps> = ({
                   onClick={() => setEntryType('Doação')}
                   disabled={isSubmitting}
                   className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                    entryType === 'Doação'
-                      ? 'bg-blue-600 text-white shadow-2xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                    entryType === 'Doação' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   🎁 Doação
@@ -183,8 +187,8 @@ export const EntryModal: React.FC<EntryModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Quantidade ({targetProd?.unit || 'unid'}) <span className="text-rose-500">*</span>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Quantidade ({targetProd?.unit || 'unid'}) <span className="text-rose-400">*</span>
               </label>
               <input
                 type="number"
@@ -193,7 +197,7 @@ export const EntryModal: React.FC<EntryModalProps> = ({
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 disabled={isSubmitting}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white font-extrabold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white font-bold focus:outline-none focus:border-emerald-500 disabled:opacity-50"
                 required
               />
             </div>
@@ -201,9 +205,8 @@ export const EntryModal: React.FC<EntryModalProps> = ({
 
           {/* Supplier or Donor */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              {entryType === 'Compra' ? 'Fornecedor / Mercado' : 'Nome do Doador / Entidade'}{' '}
-              <span className="text-rose-500">*</span>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">
+              {entryType === 'Compra' ? 'Fornecedor / Mercado' : 'Nome do Doador / Entidade'} <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
@@ -211,7 +214,7 @@ export const EntryModal: React.FC<EntryModalProps> = ({
               value={supplierOrDonor}
               onChange={(e) => setSupplierOrDonor(e.target.value)}
               disabled={isSubmitting}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50"
               required
             />
           </div>
@@ -219,8 +222,8 @@ export const EntryModal: React.FC<EntryModalProps> = ({
           {/* Received by & Date/Time */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Recebido por <span className="text-rose-500">*</span>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Recebido por <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
@@ -228,29 +231,27 @@ export const EntryModal: React.FC<EntryModalProps> = ({
                 value={receivedBy}
                 onChange={(e) => setReceivedBy(e.target.value)}
                 disabled={isSubmitting}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Data / Horário
-              </label>
-              <div className="grid grid-cols-2 gap-1.5">
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Data / Horário</label>
+              <div className="grid grid-cols-2 gap-1">
                 <input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   disabled={isSubmitting}
-                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50"
                 />
                 <input
                   type="time"
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
                   disabled={isSubmitting}
-                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50"
                 />
               </div>
             </div>
@@ -258,42 +259,47 @@ export const EntryModal: React.FC<EntryModalProps> = ({
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Observações (opcional)
-            </label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Observações (opcional)</label>
             <input
               type="text"
-              placeholder="Ex: Nota fiscal nº 4021 ou campanha especial"
+              placeholder="Ex: Nota fiscal nº 4021 ou doação de campanha de alimentos"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               disabled={isSubmitting}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500 disabled:opacity-50"
             />
           </div>
 
           {/* Footer buttons */}
-          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <Button
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+            <button
               type="button"
-              variant="outline"
-              size="md"
               onClick={onClose}
               disabled={isSubmitting}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer disabled:opacity-50"
             >
               Cancelar
-            </Button>
-            <Button
+            </button>
+            <button
               type="submit"
-              variant="emerald"
-              size="md"
-              isLoading={isSubmitting}
-              leftIcon={<Check className="w-4 h-4" />}
+              disabled={isSubmitting}
+              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
             >
-              Confirmar Entrada
-            </Button>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Gravando no Estoque...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Confirmar Entrada</span>
+                </>
+              )}
+            </button>
           </div>
         </form>
-      </ModalWrapper>
-    </>
+      </div>
+    </div>
   );
 };
