@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye } from 'lucide-react';
+import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye, Bot, Sparkles } from 'lucide-react';
 import { AppUserProfile, ROLE_LABELS } from '../firebase';
 
 interface HeaderProps {
-  activeTab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports';
-  setActiveTab: (tab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports') => void;
+  activeTab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports' | 'ai_assistant';
+  setActiveTab: (tab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports' | 'ai_assistant') => void;
   onOpenKitModal: () => void;
   onOpenPhysicalInventory?: () => void;
   onOpenReconciliationPreview?: () => void;
@@ -44,6 +44,12 @@ export const Header: React.FC<HeaderProps> = ({
       label: isAdmin ? 'Painel Principal' : 'Painel de Consulta',
       icon: LayoutDashboard,
       activeColor: 'bg-blue-600/20 text-blue-400',
+    },
+    {
+      id: 'ai_assistant' as const,
+      label: '🤖 Assistente IA',
+      icon: Bot,
+      activeColor: 'bg-emerald-600/20 text-emerald-400 font-bold',
     },
     {
       id: 'products' as const,

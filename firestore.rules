@@ -6,12 +6,19 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return signedIn() && request.auth.token.email != null && request.auth.token.email.lower() == 'estoquecristolandia@gmail.com';
+      return signedIn() && request.auth.token.email != null && (
+        request.auth.token.email.lower() == 'estoquecristolandia@gmail.com' ||
+        request.auth.token.email.lower() == 'admin@app.local' ||
+        request.auth.token.email.lower() == 'marconi@app.local' ||
+        request.auth.token.email.lower() == 'marconi.cristolandia@gmail.com' ||
+        request.auth.token.email.lower().matches('^admin@.*') ||
+        request.auth.token.email.lower().matches('^marconi@.*')
+      );
     }
 
     match /users/{userId} {
       allow read: if signedIn();
-      allow create, update: if signedIn() && request.auth.uid == userId;
+      allow create, update: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow delete: if isAdmin();
     }
 
@@ -32,7 +39,8 @@ service cloud.firestore {
 
     match /meals/{mealId} {
       allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
     }
 
     match /missionaries/{missionaryId} {
@@ -48,6 +56,10 @@ service cloud.firestore {
     match /inventory_sessions/{sessionId} {
       allow read: if signedIn();
       allow create, update, delete: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

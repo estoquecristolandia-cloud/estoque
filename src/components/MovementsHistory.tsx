@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { StockMovement, Product, Sector, EntryType } from '../types';
 import { UserRole } from '../firebase';
 import { getTodayDateString } from '../utils/storage';
+import { toast } from '../utils/toast';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -145,12 +146,12 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
     if (!editingMovement || !onUpdateMovement) return;
 
     if (!editFormData.productId) {
-      alert('Selecione um produto.');
+      toast.error('Selecione um produto.');
       return;
     }
 
     if (!editFormData.quantity || Number(editFormData.quantity) <= 0) {
-      alert('Informe uma quantidade válida maior que zero.');
+      toast.error('Informe uma quantidade válida maior que zero.');
       return;
     }
 
@@ -171,9 +172,10 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
         notes: editFormData.notes,
       });
 
+      toast.success('Movimentação atualizada com sucesso!');
       setEditingMovement(null);
     } catch (err: any) {
-      alert(err.message || 'Erro ao salvar alteração');
+      toast.error(err.message || 'Erro ao salvar alteração');
     } finally {
       setIsSavingEdit(false);
     }
@@ -185,9 +187,10 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
     try {
       setIsDeleting(true);
       await onDeleteMovement(deletingMovement.id);
+      toast.success('Movimentação excluída com sucesso!');
       setDeletingMovement(null);
     } catch (err: any) {
-      alert(err.message || 'Erro ao excluir movimentação');
+      toast.error(err.message || 'Erro ao excluir movimentação');
     } finally {
       setIsDeleting(false);
     }

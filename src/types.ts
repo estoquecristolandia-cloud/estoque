@@ -86,3 +86,62 @@ export interface InventorySessionSummary {
   createdAt: string;
   userEmail?: string;
 }
+
+export type AiConfidenceLevel = 'high' | 'medium' | 'low';
+
+export interface AiCalculatedMetric {
+  label: string;
+  value: string | number;
+  unit?: string;
+  badge?: string;
+}
+
+export interface AiCalculationBase {
+  periodAnalyzed: string;
+  productFiltered?: string;
+  responsibleFiltered?: string;
+  sectorFiltered?: string;
+  movementsCount: number;
+  totalQuantity: number;
+  unit?: string;
+  filtersUsed: string[];
+  movementsSummary?: Array<{
+    id?: string;
+    date: string;
+    time?: string;
+    quantity: number;
+    unit: string;
+    type: 'entrada' | 'saida' | 'ajuste';
+    productName: string;
+    responsible?: string;
+    sector?: string;
+    notes?: string;
+  }>;
+}
+
+export interface AiAssistantResponse {
+  query: string;
+  intent: string;
+  summary: string;
+  confidence: AiConfidenceLevel;
+  confidenceReason?: string;
+  metrics: AiCalculatedMetric[];
+  calculationBase: AiCalculationBase;
+  detailedAnalysis: string;
+  insights: string[];
+  suggestedFollowUps: string[];
+  timestamp: string;
+  fallbackMode?: boolean;
+}
+
+export interface AiQueryAuditLog {
+  id: string;
+  timestamp: string;
+  userEmail?: string;
+  userName?: string;
+  query: string;
+  intent: string;
+  summary: string;
+  movementsCount: number;
+}
+

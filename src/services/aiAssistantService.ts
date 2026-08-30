@@ -1,0 +1,114 @@
+import { AiAssistantResponse, AiQueryAuditLog, Product, StockMovement, DailyMealRecord, DailyKit, Missionary, InventoryAudit, InventorySessionSummary } from '../types';
+import { executeDeterministicStockQuery } from './aiStockEngine';
+
+const AUDIT_LOGS_KEY = 'cristolandia_ai_query_logs';
+
+export function getAiAuditLogs(): AiQueryAuditLog[] {
+  try {
+    const raw = localStorage.getItem(AUDIT_LOGS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveAiAuditLog(log: Omit<AiQueryAuditLog, 'id' | 'timestamp'>): void {
+  try {
+    const existing = getAiAuditLogs();
+    const newEntry: AiQueryAuditLog = {
+      ...log,
+      id: `ai-log-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: new Date().toISOString(),
+    };
+    const updated = [newEntry, ...existing].slice(0, 100);
+    localStorage.setItem(AUDIT_LOGS_KEY, JSON.stringify(updated));
+  } catch (err) {
+    console.warn('Não foi possível persistir log de auditoria da IA:', err);
+  }
+}
+
+export async function askGeminiAiAssistant(
+  prompt: string,
+  products: Product[],
+  movements: StockMovement[],
+  meals: DailyMealRecord[],
+  dailyKit: DailyKit,
+  missionaries: Missionary[],
+  inventoryAudits: InventoryAudit[] = [],
+  inventorySessions: InventorySessionSummary[] = [],
+  currentUser?: { displayName?: string; email?: string; role?: string } | null
+): Promise<AiAssistantResponse> {
+  // 1. Executar cálculo determinístico e exato no código do sistema
+  const deterministicResult = executeDeterministicStockQuery(
+    prompt,
+    products,
+    movements,
+    meals,
+    dailyKit,
+    missionaries,
+    inventoryAudits,
+    inventorySessions
+  );
+
+  // 2. Chamar o backend seguro com o Gemini
+  try {
+    const response = await fetch('/api/ai/ask', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt,
+        deterministicResult,
+        user: {
+          displayName: currentUser?.displayName || 'Usuário Cristolândia',
+          email: currentUser?.email || 'anônimo',
+          role: currentUser?.role || 'viewer',
+        },
+      }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.summary) {
+        // Salvar log auditável
+        saveAiAuditLog({
+          userEmail: currentUser?.email,
+          userName: currentUser?.displayName,
+          query: prompt,
+          intent: data.intent || deterministicResult.intent,
+          summary: data.summary,
+          movementsCount: deterministicResult.calculationBase.movementsCount,
+        });
+
+        return {
+          ...deterministicResult,
+          summary: data.summary,
+          detailedAnalysis: data.detailedAnalysis || deterministicResult.detailedAnalysis,
+          insights: data.insights && data.insights.length > 0 ? data.insights : deterministicResult.insights,
+          suggestedFollowUps: data.suggestedFollowUps && data.suggestedFollowUps.length > 0 ? data.suggestedFollowUps : deterministicResult.suggestedFollowUps,
+          confidence: data.confidence || deterministicResult.confidence,
+          confidenceReason: data.confidenceReason || deterministicResult.confidenceReason,
+          fallbackMode: false,
+        };
+      }
+    }
+  } catch (err) {
+    console.info('Assistente utilizando modo determinístico local (Gemini offline ou chave em configuração):', err);
+  }
+
+  // Fallback seguro caso o servidor do Gemini esteja inacessível
+  saveAiAuditLog({
+    userEmail: currentUser?.email,
+    userName: currentUser?.displayName,
+    query: prompt,
+    intent: deterministicResult.intent,
+    summary: deterministicResult.summary,
+    movementsCount: deterministicResult.calculationBase.movementsCount,
+  });
+
+  return {
+    ...deterministicResult,
+    fallbackMode: true,
+  };
+}

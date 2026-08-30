@@ -19,6 +19,7 @@ import { ProductManager } from './components/ProductManager';
 import { MovementsHistory } from './components/MovementsHistory';
 import { MealManager } from './components/MealManager';
 import { ReportsView } from './components/ReportsView';
+import { AiAssistantView } from './components/AiAssistantView';
 import { AuthModal } from './components/AuthModal';
 import { MissionaryManagerModal } from './components/MissionaryManagerModal';
 import { WhatsAppAlertModal } from './components/WhatsAppAlertModal';
@@ -48,7 +49,7 @@ export default function App() {
   const [allUsers, setAllUsers] = useState<AppUserProfile[]>([]);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const handleLogout = async () => { const { logoutUser } = await import('./firebase'); await logoutUser(); setCurrentUser(null); };
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports' | 'ai_assistant'>('dashboard');
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
   const [isExitModalOpen, setIsExitModalOpen] = useState(false);
   const [isKitModalOpen, setIsKitModalOpen] = useState(false);
@@ -295,6 +296,20 @@ export default function App() {
 
             <DashboardCharts products={products} movements={movements} />
           </motion.div>}
+          {activeTab === 'ai_assistant' && (
+            <motion.div key="ai_assistant" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <AiAssistantView
+                products={products}
+                movements={movements}
+                meals={meals}
+                dailyKit={dailyKit}
+                missionaries={missionaries}
+                inventoryAudits={inventoryAudits}
+                inventorySessions={inventorySessions}
+                currentUser={currentUser}
+              />
+            </motion.div>
+          )}
           {activeTab === 'products' && <ProductManager products={products} onOpenTimeline={handleOpenTimeline} onOpenEntry={handleOpenEntryModal} onOpenExit={handleOpenExitModal} onSaveProduct={handleSaveProduct} onAddProduct={handleAddProduct} userRole={currentUser.role} onOpenReconciliationPreview={() => setIsReconciliationPreviewOpen(true)} />}
           {activeTab === 'entries' && <div className="space-y-6"><div className="flex items-center justify-between bg-white border border-slate-200 rounded-3xl p-6 shadow-sm"><div><h2 className="text-lg font-bold text-slate-900">Entradas no Estoque (Compras e Doações)</h2><p className="text-xs text-slate-500">Rastreio de todos os mantimentos recebidos na Cristolândia</p></div>{currentUser.role === 'admin' && <button onClick={() => handleOpenEntryModal(null)} className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer">+ Nova Entrada</button>}</div><MovementsHistory movements={movements.filter((m) => m.type === 'entrada')} products={products} userRole={currentUser.role} onOpenProductTimeline={handleOpenTimelineById} onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)} onOpenExitForDate={(d) => handleOpenExitModal(null, d)} onUpdateMovement={handleUpdateMovement} onDeleteMovement={handleDeleteMovement} /></div>}
           {activeTab === 'exits' && <div className="space-y-6"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm"><div><h2 className="text-lg font-bold text-slate-900">Saídas do Estoque por Setor</h2><p className="text-xs text-slate-500">Entrega de mantimentos para a Cozinha, Casa Masculina, Casa Feminina e Eventos</p></div><div className="flex items-center gap-2"><button onClick={() => setIsKitModalOpen(true)} className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer flex items-center gap-2"><Utensils className="w-4 h-4" /><span>{currentUser.role === 'admin' ? '+ Kit Cozinha Diário' : 'Visualizar Kit Cozinha'}</span></button>{currentUser.role === 'admin' && <button onClick={() => handleOpenExitModal(null)} className="px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer">Nova Saída</button>}</div></div><MovementsHistory movements={movements.filter((m) => m.type === 'saida')} products={products} userRole={currentUser.role} onOpenProductTimeline={handleOpenTimelineById} onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)} onOpenExitForDate={(d) => handleOpenExitModal(null, d)} onUpdateMovement={handleUpdateMovement} onDeleteMovement={handleDeleteMovement} /></div>}

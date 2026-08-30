@@ -1,0 +1,192 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Item de estoque ou mantimento da Cristolândia",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "category": { "type": "string", "maxLength": 100 },
+        "unit": { "type": "string", "maxLength": 30 },
+        "currentStock": { "type": "number" },
+        "minStock": { "type": "number" },
+        "idealStock": { "type": "number" },
+        "dailyAvgConsumption": { "type": "number" },
+        "alertDays": { "type": "number" },
+        "usageFrequency": { "type": "string", "maxLength": 100 },
+        "location": { "type": "string", "maxLength": 150 },
+        "barcode": { "type": "string", "maxLength": 64 },
+        "lastUpdated": { "type": "string", "maxLength": 64 },
+        "lastOperationId": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["id", "name", "category", "unit", "currentStock", "minStock", "dailyAvgConsumption", "location"]
+    },
+    "StockMovement": {
+      "title": "StockMovement",
+      "description": "Movimentação transacional de entrada, saída ou ajuste de estoque",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "operationId": { "type": "string", "maxLength": 128 },
+        "productId": { "type": "string", "maxLength": 128 },
+        "productName": { "type": "string", "maxLength": 200 },
+        "unit": { "type": "string", "maxLength": 30 },
+        "type": { "type": "string", "enum": ["entrada", "saida", "ajuste"] },
+        "quantity": { "type": "number" },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 20 },
+        "entryType": { "type": "string", "maxLength": 50 },
+        "supplierOrDonor": { "type": "string", "maxLength": 200 },
+        "receivedBy": { "type": "string", "maxLength": 200 },
+        "sector": { "type": "string", "maxLength": 150 },
+        "retrievedBy": { "type": "string", "maxLength": 200 },
+        "deliveredBy": { "type": "string", "maxLength": 200 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "reason": { "type": "string", "maxLength": 500 },
+        "previousStock": { "type": "number" },
+        "physicalStock": { "type": "number" },
+        "difference": { "type": "number" },
+        "userUid": { "type": "string", "maxLength": 128 },
+        "userEmail": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["id", "productId", "productName", "unit", "type", "quantity", "date"]
+    },
+    "DailyKit": {
+      "title": "DailyKit",
+      "description": "Modelo de Kit Diário para a cozinha ou outros setores",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 500 },
+        "sector": { "type": "string", "maxLength": 100 },
+        "defaultRetriever": { "type": "string", "maxLength": 150 },
+        "defaultDeliverer": { "type": "string", "maxLength": 150 },
+        "items": { "type": "array" }
+      },
+      "required": ["id", "name", "sector", "items"]
+    },
+    "DailyMealRecord": {
+      "title": "DailyMealRecord",
+      "description": "Registro diário de contagem de refeições servidas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "breakfast": { "type": "number" },
+        "lunch": { "type": "number" },
+        "afternoonSnack": { "type": "number" },
+        "dinner": { "type": "number" },
+        "totalMeals": { "type": "number" },
+        "responsible": { "type": "string", "maxLength": 150 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "date", "breakfast", "lunch", "afternoonSnack", "dinner", "totalMeals", "responsible"]
+    },
+    "Missionary": {
+      "title": "Missionary",
+      "description": "Missionário ou colaborador da Cristolândia",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "maxLength": 150 },
+        "sector": { "type": "string", "maxLength": 150 },
+        "shift": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["id", "name", "role", "sector"]
+    },
+    "InventoryAudit": {
+      "title": "InventoryAudit",
+      "description": "Auditoria de contagem física e ajuste de saldo",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "productId": { "type": "string", "maxLength": 128 },
+        "productName": { "type": "string", "maxLength": 200 },
+        "unit": { "type": "string", "maxLength": 30 },
+        "previousStock": { "type": "number" },
+        "physicalStock": { "type": "number" },
+        "difference": { "type": "number" },
+        "reason": { "type": "string", "maxLength": 500 },
+        "responsible": { "type": "string", "maxLength": 150 },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 20 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "userUid": { "type": "string", "maxLength": 128 },
+        "userEmail": { "type": "string", "maxLength": 200 },
+        "notes": { "type": "string", "maxLength": 1000 }
+      },
+      "required": ["id", "productId", "productName", "unit", "previousStock", "physicalStock", "difference", "reason", "responsible", "date"]
+    },
+    "InventorySessionSummary": {
+      "title": "InventorySessionSummary",
+      "description": "Sessão oficial de inventário físico e marco zero",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "date": { "type": "string", "maxLength": 20 },
+        "time": { "type": "string", "maxLength": 20 },
+        "responsible": { "type": "string", "maxLength": 150 },
+        "totalProducts": { "type": "number" },
+        "checkedCount": { "type": "number" },
+        "divergentCount": { "type": "number" },
+        "adjustedCount": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "userEmail": { "type": "string", "maxLength": 200 }
+      },
+      "required": ["id", "date", "time", "responsible", "totalProducts", "checkedCount", "divergentCount", "adjustedCount"]
+    },
+    "AppUserProfile": {
+      "title": "AppUserProfile",
+      "description": "Perfil de usuário e privilégios no sistema",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 200 },
+        "displayName": { "type": "string", "maxLength": 150 },
+        "role": { "type": "string", "enum": ["admin", "viewer", "cozinha", "coordenacao", "pendente"] },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["uid", "email", "displayName", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Catálogo de mantimentos e saldos atuais no estoque."
+    },
+    "/movements/{movementId}": {
+      "schema": "StockMovement",
+      "description": "Histórico auditável e transações de entrada, saída e ajuste."
+    },
+    "/kits/{kitId}": {
+      "schema": "DailyKit",
+      "description": "Modelos de kits diários de abastecimento."
+    },
+    "/meals/{mealId}": {
+      "schema": "DailyMealRecord",
+      "description": "Contagem de refeições servidas diariamente."
+    },
+    "/missionaries/{missionaryId}": {
+      "schema": "Missionary",
+      "description": "Missionários, casas acolhidas e turnos."
+    },
+    "/inventory_audits/{auditId}": {
+      "schema": "InventoryAudit",
+      "description": "Histórico de auditoria física e ajustes de conciliação."
+    },
+    "/inventory_sessions/{sessionId}": {
+      "schema": "InventorySessionSummary",
+      "description": "Sessões consolidadas de inventário e marco zero."
+    },
+    "/users/{userId}": {
+      "schema": "AppUserProfile",
+      "description": "Perfis de usuários e permissões de acesso."
+    }
+  }
+}
