@@ -8,7 +8,7 @@ export type Category =
   | 'Higiene e Limpeza' 
   | 'Outros';
 export type Unit = 'kg' | 'litro' | 'pacote' | 'caixa' | 'unidade' | 'lata' | 'g' | 'balde';
-export type Sector = 'Cozinha' | 'Padaria' | 'Casa Missionária Masculina' | 'Casa Missionária Feminina' | 'Administração' | 'Casa da Coordenação (Huberto & Débora)' | 'Casa Lana & Joabe (Cesta Básica)' | 'Casa Marcos & Fabíola (Cesta Básica)' | 'Casa Tainã (Cesta Básica)' | 'Eventos' | 'Outros';
+export type Sector = 'Cozinha' | 'Padaria' | 'Cantina' | 'Casa Missionária Masculina' | 'Casa Missionária Feminina' | 'Administração' | 'Casa da Coordenação (Huberto & Débora)' | 'Casa Lana & Joabe (Cesta Básica)' | 'Casa Marcos & Fabíola (Cesta Básica)' | 'Casa Tainã (Cesta Básica)' | 'Eventos' | 'Outros';
 export type EntryType = 'Compra' | 'Doação' | 'Ajuste de Estoque' | 'Contagem Inicial';
 export type KitchenShift = 'Café / Manhã' | 'Almoço' | 'Jantar / Tarde' | 'Ceia / Lanche';
 

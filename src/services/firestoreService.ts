@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db, AppUserProfile, UserRole } from '../firebase';
 import { Product, StockMovement, DailyKit, DailyMealRecord, EntryType, Sector, InventoryAudit, InventorySessionSummary } from '../types';
-import { INITIAL_PRODUCTS, DEFAULT_DAILY_KIT } from '../data/initialData';
+import { INITIAL_PRODUCTS, INITIAL_MOVEMENTS, DEFAULT_DAILY_KIT } from '../data/initialData';
 
 const PRODUCTS_COLLECTION = 'products';
 const MOVEMENTS_COLLECTION = 'movements';
@@ -243,99 +243,166 @@ export async function syncInitialFirestoreData(): Promise<void> {
 
   const marcoZeroRef = doc(db, INVENTORY_SESSIONS_COLLECTION, MARCO_ZERO_SESSION_ID);
   const marcoZeroSnap = await getDoc(marcoZeroRef);
-  if (marcoZeroSnap.exists()) return;
+  if (!marcoZeroSnap.exists()) {
+    const currentProductsSnap = await getDocs(collection(db, PRODUCTS_COLLECTION));
+    const currentById = new Map(currentProductsSnap.docs.map((d) => [d.id, d.data() as Product]));
+    const baselineBatch = writeBatch(db);
+    const now = new Date().toISOString();
+    const auditDate = '2026-08-21';
+    const auditTime = '17:30';
+    let baselineWrites = 0;
+    let adjustedCount = 0;
 
-  const currentProductsSnap = await getDocs(collection(db, PRODUCTS_COLLECTION));
-  const currentById = new Map(currentProductsSnap.docs.map((d) => [d.id, d.data() as Product]));
-  const baselineBatch = writeBatch(db);
-  const now = new Date().toISOString();
-  const auditDate = '2026-08-21';
-  const auditTime = '17:30';
-  let baselineWrites = 0;
-  let adjustedCount = 0;
+    for (const baselineProduct of INITIAL_PRODUCTS) {
+      const currentProduct = currentById.get(baselineProduct.id);
+      if (!currentProduct) continue;
 
-  for (const baselineProduct of INITIAL_PRODUCTS) {
-    const currentProduct = currentById.get(baselineProduct.id);
-    if (!currentProduct) continue;
+      const previousStock = round2(Number(currentProduct.currentStock || 0));
+      const physicalStock = round2(Number(baselineProduct.currentStock || 0));
+      const difference = round2(physicalStock - previousStock);
 
-    const previousStock = round2(Number(currentProduct.currentStock || 0));
-    const physicalStock = round2(Number(baselineProduct.currentStock || 0));
-    const difference = round2(physicalStock - previousStock);
+      if (difference === 0) continue;
 
-    if (difference === 0) continue;
+      const opId = `adj-marco-zero-20260821-${baselineProduct.id}`;
+      const reason = 'Conciliação física e estabelecimento de Marco Zero — contagem e recontagem física realizada em 21/08/2026.';
 
-    const opId = `adj-marco-zero-20260821-${baselineProduct.id}`;
-    const reason = 'Conciliação física e estabelecimento de Marco Zero — contagem e recontagem física realizada em 21/08/2026.';
+      const movement: StockMovement = {
+        id: opId,
+        operationId: opId,
+        productId: currentProduct.id,
+        productName: currentProduct.name,
+        unit: currentProduct.unit,
+        type: 'ajuste',
+        quantity: Math.abs(difference),
+        date: auditDate,
+        time: auditTime,
+        responsible: 'Marconi Castro (Gestor do Estoque)',
+        reason,
+        previousStock,
+        physicalStock,
+        difference,
+        notes: `[Ajuste de Inventário / Marco Zero]: De ${previousStock} ${currentProduct.unit} para ${physicalStock} ${currentProduct.unit}. ${reason}`,
+        createdAt: now,
+      };
 
-    const movement: StockMovement = {
-      id: opId,
-      operationId: opId,
-      productId: currentProduct.id,
-      productName: currentProduct.name,
-      unit: currentProduct.unit,
-      type: 'ajuste',
-      quantity: Math.abs(difference),
+      const audit: InventoryAudit = {
+        id: opId,
+        productId: currentProduct.id,
+        productName: currentProduct.name,
+        unit: currentProduct.unit,
+        previousStock,
+        physicalStock,
+        difference,
+        reason,
+        responsible: 'Marconi Castro (Gestor do Estoque)',
+        date: auditDate,
+        time: auditTime,
+        createdAt: now,
+        notes: `Ajuste auditado de Marco Zero: ${previousStock} -> ${physicalStock} ${currentProduct.unit}.`,
+      };
+
+      baselineBatch.set(
+        doc(db, PRODUCTS_COLLECTION, currentProduct.id),
+        cleanForFirestore({
+          currentStock: physicalStock,
+          lastUpdated: now,
+          lastOperationId: opId,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      );
+      baselineBatch.set(doc(db, MOVEMENTS_COLLECTION, opId), cleanForFirestore(movement));
+      baselineBatch.set(doc(db, INVENTORY_AUDITS_COLLECTION, opId), cleanForFirestore(audit));
+      baselineWrites += 3;
+      adjustedCount++;
+    }
+
+    const session: InventorySessionSummary = {
+      id: MARCO_ZERO_SESSION_ID,
       date: auditDate,
       time: auditTime,
       responsible: 'Marconi Castro (Gestor do Estoque)',
-      reason,
-      previousStock,
-      physicalStock,
-      difference,
-      notes: `[Ajuste de Inventário / Marco Zero]: De ${previousStock} ${currentProduct.unit} para ${physicalStock} ${currentProduct.unit}. ${reason}`,
+      totalProducts: INITIAL_PRODUCTS.length,
+      checkedCount: INITIAL_PRODUCTS.length,
+      divergentCount: adjustedCount,
+      adjustedCount,
+      notes: 'Marco Zero oficial baseado na contagem e recontagem física confirmada em 21/08/2026. Histórico anterior preservado integralmente; nenhuma movimentação histórica foi reescrita.',
       createdAt: now,
+      userEmail: 'estoquecristolandia@gmail.com',
     };
 
-    const audit: InventoryAudit = {
-      id: opId,
-      productId: currentProduct.id,
-      productName: currentProduct.name,
-      unit: currentProduct.unit,
-      previousStock,
-      physicalStock,
-      difference,
-      reason,
-      responsible: 'Marconi Castro (Gestor do Estoque)',
-      date: auditDate,
-      time: auditTime,
-      createdAt: now,
-      notes: `Ajuste auditado de Marco Zero: ${previousStock} -> ${physicalStock} ${currentProduct.unit}.`,
-    };
+    baselineBatch.set(doc(db, INVENTORY_SESSIONS_COLLECTION, MARCO_ZERO_SESSION_ID), cleanForFirestore(session));
+    baselineWrites++;
 
-    baselineBatch.set(
-      doc(db, PRODUCTS_COLLECTION, currentProduct.id),
+    if (baselineWrites > 0) await baselineBatch.commit();
+  }
+
+  // Ensure 24/08-31/08 Leite Reconciliation (Entrada 60L, Saídas 51L, Ajuste +2L -> Saldo 11L) is synced to Firestore
+  const leiteReconciliationSessionId = 'inv-session-20260831-conciliacao-leite';
+  const leiteReconSnap = await getDoc(doc(db, INVENTORY_SESSIONS_COLLECTION, leiteReconciliationSessionId));
+  if (!leiteReconSnap.exists()) {
+    const leiteBatch = writeBatch(db);
+    const now = new Date().toISOString();
+
+    // 1. Set prod-leite current stock to 11 L
+    const leiteRef = doc(db, PRODUCTS_COLLECTION, 'prod-leite');
+    leiteBatch.set(
+      leiteRef,
       cleanForFirestore({
-        currentStock: physicalStock,
-        lastUpdated: now,
-        lastOperationId: opId,
+        currentStock: 11,
+        lastUpdated: '2026-08-31T17:00:00Z',
+        lastOperationId: 'adj-20260831-prod-leite-conciliacao',
         updatedAt: serverTimestamp(),
       }),
       { merge: true }
     );
-    baselineBatch.set(doc(db, MOVEMENTS_COLLECTION, opId), cleanForFirestore(movement));
-    baselineBatch.set(doc(db, INVENTORY_AUDITS_COLLECTION, opId), cleanForFirestore(audit));
-    baselineWrites += 3;
-    adjustedCount++;
+
+    // 2. Commit all 23 Leite movements (1 entrada, 21 saídas, 1 ajuste conciliação)
+    const leiteMovements = INITIAL_MOVEMENTS.filter(
+      (m) =>
+        m.productId === 'prod-leite' &&
+        ((m.date >= '2026-08-24' && m.date <= '2026-08-31') || m.id === 'adj-20260831-prod-leite-conciliacao')
+    );
+
+    leiteMovements.forEach((mov) => {
+      leiteBatch.set(doc(db, MOVEMENTS_COLLECTION, mov.id), cleanForFirestore(mov), { merge: true });
+    });
+
+    // 3. Commit Audit and Session
+    const auditDoc: InventoryAudit = {
+      id: 'adj-20260831-prod-leite-conciliacao',
+      productId: 'prod-leite',
+      productName: 'Leite Integral',
+      unit: 'litro',
+      previousStock: 9,
+      physicalStock: 11,
+      difference: 2,
+      reason: 'Ajuste de conciliação de estoque — Padaria / Diferença necessária para o saldo físico conferido de 11 L',
+      responsible: 'Marconi Castro (Gestor do Estoque)',
+      date: '2026-08-31',
+      time: '17:00',
+      createdAt: '2026-08-31T17:00:00Z',
+      notes: 'Ajuste auditado: +2 L (Padaria). Motivo: Ajuste de conciliação de estoque para fechamento com o estoque físico conferido de 11 L.',
+    };
+    leiteBatch.set(doc(db, INVENTORY_AUDITS_COLLECTION, auditDoc.id), cleanForFirestore(auditDoc), { merge: true });
+
+    const sessionDoc: InventorySessionSummary = {
+      id: leiteReconciliationSessionId,
+      date: '2026-08-31',
+      time: '17:00',
+      responsible: 'Marconi Castro (Gestor do Estoque)',
+      totalProducts: 1,
+      checkedCount: 1,
+      divergentCount: 1,
+      adjustedCount: 1,
+      notes: 'Conciliação de estoque do Leite Integral (24/08 a 31/08): Entrada de +60 L, 21 saídas totalizando 51 L, ajuste de conciliação de +2 L (Padaria) e saldo final de 11 L.',
+      createdAt: now,
+      userEmail: 'estoquecristolandia@gmail.com',
+    };
+    leiteBatch.set(doc(db, INVENTORY_SESSIONS_COLLECTION, leiteReconciliationSessionId), cleanForFirestore(sessionDoc));
+
+    await leiteBatch.commit();
   }
-
-  const session: InventorySessionSummary = {
-    id: MARCO_ZERO_SESSION_ID,
-    date: auditDate,
-    time: auditTime,
-    responsible: 'Marconi Castro (Gestor do Estoque)',
-    totalProducts: INITIAL_PRODUCTS.length,
-    checkedCount: INITIAL_PRODUCTS.length,
-    divergentCount: adjustedCount,
-    adjustedCount,
-    notes: 'Marco Zero oficial baseado na contagem e recontagem física confirmada em 21/08/2026. Histórico anterior preservado integralmente; nenhuma movimentação histórica foi reescrita.',
-    createdAt: now,
-    userEmail: 'estoquecristolandia@gmail.com',
-  };
-
-  baselineBatch.set(doc(db, INVENTORY_SESSIONS_COLLECTION, MARCO_ZERO_SESSION_ID), cleanForFirestore(session));
-  baselineWrites++;
-
-  if (baselineWrites > 0) await baselineBatch.commit();
 }
 
 export async function executeEntryTransaction(
