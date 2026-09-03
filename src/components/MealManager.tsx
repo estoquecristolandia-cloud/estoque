@@ -27,7 +27,14 @@ import {
   CalendarDays,
   FileText,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Mail,
+  Send,
+  Check,
+  Copy,
+  ExternalLink,
+  X,
+  Settings
 } from 'lucide-react';
 import { generateMonthlyMealsPDF } from '../utils/pdfExport';
 
@@ -75,6 +82,20 @@ export const MealManager: React.FC<MealManagerProps> = ({
     }
     return getTodayDateString().substring(0, 7);
   });
+
+  // State for email to Chefe Marcus Vinicius
+  const [showEmailModal, setShowEmailModal] = useState<boolean>(false);
+  const [emailMode, setEmailMode] = useState<'two_months' | 'single_month'>('two_months');
+  const [chefEmail, setChefEmail] = useState<string>(() => {
+    return localStorage.getItem('cristolandia_chef_email') || 'chefmarcusviniciuses@gmail.com';
+  });
+  const [chefName, setChefName] = useState<string>(() => {
+    return localStorage.getItem('cristolandia_chef_name') || 'Chefe Marcus Vinícius';
+  });
+  const [isEditingChefContact, setIsEditingChefContact] = useState<boolean>(false);
+  const [tempChefEmail, setTempChefEmail] = useState<string>(chefEmail);
+  const [tempChefName, setTempChefName] = useState<string>(chefName);
+  const [copiedEmailText, setCopiedEmailText] = useState<boolean>(false);
 
   // Form states for the selected date
   const [breakfast, setBreakfast] = useState<number>(0);
@@ -303,6 +324,238 @@ export const MealManager: React.FC<MealManagerProps> = ({
     }
   };
 
+  const handleSaveChefContact = () => {
+    const cleanEmail = tempChefEmail.trim();
+    const cleanName = tempChefName.trim();
+    if (!cleanEmail) {
+      toast.error('Informe um e-mail válido.');
+      return;
+    }
+    setChefEmail(cleanEmail);
+    setChefName(cleanName || 'Chefe Marcus Vinícius');
+    localStorage.setItem('cristolandia_chef_email', cleanEmail);
+    localStorage.setItem('cristolandia_chef_name', cleanName || 'Chefe Marcus Vinícius');
+    setIsEditingChefContact(false);
+    toast.success('Contato do Chefe atualizado com sucesso!');
+  };
+
+  // August 2026 stats
+  const augustStats = useMemo(() => {
+    const monthRecords = meals
+      .filter((m) => m.date.startsWith('2026-08'))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const totalDays = monthRecords.length;
+    const totalBreakfast = monthRecords.reduce((sum, m) => sum + (Number(m.breakfast) || 0), 0);
+    const totalLunch = monthRecords.reduce((sum, m) => sum + (Number(m.lunch) || 0), 0);
+    const totalSnack = monthRecords.reduce((sum, m) => sum + (Number(m.afternoonSnack) || 0), 0);
+    const totalDinner = monthRecords.reduce((sum, m) => sum + (Number(m.dinner) || 0), 0);
+    const totalMonthMeals = monthRecords.reduce((sum, m) => sum + (Number(m.totalMeals) || 0), 0);
+
+    const avgBreakfast = totalDays > 0 ? Math.round(totalBreakfast / totalDays) : 0;
+    const avgLunch = totalDays > 0 ? Math.round(totalLunch / totalDays) : 0;
+    const avgSnack = totalDays > 0 ? Math.round(totalSnack / totalDays) : 0;
+    const avgDinner = totalDays > 0 ? Math.round(totalDinner / totalDays) : 0;
+    const avgDailyMeals = totalDays > 0 ? Math.round(totalMonthMeals / totalDays) : 0;
+
+    return {
+      totalDays,
+      totalBreakfast,
+      totalLunch,
+      totalSnack,
+      totalDinner,
+      totalMonthMeals,
+      avgBreakfast,
+      avgLunch,
+      avgSnack,
+      avgDinner,
+      avgDailyMeals,
+    };
+  }, [meals]);
+
+  // September 2026 stats
+  const septemberStats = useMemo(() => {
+    const monthRecords = meals
+      .filter((m) => m.date.startsWith('2026-09'))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const totalDays = monthRecords.length;
+    const totalBreakfast = monthRecords.reduce((sum, m) => sum + (Number(m.breakfast) || 0), 0);
+    const totalLunch = monthRecords.reduce((sum, m) => sum + (Number(m.lunch) || 0), 0);
+    const totalSnack = monthRecords.reduce((sum, m) => sum + (Number(m.afternoonSnack) || 0), 0);
+    const totalDinner = monthRecords.reduce((sum, m) => sum + (Number(m.dinner) || 0), 0);
+    const totalMonthMeals = monthRecords.reduce((sum, m) => sum + (Number(m.totalMeals) || 0), 0);
+
+    const avgBreakfast = totalDays > 0 ? Math.round(totalBreakfast / totalDays) : 0;
+    const avgLunch = totalDays > 0 ? Math.round(totalLunch / totalDays) : 0;
+    const avgSnack = totalDays > 0 ? Math.round(totalSnack / totalDays) : 0;
+    const avgDinner = totalDays > 0 ? Math.round(totalDinner / totalDays) : 0;
+    const avgDailyMeals = totalDays > 0 ? Math.round(totalMonthMeals / totalDays) : 0;
+
+    return {
+      totalDays,
+      totalBreakfast,
+      totalLunch,
+      totalSnack,
+      totalDinner,
+      totalMonthMeals,
+      avgBreakfast,
+      avgLunch,
+      avgSnack,
+      avgDinner,
+      avgDailyMeals,
+    };
+  }, [meals]);
+
+  // Combined stats (August + September)
+  const combinedTwoMonthsStats = useMemo(() => {
+    const totalMonthMeals = augustStats.totalMonthMeals + septemberStats.totalMonthMeals;
+    const totalDays = augustStats.totalDays + septemberStats.totalDays;
+    const totalBreakfast = augustStats.totalBreakfast + septemberStats.totalBreakfast;
+    const totalLunch = augustStats.totalLunch + septemberStats.totalLunch;
+    const totalSnack = augustStats.totalSnack + septemberStats.totalSnack;
+    const totalDinner = augustStats.totalDinner + septemberStats.totalDinner;
+    const avgDailyMeals = totalDays > 0 ? Math.round(totalMonthMeals / totalDays) : 0;
+
+    return {
+      totalMonthMeals,
+      totalDays,
+      totalBreakfast,
+      totalLunch,
+      totalSnack,
+      totalDinner,
+      avgDailyMeals,
+    };
+  }, [augustStats, septemberStats]);
+
+  const handleDownloadAugustPDF = () => {
+    try {
+      generateMonthlyMealsPDF(meals, '2026-08', 'Relatório de Refeições - Agosto de 2026');
+      toast.success('Relatório em PDF de Agosto baixado com sucesso!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao gerar PDF de Agosto.');
+    }
+  };
+
+  const handleDownloadSeptemberPDF = () => {
+    try {
+      generateMonthlyMealsPDF(meals, '2026-09', 'Relatório de Refeições - Setembro de 2026');
+      toast.success('Relatório em PDF de Setembro baixado com sucesso!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao gerar PDF de Setembro.');
+    }
+  };
+
+  const emailSubject = emailMode === 'two_months'
+    ? 'Relatório de Refeições - Agosto e Setembro/2026 - Cristolândia LEM/BA'
+    : `Relatório Mensal de Refeições Servidas - Cristolândia LEM/BA (${formatMonthName(selectedMonth)})`;
+
+  const emailBody = useMemo(() => {
+    if (emailMode === 'two_months') {
+      return `Prezado ${chefName},
+Paz do Senhor / Saudações fraternas!
+
+Conforme solicitado, apresentamos o resumo consolidado das refeições servidas na Cristolândia LEM/BA referentes a Agosto e Setembro de 2026:
+
+📅 1. AGOSTO DE 2026:
+• Total: ${augustStats.totalMonthMeals.toLocaleString('pt-BR')} refeições (${augustStats.totalDays} dias registrados) | Média: ${augustStats.avgDailyMeals} ref/dia
+  - Café da Manhã: ${augustStats.totalBreakfast.toLocaleString('pt-BR')} (méd. ${augustStats.avgBreakfast}/dia)
+  - Almoço: ${augustStats.totalLunch.toLocaleString('pt-BR')} (méd. ${augustStats.avgLunch}/dia)
+  - Lanche 16h: ${augustStats.totalSnack.toLocaleString('pt-BR')} (méd. ${augustStats.avgSnack}/dia)
+  - Jantar: ${augustStats.totalDinner.toLocaleString('pt-BR')} (méd. ${augustStats.avgDinner}/dia)
+
+📅 2. SETEMBRO DE 2026:
+• Total: ${septemberStats.totalMonthMeals.toLocaleString('pt-BR')} refeições (${septemberStats.totalDays} dias registrados) | Média: ${septemberStats.avgDailyMeals} ref/dia
+  - Café da Manhã: ${septemberStats.totalBreakfast.toLocaleString('pt-BR')} (méd. ${septemberStats.avgBreakfast}/dia)
+  - Almoço: ${septemberStats.totalLunch.toLocaleString('pt-BR')} (méd. ${septemberStats.avgLunch}/dia)
+  - Lanche 16h: ${septemberStats.totalSnack.toLocaleString('pt-BR')} (méd. ${septemberStats.avgSnack}/dia)
+  - Jantar: ${septemberStats.totalDinner.toLocaleString('pt-BR')} (méd. ${septemberStats.avgDinner}/dia)
+
+📊 SOMA TOTAL CONSOLIDADA (AGOSTO + SETEMBRO):
+• Soma Total Geral: ${combinedTwoMonthsStats.totalMonthMeals.toLocaleString('pt-BR')} refeições servidas
+• Total de Dias Registrados: ${combinedTwoMonthsStats.totalDays} dias
+• Média Diária Geral do Período: ${combinedTwoMonthsStats.avgDailyMeals} refeições/dia
+  - Café da Manhã Total: ${combinedTwoMonthsStats.totalBreakfast.toLocaleString('pt-BR')} refeições
+  - Almoço Total (Pico): ${combinedTwoMonthsStats.totalLunch.toLocaleString('pt-BR')} refeições
+  - Lanche 16h Total: ${combinedTwoMonthsStats.totalSnack.toLocaleString('pt-BR')} refeições
+  - Jantar Total: ${combinedTwoMonthsStats.totalDinner.toLocaleString('pt-BR')} refeições
+
+📄 RELATÓRIOS EM ANEXO:
+Os relatórios analíticos em PDF de Agosto e Setembro seguem anexos a este e-mail. Permanecemos à inteira disposição para qualquer alinhamento!
+
+Fraternalmente em Cristo,
+
+${currentUserDisplayName || 'Marconi Castro (Gestor do Estoque)'}
+Centro de Formação e Assistência Social Cristolândia — LEM/BA
+Junta de Missões Nacionais — Convenção Batista Brasileira (CBB)
+E-mail: estoquecristolandia@gmail.com`;
+    }
+
+    return `Prezado ${chefName},
+Paz do Senhor / Saudações fraternas!
+
+Conforme solicitado, apresento abaixo o demonstrativo consolidado do Relatório Mensal de Refeições Servidas referente ao mês de ${formatMonthName(selectedMonth)}, realizado na cozinha e refeitório do Centro de Formação e Assistência Social Cristolândia (LEM/BA) - Junta de Missões Nacionais (CBB):
+
+📊 RESUMO EXECUTIVO DO MÊS (${formatMonthName(selectedMonth).toUpperCase()}):
+• Total Geral de Refeições: ${monthlyStats.totalMonthMeals.toLocaleString('pt-BR')} refeições
+• Quantidade de Dias Registrados: ${monthlyStats.totalDays} dias
+• Média Geral Diária: ${monthlyStats.avgDailyMeals} refeições/dia
+
+🍽️ MÉDIAS DIÁRIAS E TOTAIS POR TURNO:
+• Café da Manhã: ${monthlyStats.avgBreakfast} pessoas/dia (Total: ${monthlyStats.totalBreakfast.toLocaleString('pt-BR')} refeições)
+• Almoço (Turno de Pico): ${monthlyStats.avgLunch} pessoas/dia (Total: ${monthlyStats.totalLunch.toLocaleString('pt-BR')} refeições)
+• Lanche das 16h: ${monthlyStats.avgSnack} pessoas/dia (Total: ${monthlyStats.totalSnack.toLocaleString('pt-BR')} refeições)
+• Jantar: ${monthlyStats.avgDinner} pessoas/dia (Total: ${monthlyStats.totalDinner.toLocaleString('pt-BR')} refeições)
+
+📄 RELATÓRIO EM ANEXO:
+O relatório oficial em PDF segue anexo a este e-mail. Permanecemos à inteira disposição!
+
+Fraternalmente em Cristo,
+
+${currentUserDisplayName || 'Marconi Castro (Gestor do Estoque)'}
+Centro de Formação e Assistência Social Cristolândia — LEM/BA
+Junta de Missões Nacionais — Convenção Batista Brasileira (CBB)
+E-mail: estoquecristolandia@gmail.com`;
+  }, [emailMode, chefName, augustStats, septemberStats, combinedTwoMonthsStats, selectedMonth, monthlyStats, currentUserDisplayName]);
+
+  const handleOpenGmail = () => {
+    // Generate PDF automatically so it's ready in downloads to attach
+    if (emailMode === 'two_months') {
+      handleDownloadAugustPDF();
+      if (septemberStats.totalDays > 0) {
+        setTimeout(() => handleDownloadSeptemberPDF(), 600);
+      }
+    } else {
+      handleDownloadMonthlyPDF();
+    }
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(chefEmail)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    window.open(gmailUrl, '_blank');
+    toast.success('Abrindo o Gmail com todos os dados preenchidos! Os relatórios em PDF foram baixados para você anexar.');
+  };
+
+  const handleOpenMailto = () => {
+    if (emailMode === 'two_months') {
+      handleDownloadAugustPDF();
+      if (septemberStats.totalDays > 0) {
+        setTimeout(() => handleDownloadSeptemberPDF(), 600);
+      }
+    } else {
+      handleDownloadMonthlyPDF();
+    }
+    const mailtoUrl = `mailto:${encodeURIComponent(chefEmail)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    window.location.href = mailtoUrl;
+    toast.success('Abrindo seu aplicativo de e-mail padrão. Os relatórios em PDF foram baixados para anexar.');
+  };
+
+  const handleCopyEmailText = () => {
+    navigator.clipboard.writeText(emailBody);
+    setCopiedEmailText(true);
+    toast.success('Texto do e-mail copiado para a área de transferência!');
+    setTimeout(() => setCopiedEmailText(false), 3000);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner / Hero */}
@@ -360,6 +613,16 @@ export const MealManager: React.FC<MealManagerProps> = ({
             >
               <Printer className="w-4 h-4 text-slate-400" />
               <span className="hidden sm:inline">Imprimir</span>
+            </button>
+
+            {/* Botão Enviar por E-mail ao Chefe Marcos */}
+            <button
+              onClick={() => setShowEmailModal(true)}
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-2xl shadow-md shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
+              title="Enviar dados por e-mail para o Chefe Marcus Vinicius"
+            >
+              <Mail className="w-4 h-4 text-blue-200" />
+              <span>Enviar p/ Chefe Marcos</span>
             </button>
 
             {/* Total Hoje */}
@@ -1128,8 +1391,17 @@ export const MealManager: React.FC<MealManagerProps> = ({
                 </button>
               </div>
 
-              {/* Botões de Exportar e Imprimir */}
-              <div className="flex items-center gap-3">
+              {/* Botões de Exportar, Imprimir e E-mail */}
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <button
+                  onClick={() => setShowEmailModal(true)}
+                  className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
+                  title="Enviar relatório por e-mail para o Chefe Marcos"
+                >
+                  <Mail className="w-4 h-4 text-blue-200" />
+                  <span>Enviar p/ Chefe Marcos</span>
+                </button>
+
                 <button
                   onClick={handleDownloadMonthlyPDF}
                   className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
@@ -1412,6 +1684,274 @@ export const MealManager: React.FC<MealManagerProps> = ({
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ENVIO DE E-MAIL AO CHEFE MARCOS */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8">
+            {/* Header do Modal */}
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+                  <Mail className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+                      Comunicação Oficial
+                    </span>
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                      {emailMode === 'two_months' ? 'Agosto + Setembro (Consolidado)' : formatMonthName(selectedMonth)}
+                    </span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">
+                    Enviar Relatório ao Chefe Marcos
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
+                title="Fechar janela"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Seletor de Período da Mensagem */}
+            <div className="flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/60">
+              <button
+                type="button"
+                onClick={() => setEmailMode('two_months')}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  emailMode === 'two_months'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                <span>Agosto + Setembro (Soma Separada & Total)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEmailMode('single_month')}
+                className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  emailMode === 'single_month'
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Apenas Mês Selecionado ({formatMonthName(selectedMonth)})</span>
+              </button>
+            </div>
+
+            {/* Mini Resumo Rápido dos Números */}
+            {emailMode === 'two_months' ? (
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
+                    Agosto / 2026
+                  </span>
+                  <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                    {augustStats.totalMonthMeals.toLocaleString('pt-BR')}
+                  </p>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    {augustStats.totalDays} dias | méd. {augustStats.avgDailyMeals}/dia
+                  </span>
+                </div>
+
+                <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
+                    Setembro / 2026
+                  </span>
+                  <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                    {septemberStats.totalMonthMeals.toLocaleString('pt-BR')}
+                  </p>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    {septemberStats.totalDays} dias | méd. {septemberStats.avgDailyMeals}/dia
+                  </span>
+                </div>
+
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                    Soma Total
+                  </span>
+                  <p className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    {combinedTwoMonthsStats.totalMonthMeals.toLocaleString('pt-BR')}
+                  </p>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    Total Acumulado
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Cartão de Destinatário Cadastrado */}
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <Send className="w-3.5 h-3.5 text-blue-500" />
+                  Destinatário Cadastrado
+                </span>
+                <button
+                  onClick={() => {
+                    setIsEditingChefContact(!isEditingChefContact);
+                    setTempChefEmail(chefEmail);
+                    setTempChefName(chefName);
+                  }}
+                  className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Settings className="w-3 h-3" />
+                  {isEditingChefContact ? 'Cancelar Edição' : 'Editar Contato'}
+                </button>
+              </div>
+
+              {isEditingChefContact ? (
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                        Nome do Destinatário:
+                      </label>
+                      <input
+                        type="text"
+                        value={tempChefName}
+                        onChange={(e) => setTempChefName(e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ex: Chefe Marcus Vinícius"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
+                        E-mail:
+                      </label>
+                      <input
+                        type="email"
+                        value={tempChefEmail}
+                        onChange={(e) => setTempChefEmail(e.target.value)}
+                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                        placeholder="email@exemplo.com"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleSaveChefContact}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Salvar Contato</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/60">
+                  <div>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">
+                      {chefName}
+                    </p>
+                    <p className="text-xs font-mono text-blue-600 dark:text-blue-400 font-semibold mt-0.5">
+                      {chefEmail}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black rounded-lg border border-emerald-500/20">
+                      Cadastrado no Sistema
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Informação sobre o PDF */}
+              <div className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1">
+                <span className="text-blue-500 font-bold">ℹ️</span>
+                <span>
+                  Ao clicar em <strong>Abrir no Gmail</strong> ou <strong>App de E-mail</strong>, o relatório oficial em PDF é gerado e baixado automaticamente no seu dispositivo para você anexar ao e-mail.
+                </span>
+              </div>
+            </div>
+
+            {/* Botões de Ação Imediata */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                onClick={handleOpenGmail}
+                className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs rounded-2xl shadow-lg shadow-blue-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Abrir Rascunho no Gmail (Web)</span>
+              </button>
+
+              <button
+                onClick={handleOpenMailto}
+                className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-2xl border border-slate-200 dark:border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Mail className="w-4 h-4 text-slate-500" />
+                <span>Abrir no Outlook / App Padrão</span>
+              </button>
+            </div>
+
+            {/* Visualização e Cópia do Texto */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-amber-500" />
+                  Texto Formatado do E-mail:
+                </span>
+                <button
+                  onClick={handleCopyEmailText}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  {copiedEmailText ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar Mensagem</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 max-h-60 overflow-y-auto font-mono text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap select-all">
+                {emailBody}
+              </div>
+            </div>
+
+            {/* Rodapé do Modal */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleDownloadAugustPDF}
+                  className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Baixar PDF do relatório analítico de Agosto/2026"
+                >
+                  <Download className="w-3.5 h-3.5 text-amber-500" />
+                  <span>PDF Agosto</span>
+                </button>
+
+                <button
+                  onClick={handleDownloadSeptemberPDF}
+                  className="px-3.5 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Baixar PDF do relatório analítico de Setembro/2026"
+                >
+                  <Download className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>PDF Setembro</span>
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="px-5 py-2 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Fechar
+              </button>
             </div>
           </div>
         </div>
