@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import { Product, StockMovement, InventoryAudit } from '../types';
+import { Product, StockMovement, InventoryAudit, DailyMealRecord } from '../types';
 import { calculatePurchaseForecast } from './purchaseForecasting';
 
 export function generateInventoryPDF(
@@ -849,5 +849,335 @@ export function generatePurchaseForecastPDF(
   const filename = `Relatorio_Estoque_Necessidade_Compras_Cristolandia_${periodDays}dias_${now.toISOString().split('T')[0]}.pdf`;
   doc.save(filename);
 }
+
+const PT_MONTHS = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+];
+
+const PT_WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+export function generateMonthlyMealsPDF(
+  meals: DailyMealRecord[],
+  monthStr: string, // 'YYYY-MM', e.g. '2026-08'
+  title = 'Relatório Mensal de Refeições Servidas'
+) {
+  const doc = new jsPDF();
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('pt-BR');
+  const timeStr = now.toLocaleTimeString('pt-BR');
+
+  // Parse month and year
+  const [yearPart, monthPart] = monthStr.split('-');
+  const monthIdx = parseInt(monthPart, 10) - 1;
+  const monthName = PT_MONTHS[monthIdx] || monthPart;
+  const formattedMonthYear = `${monthName} de ${yearPart}`;
+
+  // Filter records for this month and sort ascending
+  const monthRecords = meals
+    .filter((m) => m.date.startsWith(monthStr))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Compute metrics
+  const totalDaysRecorded = monthRecords.length;
+  const totalBreakfast = monthRecords.reduce((sum, m) => sum + (Number(m.breakfast) || 0), 0);
+  const totalLunch = monthRecords.reduce((sum, m) => sum + (Number(m.lunch) || 0), 0);
+  const totalSnack = monthRecords.reduce((sum, m) => sum + (Number(m.afternoonSnack) || 0), 0);
+  const totalDinner = monthRecords.reduce((sum, m) => sum + (Number(m.dinner) || 0), 0);
+  const totalMonthMeals = monthRecords.reduce((sum, m) => sum + (Number(m.totalMeals) || 0), 0);
+
+  const avgBreakfast = totalDaysRecorded > 0 ? Math.round(totalBreakfast / totalDaysRecorded) : 0;
+  const avgLunch = totalDaysRecorded > 0 ? Math.round(totalLunch / totalDaysRecorded) : 0;
+  const avgSnack = totalDaysRecorded > 0 ? Math.round(totalSnack / totalDaysRecorded) : 0;
+  const avgDinner = totalDaysRecorded > 0 ? Math.round(totalDinner / totalDaysRecorded) : 0;
+  const avgDailyMeals = totalDaysRecorded > 0 ? Math.round(totalMonthMeals / totalDaysRecorded) : 0;
+
+  const renderHeader = (pageNumber: number) => {
+    // Header Banner
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, 210, 30, 'F');
+
+    // Title
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13);
+    doc.setFont('helvetica', 'bold');
+    doc.text('JUNTA DE MISSÕES NACIONAIS - CBB', 14, 11);
+
+    doc.setFontSize(10);
+    doc.setTextColor(245, 158, 11); // amber-500
+    doc.text('CENTRO DE FORMAÇÃO E ASSISTÊNCIA SOCIAL CRISTOLÂNDIA (LEM/BA)', 14, 18);
+
+    doc.setFontSize(7.5);
+    doc.setTextColor(203, 213, 225); // slate-300
+    doc.text(
+      `Gerado em: ${dateStr} às ${timeStr} | Controle de Cozinha & Refeitório | Página ${pageNumber}`,
+      14,
+      25
+    );
+  };
+
+  renderHeader(1);
+
+  // Document Title
+  doc.setTextColor(15, 23, 42);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${title.toUpperCase()} — ${formattedMonthYear.toUpperCase()}`, 14, 38);
+
+  // Executive Summary Box
+  doc.setFillColor(248, 250, 252); // slate-50
+  doc.setDrawColor(226, 232, 240); // slate-200
+  doc.roundedRect(14, 42, 182, 33, 2, 2, 'FD');
+
+  // KPI 1: Total Geral do Mês
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(100, 116, 139); // slate-500
+  doc.text('TOTAL REFEIÇÕES NO MÊS', 18, 48);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42); // slate-900
+  doc.text(`${totalMonthMeals.toLocaleString('pt-BR')}`, 18, 56);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(`${totalDaysRecorded} ${totalDaysRecorded === 1 ? 'dia registrado' : 'dias registrados'}`, 18, 62);
+
+  // KPI 2: Média Diária Geral
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(100, 116, 139);
+  doc.text('MÉDIA DIÁRIA GERAL', 58, 48);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(37, 99, 235); // blue-600
+  doc.text(`${avgDailyMeals}`, 58, 56);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text('refeições / dia', 58, 62);
+
+  // Divider line
+  doc.setDrawColor(226, 232, 240);
+  doc.line(98, 44, 98, 72);
+
+  // Breakdown by Meal (Averages & Totals) - Clean, aligned, no broken emojis
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text('MÉDIAS DIÁRIAS POR REFEIÇÃO (PESSOAS/DIA):', 104, 48);
+
+  // Row 1: Café da Manhã (Amber)
+  doc.setFillColor(217, 119, 6);
+  doc.circle(106, 52.8, 1.1, 'F');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(51, 65, 85);
+  doc.text('Café da Manhã:', 109, 53.5);
+  doc.setTextColor(180, 83, 9);
+  doc.text(`${avgBreakfast} pessoas/dia`, 133, 53.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(`(Total: ${totalBreakfast.toLocaleString('pt-BR')})`, 161, 53.5);
+
+  // Row 2: Almoço (Emerald)
+  doc.setFillColor(16, 185, 129);
+  doc.circle(106, 58.3, 1.1, 'F');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(51, 65, 85);
+  doc.text('Almoço (Pico):', 109, 59.0);
+  doc.setTextColor(4, 120, 87);
+  doc.text(`${avgLunch} pessoas/dia`, 133, 59.0);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(`(Total: ${totalLunch.toLocaleString('pt-BR')})`, 161, 59.0);
+
+  // Row 3: Lanche 16h (Orange)
+  doc.setFillColor(249, 115, 22);
+  doc.circle(106, 63.8, 1.1, 'F');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(51, 65, 85);
+  doc.text('Lanche 16h:', 109, 64.5);
+  doc.setTextColor(194, 65, 12);
+  doc.text(`${avgSnack} pessoas/dia`, 133, 64.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(`(Total: ${totalSnack.toLocaleString('pt-BR')})`, 161, 64.5);
+
+  // Row 4: Jantar (Indigo)
+  doc.setFillColor(99, 102, 241);
+  doc.circle(106, 69.3, 1.1, 'F');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(51, 65, 85);
+  doc.text('Jantar:', 109, 70.0);
+  doc.setTextColor(67, 56, 202);
+  doc.text(`${avgDinner} pessoas/dia`, 133, 70.0);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(`(Total: ${totalDinner.toLocaleString('pt-BR')})`, 161, 70.0);
+
+  // TABLE HEADER
+  let y = 80;
+  const renderTableHeader = (currentY: number) => {
+    doc.setFillColor(30, 41, 59); // slate-800
+    doc.rect(14, currentY, 182, 7.5, 'F');
+
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.text('DATA / DIA', 18, currentY + 5.2);
+    doc.text('CAFÉ', 60, currentY + 5.2);
+    doc.text('ALMOÇO', 78, currentY + 5.2);
+    doc.text('LANCHE 16H', 98, currentY + 5.2);
+    doc.text('JANTAR', 122, currentY + 5.2);
+    doc.text('TOTAL DIA', 142, currentY + 5.2);
+    doc.text('RESPONSÁVEL', 165, currentY + 5.2);
+  };
+
+  renderTableHeader(y);
+  y += 7.5;
+
+  if (monthRecords.length === 0) {
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(148, 163, 184);
+    doc.text('Nenhum registro de refeição encontrado para o mês selecionado.', 18, y + 10);
+    y += 20;
+  } else {
+    monthRecords.forEach((record, index) => {
+      if (y > 265) {
+        doc.addPage();
+        renderHeader(doc.getNumberOfPages());
+        y = 38;
+        renderTableHeader(y);
+        y += 7.5;
+      }
+
+      // Zebra striping
+      if (index % 2 === 0) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(14, y, 182, 6.5, 'F');
+      }
+
+      // Format Date & Weekday
+      const dateParts = record.date.split('-');
+      const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : record.date;
+      const dObj = new Date(`${record.date}T12:00:00Z`);
+      const weekday = PT_WEEKDAYS[dObj.getUTCDay()] || '';
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`${formattedDate} (${weekday})`, 18, y + 4.5);
+
+      // Quantities
+      doc.text(String(record.breakfast || 0), 63, y + 4.5);
+      doc.text(String(record.lunch || 0), 82, y + 4.5);
+      doc.text(String(record.afternoonSnack || 0), 103, y + 4.5);
+      doc.text(String(record.dinner || 0), 125, y + 4.5);
+
+      // Total Day in bold
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text(String(record.totalMeals || 0), 146, y + 4.5);
+
+      // Responsible
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(71, 85, 105);
+      const respName = (record.responsible || '-').substring(0, 24);
+      doc.text(respName, 165, y + 4.5);
+
+      y += 6.5;
+    });
+
+    // TOTALS ROW
+    if (y > 255) {
+      doc.addPage();
+      renderHeader(doc.getNumberOfPages());
+      y = 38;
+    }
+
+    doc.setFillColor(241, 245, 249); // slate-100
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(14, y, 182, 7, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text('TOTAL DO MÊS:', 18, y + 4.8);
+    doc.text(String(totalBreakfast), 63, y + 4.8);
+    doc.text(String(totalLunch), 82, y + 4.8);
+    doc.text(String(totalSnack), 103, y + 4.8);
+    doc.text(String(totalDinner), 125, y + 4.8);
+    doc.setTextColor(217, 119, 6); // amber-600
+    doc.text(String(totalMonthMeals), 146, y + 4.8);
+    doc.setFontSize(6.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Soma Geral', 165, y + 4.8);
+
+    y += 7;
+
+    // AVERAGES ROW
+    doc.setFillColor(255, 251, 235); // amber-50
+    doc.rect(14, y, 182, 7, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(180, 83, 9); // amber-700
+    doc.text('MÉDIA DIÁRIA:', 18, y + 4.8);
+    doc.text(`${avgBreakfast}/dia`, 60, y + 4.8);
+    doc.text(`${avgLunch}/dia`, 79, y + 4.8);
+    doc.text(`${avgSnack}/dia`, 100, y + 4.8);
+    doc.text(`${avgDinner}/dia`, 122, y + 4.8);
+    doc.setTextColor(37, 99, 235); // blue-600
+    doc.text(`${avgDailyMeals}/dia`, 144, y + 4.8);
+    doc.setFontSize(6.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text('Média por Turno', 165, y + 4.8);
+
+    y += 13;
+  }
+
+  // Signatures
+  if (y > 240) {
+    doc.addPage();
+    renderHeader(doc.getNumberOfPages());
+    y = 50;
+  }
+
+  doc.setLineWidth(0.3);
+  doc.setDrawColor(148, 163, 184);
+  doc.line(20, y + 10, 95, y + 10);
+  doc.line(115, y + 10, 190, y + 10);
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(71, 85, 105);
+  doc.text('Responsável pela Cozinha / Refeitório', 28, y + 15);
+  doc.text('Coordenação Geral Cristolândia LEM/BA', 120, y + 15);
+
+  // Footer on all pages
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      'Documento interno emitido pelo Sistema de Estoque & Refeições Cristolândia LEM/BA. Registros auditados.',
+      14,
+      290
+    );
+    doc.text(`Página ${i} de ${totalPages}`, 175, 290);
+  }
+
+  const filename = `Relatorio_Mensal_Refeicoes_Cristolandia_${yearPart}_${monthPart}.pdf`;
+  doc.save(filename);
+}
+
 
 

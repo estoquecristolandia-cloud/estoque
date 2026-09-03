@@ -21,8 +21,15 @@ import {
   Sparkles,
   Search,
   Clock,
-  Printer
+  Printer,
+  Download,
+  BarChart3,
+  CalendarDays,
+  FileText,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
+import { generateMonthlyMealsPDF } from '../utils/pdfExport';
 
 interface MealManagerProps {
   meals: DailyMealRecord[];
@@ -43,9 +50,31 @@ export const MealManager: React.FC<MealManagerProps> = ({
 }) => {
   const isAdmin = userRole === 'admin';
   const todayStr = getTodayDateString();
+  const [activeMealTab, setActiveMealTab] = useState<'daily' | 'monthly'>('daily');
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
+
+  // Available months from meals list (defaults to current or most recent)
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    const curMonth = todayStr.substring(0, 7);
+    set.add(curMonth);
+    meals.forEach((m) => {
+      if (m.date && m.date.length >= 7) {
+        set.add(m.date.substring(0, 7));
+      }
+    });
+    return Array.from(set).sort().reverse();
+  }, [meals, todayStr]);
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
+    if (meals.length > 0) {
+      const sortedDates = [...meals].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      return sortedDates[0].date.substring(0, 7);
+    }
+    return getTodayDateString().substring(0, 7);
+  });
 
   // Form states for the selected date
   const [breakfast, setBreakfast] = useState<number>(0);
@@ -83,25 +112,33 @@ export const MealManager: React.FC<MealManagerProps> = ({
     return (Number(breakfast) || 0) + (Number(lunch) || 0) + (Number(afternoonSnack) || 0) + (Number(dinner) || 0);
   }, [breakfast, lunch, afternoonSnack, dinner]);
 
-  // KPIs
+  // Global KPIs (Totais Gerais de Refeições Acumuladas)
   const stats = useMemo(() => {
     const totalRecords = meals.length;
-    const totalAllMeals = meals.reduce((sum, m) => sum + m.totalMeals, 0);
+    const totalAllMeals = meals.reduce((sum, m) => sum + (Number(m.totalMeals) || 0), 0);
+    const totalBreakfastAll = meals.reduce((sum, m) => sum + (Number(m.breakfast) || 0), 0);
+    const totalLunchAll = meals.reduce((sum, m) => sum + (Number(m.lunch) || 0), 0);
+    const totalSnackAll = meals.reduce((sum, m) => sum + (Number(m.afternoonSnack) || 0), 0);
+    const totalDinnerAll = meals.reduce((sum, m) => sum + (Number(m.dinner) || 0), 0);
     const avgDailyMeals = totalRecords > 0 ? Math.round(totalAllMeals / totalRecords) : 0;
     
     // Total served today
     const todayRecord = meals.find((m) => m.date === todayStr);
     const todayTotal = todayRecord ? todayRecord.totalMeals : 0;
 
-    // Averages by period
-    const avgBreakfast = totalRecords > 0 ? Math.round(meals.reduce((sum, m) => sum + m.breakfast, 0) / totalRecords) : 0;
-    const avgLunch = totalRecords > 0 ? Math.round(meals.reduce((sum, m) => sum + m.lunch, 0) / totalRecords) : 0;
-    const avgSnack = totalRecords > 0 ? Math.round(meals.reduce((sum, m) => sum + m.afternoonSnack, 0) / totalRecords) : 0;
-    const avgDinner = totalRecords > 0 ? Math.round(meals.reduce((sum, m) => sum + m.dinner, 0) / totalRecords) : 0;
+    // Averages by period across all days
+    const avgBreakfast = totalRecords > 0 ? Math.round(totalBreakfastAll / totalRecords) : 0;
+    const avgLunch = totalRecords > 0 ? Math.round(totalLunchAll / totalRecords) : 0;
+    const avgSnack = totalRecords > 0 ? Math.round(totalSnackAll / totalRecords) : 0;
+    const avgDinner = totalRecords > 0 ? Math.round(totalDinnerAll / totalRecords) : 0;
 
     return {
       totalRecords,
       totalAllMeals,
+      totalBreakfastAll,
+      totalLunchAll,
+      totalSnackAll,
+      totalDinnerAll,
       avgDailyMeals,
       todayTotal,
       avgBreakfast,
@@ -110,6 +147,41 @@ export const MealManager: React.FC<MealManagerProps> = ({
       avgDinner,
     };
   }, [meals, todayStr, currentTotal]);
+
+  // Monthly Report calculations for selectedMonth
+  const monthlyStats = useMemo(() => {
+    const monthRecords = meals
+      .filter((m) => m.date.startsWith(selectedMonth))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const totalDays = monthRecords.length;
+    const totalBreakfast = monthRecords.reduce((sum, m) => sum + (Number(m.breakfast) || 0), 0);
+    const totalLunch = monthRecords.reduce((sum, m) => sum + (Number(m.lunch) || 0), 0);
+    const totalSnack = monthRecords.reduce((sum, m) => sum + (Number(m.afternoonSnack) || 0), 0);
+    const totalDinner = monthRecords.reduce((sum, m) => sum + (Number(m.dinner) || 0), 0);
+    const totalMonthMeals = monthRecords.reduce((sum, m) => sum + (Number(m.totalMeals) || 0), 0);
+
+    const avgBreakfast = totalDays > 0 ? Math.round(totalBreakfast / totalDays) : 0;
+    const avgLunch = totalDays > 0 ? Math.round(totalLunch / totalDays) : 0;
+    const avgSnack = totalDays > 0 ? Math.round(totalSnack / totalDays) : 0;
+    const avgDinner = totalDays > 0 ? Math.round(totalDinner / totalDays) : 0;
+    const avgDailyMeals = totalDays > 0 ? Math.round(totalMonthMeals / totalDays) : 0;
+
+    return {
+      monthRecords,
+      totalDays,
+      totalBreakfast,
+      totalLunch,
+      totalSnack,
+      totalDinner,
+      totalMonthMeals,
+      avgBreakfast,
+      avgLunch,
+      avgSnack,
+      avgDinner,
+      avgDailyMeals,
+    };
+  }, [meals, selectedMonth]);
 
   // Stepper helper
   const adjustCount = (setter: React.Dispatch<React.SetStateAction<number>>, delta: number) => {
@@ -196,6 +268,41 @@ export const MealManager: React.FC<MealManagerProps> = ({
     }
   }
 
+  function formatMonthName(mStr: string): string {
+    if (!mStr) return '';
+    const [year, month] = mStr.split('-');
+    const months = [
+      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    const idx = parseInt(month, 10) - 1;
+    return `${months[idx] || month} de ${year}`;
+  }
+
+  const handlePrevMonth = () => {
+    const [y, m] = selectedMonth.split('-').map(Number);
+    const prevDate = new Date(y, m - 2, 1);
+    const prevStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+    setSelectedMonth(prevStr);
+  };
+
+  const handleNextMonth = () => {
+    const [y, m] = selectedMonth.split('-').map(Number);
+    const nextDate = new Date(y, m, 1);
+    const nextStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}`;
+    setSelectedMonth(nextStr);
+  };
+
+  const handleDownloadMonthlyPDF = () => {
+    try {
+      generateMonthlyMealsPDF(meals, selectedMonth);
+      toast.success(`Relatório de refeições de ${formatMonthName(selectedMonth)} exportado em PDF com sucesso!`);
+    } catch (err) {
+      console.error('Erro ao gerar PDF de refeições:', err);
+      toast.error('Erro ao gerar o PDF do relatório. Tente novamente.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner / Hero */}
@@ -218,35 +325,169 @@ export const MealManager: React.FC<MealManagerProps> = ({
               Controle de <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200">Refeições</span>
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Monitore a quantidade de pessoas atendidas diariamente no <strong>Café da Manhã</strong>, <strong>Almoço</strong>, <strong>Lanche das 16h</strong> e <strong>Jantar</strong>, garantindo o dimensionamento perfeito do estoque de mantimentos.
+              Monitore a quantidade de pessoas atendidas diariamente no <strong>Café da Manhã</strong>, <strong>Almoço</strong>, <strong>Lanche das 16h</strong> e <strong>Jantar</strong>, garantindo a contabilização geral e o relatório mensal detalhado.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Quick Switch to Monthly Report / Daily Tab */}
+            <button
+              onClick={() => setActiveMealTab(activeMealTab === 'daily' ? 'monthly' : 'daily')}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm border ${
+                activeMealTab === 'monthly'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 hover:bg-amber-400'
+                  : 'bg-slate-800/90 hover:bg-slate-800 border-slate-700 text-slate-200 hover:text-white'
+              }`}
+              title="Alternar entre lançamentos diários e relatório mensal"
+            >
+              {activeMealTab === 'monthly' ? (
+                <>
+                  <FileSpreadsheet className="w-4 h-4 text-slate-900" />
+                  <span>Voltar aos Lançamentos</span>
+                </>
+              ) : (
+                <>
+                  <BarChart3 className="w-4 h-4 text-amber-400" />
+                  <span>Gerar Relatório Mensal</span>
+                </>
+              )}
+            </button>
+
             <button
               onClick={handlePrint}
               className="px-4 py-2.5 bg-slate-800/90 hover:bg-slate-800 border border-slate-700 text-slate-200 hover:text-white rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
               title="Imprimir relatório de refeições"
             >
               <Printer className="w-4 h-4 text-slate-400" />
-              <span className="hidden sm:inline">Imprimir Relatório</span>
+              <span className="hidden sm:inline">Imprimir</span>
             </button>
 
-            <div className="bg-slate-800/80 border border-slate-700/80 px-4 py-2.5 rounded-2xl flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-                <Users className="w-5 h-5" />
+            {/* Total Hoje */}
+            <div className="bg-slate-800/80 border border-slate-700/80 px-4 py-2 rounded-2xl flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                <Users className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Hoje ({formatDateBr(todayStr)})</p>
-                <p className="text-base sm:text-lg font-black text-white">{stats.todayTotal} <span className="text-xs font-medium text-amber-400">refeições</span></p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hoje ({formatDateBr(todayStr)})</p>
+                <p className="text-base font-black text-white">{stats.todayTotal} <span className="text-xs font-medium text-amber-400">refeições</span></p>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* KPI CARDS GRID */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* CARD PRINCIPAL DE CONTABILIZAÇÃO GERAL DE REFEIÇÕES */}
+      <div className="bg-gradient-to-r from-amber-500/10 via-slate-900 to-indigo-950/40 border-2 border-amber-500/30 rounded-3xl p-6 sm:p-7 shadow-lg relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 pb-5 border-b border-amber-500/20">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-md shadow-amber-500/20 shrink-0">
+              <Utensils className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  Contabilização Geral Consolidada
+                </span>
+                <span className="text-xs text-slate-400 font-medium">
+                  {stats.totalRecords} {stats.totalRecords === 1 ? 'dia registrado' : 'dias registrados'}
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white mt-1">
+                Total Geral de Refeições
+              </h2>
+            </div>
+          </div>
+
+          <div className="text-left md:text-right bg-slate-900/80 md:bg-transparent p-4 md:p-0 rounded-2xl border border-slate-800 md:border-0">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Soma Geral de Todas as Refeições</p>
+            <p className="text-3xl sm:text-4xl font-black text-amber-400 tracking-tight">
+              {stats.totalAllMeals.toLocaleString('pt-BR')}{' '}
+              <span className="text-sm font-semibold text-slate-300">refeições</span>
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Média Geral: <strong className="text-white">{stats.avgDailyMeals}</strong> refeições/dia
+            </p>
+          </div>
+        </div>
+
+        {/* 4 Totais Acumulados por Turno */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 pt-5">
+          <div className="bg-slate-900/70 border border-slate-800/80 rounded-2xl p-3.5">
+            <p className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+              <Coffee className="w-3.5 h-3.5 text-amber-400" /> Café da Manhã Total
+            </p>
+            <p className="text-lg sm:text-xl font-black text-white mt-1">
+              {stats.totalBreakfastAll.toLocaleString('pt-BR')} <span className="text-xs font-normal text-slate-400">ref.</span>
+            </p>
+            <p className="text-[10px] text-amber-400/90 font-medium mt-0.5">Média: {stats.avgBreakfast}/dia</p>
+          </div>
+
+          <div className="bg-slate-900/70 border border-slate-800/80 rounded-2xl p-3.5">
+            <p className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+              <Utensils className="w-3.5 h-3.5 text-emerald-400" /> Almoço Total
+            </p>
+            <p className="text-lg sm:text-xl font-black text-white mt-1">
+              {stats.totalLunchAll.toLocaleString('pt-BR')} <span className="text-xs font-normal text-slate-400">ref.</span>
+            </p>
+            <p className="text-[10px] text-emerald-400/90 font-medium mt-0.5">Média: {stats.avgLunch}/dia</p>
+          </div>
+
+          <div className="bg-slate-900/70 border border-slate-800/80 rounded-2xl p-3.5">
+            <p className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+              <SunMedium className="w-3.5 h-3.5 text-orange-400" /> Lanche 16h Total
+            </p>
+            <p className="text-lg sm:text-xl font-black text-white mt-1">
+              {stats.totalSnackAll.toLocaleString('pt-BR')} <span className="text-xs font-normal text-slate-400">ref.</span>
+            </p>
+            <p className="text-[10px] text-orange-400/90 font-medium mt-0.5">Média: {stats.avgSnack}/dia</p>
+          </div>
+
+          <div className="bg-slate-900/70 border border-slate-800/80 rounded-2xl p-3.5">
+            <p className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+              <Soup className="w-3.5 h-3.5 text-indigo-400" /> Jantar Total
+            </p>
+            <p className="text-lg sm:text-xl font-black text-white mt-1">
+              {stats.totalDinnerAll.toLocaleString('pt-BR')} <span className="text-xs font-normal text-slate-400">ref.</span>
+            </p>
+            <p className="text-[10px] text-indigo-400/90 font-medium mt-0.5">Média: {stats.avgDinner}/dia</p>
+          </div>
+        </div>
+      </div>
+
+      {/* SUB-NAVIGATION TABS */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <button
+          onClick={() => setActiveMealTab('daily')}
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+            activeMealTab === 'daily'
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          <span>Lançamento & Histórico Diário</span>
+        </button>
+
+        <button
+          onClick={() => setActiveMealTab('monthly')}
+          className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
+            activeMealTab === 'monthly'
+              ? 'bg-amber-500 text-slate-950 shadow-sm font-black'
+              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>Relatório Mensal de Refeições</span>
+          <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-slate-900 text-amber-400">
+            PDF
+          </span>
+        </button>
+      </div>
+
+      {activeMealTab === 'daily' ? (
+        <div className="space-y-6">
+          {/* KPI CARDS GRID */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Café da Manhã */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
           <div className="flex items-center justify-between">
@@ -841,6 +1082,340 @@ export const MealManager: React.FC<MealManagerProps> = ({
           </table>
         </div>
       </div>
+    </div>
+      ) : (
+        /* RELATÓRIO MENSAL DE REFEIÇÕES VIEW */
+        <div className="space-y-6">
+          {/* Seletor do Mês & Ações */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 border border-slate-200 dark:border-slate-700">
+                  <button
+                    onClick={handlePrevMonth}
+                    className="p-2 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-all cursor-pointer"
+                    title="Mês anterior"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <div className="px-3 py-1 flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-amber-500" />
+                    <span className="font-black text-xs sm:text-sm text-slate-900 dark:text-white capitalize">
+                      {formatMonthName(selectedMonth)}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleNextMonth}
+                    className="p-2 hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl transition-all cursor-pointer"
+                    title="Próximo mês"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => e.target.value && setSelectedMonth(e.target.value)}
+                  className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                />
+
+                <button
+                  onClick={() => setSelectedMonth(todayStr.substring(0, 7))}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Mês Atual
+                </button>
+              </div>
+
+              {/* Botões de Exportar e Imprimir */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleDownloadMonthlyPDF}
+                  className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Baixar Relatório em PDF</span>
+                </button>
+
+                <button
+                  onClick={handlePrint}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span className="hidden sm:inline">Imprimir</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Cards de Métricas Executivas Mensais */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/30 rounded-2xl p-4 shadow-sm">
+              <span className="text-xs font-bold text-amber-500 uppercase tracking-wider block">
+                Total de Refeições no Mês
+              </span>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+                {monthlyStats.totalMonthMeals.toLocaleString('pt-BR')}{' '}
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">refeições</span>
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Soma acumulada em {formatMonthName(selectedMonth)}
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Dias com Registro no Mês
+              </span>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+                {monthlyStats.totalDays}{' '}
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">dias registrados</span>
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Presença nos turnos diários
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                Média Diária no Mês
+              </span>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+                {monthlyStats.avgDailyMeals}{' '}
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">refeições/dia</span>
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Média geral diária neste mês
+              </p>
+            </div>
+          </div>
+
+          {/* 4 Cards de Médias Diárias por Turno no Mês */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">☕ Café da Manhã</span>
+                <Coffee className="w-4 h-4 text-amber-500" />
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-2">
+                {monthlyStats.avgBreakfast} <span className="text-xs font-normal text-slate-400">média/dia</span>
+              </p>
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold mt-1">
+                Total Mês: {monthlyStats.totalBreakfast} ref.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">🍛 Almoço</span>
+                <Utensils className="w-4 h-4 text-emerald-500" />
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-2">
+                {monthlyStats.avgLunch} <span className="text-xs font-normal text-slate-400">média/dia</span>
+              </p>
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">
+                Total Mês: {monthlyStats.totalLunch} ref.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">🥪 Lanche 16h</span>
+                <SunMedium className="w-4 h-4 text-orange-500" />
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-2">
+                {monthlyStats.avgSnack} <span className="text-xs font-normal text-slate-400">média/dia</span>
+              </p>
+              <p className="text-[11px] text-orange-600 dark:text-orange-400 font-bold mt-1">
+                Total Mês: {monthlyStats.totalSnack} ref.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">🍲 Jantar</span>
+                <Soup className="w-4 h-4 text-indigo-500" />
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-2">
+                {monthlyStats.avgDinner} <span className="text-xs font-normal text-slate-400">média/dia</span>
+              </p>
+              <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold mt-1">
+                Total Mês: {monthlyStats.totalDinner} ref.
+              </p>
+            </div>
+          </div>
+
+          {/* Tabela Analítica Diária do Mês */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <CalendarDays className="w-5 h-5 text-amber-500" />
+                  <span>Demonstrativo Diário — {formatMonthName(selectedMonth)}</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Todas as refeições diárias registradas no mês com médias e total do mês
+                </p>
+              </div>
+
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                {monthlyStats.totalDays} registros no mês
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200 dark:border-slate-800">
+                    <th className="py-3 px-4 rounded-l-xl">Data / Dia</th>
+                    <th className="py-3 px-3 text-center">☕ Café</th>
+                    <th className="py-3 px-3 text-center">🍛 Almoço</th>
+                    <th className="py-3 px-3 text-center">🥪 Lanche 16h</th>
+                    <th className="py-3 px-3 text-center">🍲 Jantar</th>
+                    <th className="py-3 px-4 text-center font-black">Total Dia</th>
+                    <th className="py-3 px-4">Responsável & Observações</th>
+                    {isAdmin && <th className="py-3 px-4 text-right rounded-r-xl">Ações</th>}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {monthlyStats.monthRecords.length === 0 ? (
+                    <tr>
+                      <td colSpan={isAdmin ? 8 : 7} className="py-12 text-center text-slate-400">
+                        <div className="max-w-md mx-auto space-y-2">
+                          <p className="font-semibold text-slate-600 dark:text-slate-300">
+                            Nenhuma refeição registrada no mês de {formatMonthName(selectedMonth)}.
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            Selecione outro mês na barra superior ou faça novos lançamentos na aba de Lançamentos Diários.
+                          </p>
+                          <button
+                            onClick={() => setActiveMealTab('daily')}
+                            className="mt-3 px-4 py-2 bg-amber-500 text-slate-950 font-bold rounded-xl text-xs hover:bg-amber-400 transition-all cursor-pointer"
+                          >
+                            Ir para Lançamento de Refeições
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {monthlyStats.monthRecords.map((record) => (
+                        <tr key={record.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                            <span>{formatDateBr(record.date)}</span>
+                            <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400 block">
+                              {getDayOfWeekName(record.date)}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-bold text-amber-600 dark:text-amber-400">
+                            {record.breakfast}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-bold text-emerald-600 dark:text-emerald-400">
+                            {record.lunch}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-bold text-orange-600 dark:text-orange-400">
+                            {record.afternoonSnack}
+                          </td>
+                          <td className="py-3.5 px-3 text-center font-bold text-indigo-600 dark:text-indigo-400">
+                            {record.dinner}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className="inline-block px-2.5 py-1 bg-slate-900 dark:bg-slate-800 text-amber-400 font-black rounded-lg text-xs border border-slate-700">
+                              {record.totalMeals}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <p className="font-bold text-slate-800 dark:text-slate-200">{record.responsible}</p>
+                            {record.notes && (
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 italic mt-0.5">{record.notes}</p>
+                            )}
+                          </td>
+                          {isAdmin && (
+                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  onClick={() => {
+                                    handleEditRecord(record);
+                                    setActiveMealTab('daily');
+                                  }}
+                                  className="p-1.5 text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                  title="Editar este dia"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(record.id, record.date)}
+                                  className="p-1.5 text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                  title="Excluir registro"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+
+                      {/* LINHA DE TOTAIS DO MÊS */}
+                      <tr className="bg-amber-50/70 dark:bg-amber-950/40 font-black border-t-2 border-amber-500/30 text-slate-900 dark:text-white">
+                        <td className="py-4 px-4 font-black uppercase text-[11px] tracking-wider text-amber-950 dark:text-amber-300">
+                          Total do Mês ({monthlyStats.totalDays} dias)
+                        </td>
+                        <td className="py-4 px-3 text-center text-amber-700 dark:text-amber-400 font-black text-sm">
+                          {monthlyStats.totalBreakfast}
+                        </td>
+                        <td className="py-4 px-3 text-center text-emerald-700 dark:text-emerald-400 font-black text-sm">
+                          {monthlyStats.totalLunch}
+                        </td>
+                        <td className="py-4 px-3 text-center text-orange-700 dark:text-orange-400 font-black text-sm">
+                          {monthlyStats.totalSnack}
+                        </td>
+                        <td className="py-4 px-3 text-center text-indigo-700 dark:text-indigo-400 font-black text-sm">
+                          {monthlyStats.totalDinner}
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <span className="inline-block px-3 py-1.5 bg-amber-500 text-slate-950 font-black rounded-xl text-sm shadow-sm">
+                            {monthlyStats.totalMonthMeals}
+                          </span>
+                        </td>
+                        <td colSpan={isAdmin ? 2 : 1} className="py-4 px-4 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                          Soma de todas as refeições do mês
+                        </td>
+                      </tr>
+
+                      {/* LINHA DE MÉDIAS DIÁRIAS DO MÊS */}
+                      <tr className="bg-slate-100/80 dark:bg-slate-800/80 font-bold border-t border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs">
+                        <td className="py-3 px-4 font-bold uppercase text-[10px] tracking-wider text-slate-600 dark:text-slate-400">
+                          Média Diária por Refeição
+                        </td>
+                        <td className="py-3 px-3 text-center font-bold text-amber-600 dark:text-amber-400">
+                          {monthlyStats.avgBreakfast}/dia
+                        </td>
+                        <td className="py-3 px-3 text-center font-bold text-emerald-600 dark:text-emerald-400">
+                          {monthlyStats.avgLunch}/dia
+                        </td>
+                        <td className="py-3 px-3 text-center font-bold text-orange-600 dark:text-orange-400">
+                          {monthlyStats.avgSnack}/dia
+                        </td>
+                        <td className="py-3 px-3 text-center font-bold text-indigo-600 dark:text-indigo-400">
+                          {monthlyStats.avgDinner}/dia
+                        </td>
+                        <td className="py-3 px-4 text-center font-black text-slate-900 dark:text-white">
+                          {monthlyStats.avgDailyMeals}/dia
+                        </td>
+                        <td colSpan={isAdmin ? 2 : 1} className="py-3 px-4 text-[11px] text-slate-500 dark:text-slate-400">
+                          Média diária neste mês
+                        </td>
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
