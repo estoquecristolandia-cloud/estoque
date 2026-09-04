@@ -455,78 +455,81 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
         </div>
       </div>
 
-      {/* Report Sub-Tabs */}
-      <div className="flex space-x-2 overflow-x-auto pb-2 scrollbar-none border-b border-slate-200 dark:border-slate-800">
+      {/* Report Sub-Tabs - Responsive Grid so no tab is cut off */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pb-1">
         <button
           onClick={() => setActiveReportTab('daily_ledger')}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center ${
             activeReportTab === 'daily_ledger'
               ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
           }`}
         >
-          <History className="w-4 h-4" />
-          <span>📋 Extrato Dia a Dia (Entradas & Saídas)</span>
+          <History className="w-4 h-4 shrink-0" />
+          <span>Extrato Dia a Dia</span>
         </button>
 
         <button
           onClick={() => setActiveReportTab('product')}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center ${
             activeReportTab === 'product'
               ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
           }`}
         >
-          <PackageCheck className="w-4 h-4" />
-          <span>📦 Balanço por Produto (Saldos)</span>
+          <PackageCheck className="w-4 h-4 shrink-0" />
+          <span>Balanço por Produto</span>
         </button>
 
         <button
           onClick={() => setActiveReportTab('sector')}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center ${
             activeReportTab === 'sector'
               ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
           }`}
         >
-          <Building2 className="w-4 h-4" />
-          <span>🏢 Relatório por Setor (Alimentos & Destino)</span>
+          <Building2 className="w-4 h-4 shrink-0" />
+          <span>Consumo por Setor</span>
         </button>
 
         <button
           onClick={() => setActiveReportTab('person')}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center ${
             activeReportTab === 'person'
               ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
           }`}
         >
-          <Users className="w-4 h-4" />
-          <span>👤 Relatório por Responsável</span>
+          <Users className="w-4 h-4 shrink-0" />
+          <span>Por Responsável</span>
         </button>
 
         <button
           onClick={() => setActiveReportTab('shopping')}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center relative ${
             activeReportTab === 'shopping'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/25 ring-2 ring-amber-400'
+              : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white hover:bg-amber-50 dark:hover:bg-amber-950/40 border-2 border-amber-400/60 dark:border-amber-500/50'
           }`}
         >
-          <ShoppingCart className="w-4 h-4" />
-          <span>📄 Relatório de Compras / Previsão de Estoque</span>
+          <ShoppingCart className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span className="font-black">Previsão de Compras</span>
+          {activeReportTab !== 'shopping' && (
+            <span className="w-2 h-2 rounded-full bg-amber-500 absolute top-1.5 right-1.5 animate-pulse" />
+          )}
         </button>
 
         <button
           onClick={() => setActiveReportTab('audit')}
-          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center ${
             activeReportTab === 'audit'
               ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-              : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800'
           }`}
         >
-          <Scale className="w-4 h-4" />
-          <span>⚖️ Auditoria & Consistência Matemática</span>
+          <Scale className="w-4 h-4 shrink-0" />
+          <span>Auditoria & Saldos</span>
         </button>
       </div>
 

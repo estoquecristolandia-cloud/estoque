@@ -524,7 +524,7 @@ export function generatePurchaseForecastPDF(
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(5, 150, 105);
-    doc.text('✅ Todos os produtos analisados estão abastecidos e dentro dos níveis ideais de segurança.', margin + 4, y + 4.8);
+    doc.text('[NORMAL] Todos os produtos analisados estão abastecidos e dentro dos níveis ideais de segurança.', margin + 4, y + 4.8);
     y += 10;
   } else {
     // Header for Table 1
@@ -578,14 +578,20 @@ export function generatePurchaseForecastPDF(
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
       if (item.priority === 'URGENTE') {
+        doc.setFillColor(225, 29, 72); // rose-600
+        doc.circle(margin + 4.5, y + 2.7, 1.2, 'F');
         doc.setTextColor(225, 29, 72); // rose-600
-        doc.text('🔴 URGENTE', margin + 3, y + 3.8);
+        doc.text('URGENTE', margin + 7.5, y + 3.8);
       } else if (item.priority === 'COMPRAR') {
+        doc.setFillColor(234, 88, 12); // orange-600
+        doc.circle(margin + 4.5, y + 2.7, 1.2, 'F');
         doc.setTextColor(234, 88, 12); // orange-600
-        doc.text('🟠 COMPRAR', margin + 3, y + 3.8);
+        doc.text('COMPRAR', margin + 7.5, y + 3.8);
       } else {
+        doc.setFillColor(217, 119, 6); // amber-600
+        doc.circle(margin + 4.5, y + 2.7, 1.2, 'F');
         doc.setTextColor(217, 119, 6); // amber-600
-        doc.text('🟡 ATENÇÃO', margin + 3, y + 3.8);
+        doc.text('ATENÇÃO', margin + 7.5, y + 3.8);
       }
 
       doc.setTextColor(15, 23, 42);
@@ -712,9 +718,17 @@ export function generatePurchaseForecastPDF(
       doc.text(`${item.physicalStock}`, margin + 98, y + 3.6);
       if (item.inventoryStatus === 'DIVERGENTE') {
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(225, 29, 72);
         const diffSign = item.physicalDifference > 0 ? `+${item.physicalDifference}` : `${item.physicalDifference}`;
-        doc.text(`⚠️ ${diffSign}`, margin + 116, y + 3.6);
+        if (item.physicalDifference > 0) {
+          doc.setFillColor(234, 88, 12); // orange
+          doc.circle(margin + 114.5, y + 2.5, 1, 'F');
+          doc.setTextColor(234, 88, 12);
+        } else {
+          doc.setFillColor(225, 29, 72); // rose
+          doc.circle(margin + 114.5, y + 2.5, 1, 'F');
+          doc.setTextColor(225, 29, 72);
+        }
+        doc.text(diffSign, margin + 117.5, y + 3.6);
       } else {
         doc.setTextColor(5, 150, 105);
         doc.text('0 (OK)', margin + 116, y + 3.6);
@@ -802,7 +816,7 @@ export function generatePurchaseForecastPDF(
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text('📌 PARECER GERENCIAL AUTOMÁTICO PARA A COORDENAÇÃO:', margin + 4, y + 4.5);
+  doc.text('PARECER GERENCIAL AUTOMÁTICO PARA A COORDENAÇÃO:', margin + 4, y + 4.5);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);

@@ -362,8 +362,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         </div>
       </div>
 
-      {/* Executive Summary Cards (7 key metrics) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+      {/* Executive Summary Cards (7 key metrics) - Responsive Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-2.5 sm:gap-3">
         {/* Total Products */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1">
