@@ -232,11 +232,54 @@ export async function syncInitialFirestoreData(): Promise<void> {
     }
   }
 
+  // Update catalog standard consumption and minimum stock for adjusted products
+  const adjustedCatalogProps: Record<string, { dailyAvgConsumption: number; minStock: number }> = {
+    'prod-arroz': { dailyAvgConsumption: 15, minStock: 45 },
+    'prod-feijao': { dailyAvgConsumption: 8, minStock: 24 },
+    'prod-cafe': { dailyAvgConsumption: 1.5, minStock: 4.5 },
+    'prod-oleo': { dailyAvgConsumption: 1, minStock: 3 },
+  };
+
+  for (const [prodId, props] of Object.entries(adjustedCatalogProps)) {
+    if (existingIds.has(prodId)) {
+      batch.set(doc(db, PRODUCTS_COLLECTION, prodId), props, { merge: true });
+      writes++;
+    }
+  }
+
   const kitRef = doc(db, KITS_COLLECTION, 'daily_kitchen_kit');
   const kitSnap = await getDoc(kitRef);
   if (!kitSnap.exists()) {
     batch.set(kitRef, cleanForFirestore(DEFAULT_DAILY_KIT));
     writes++;
+  } else {
+    // If the kit in firestore has the previous default quantities, synchronize it to the new standard
+    const existingKit = kitSnap.data() as DailyKit;
+    let needsUpdate = false;
+    const updatedItems = (existingKit.items || []).map((item) => {
+      if (item.productId === 'prod-arroz' && (item.quantity === 17 || !item.quantity)) {
+        needsUpdate = true;
+        return { ...item, quantity: 15 };
+      }
+      if (item.productId === 'prod-feijao' && (item.quantity === 9 || !item.quantity)) {
+        needsUpdate = true;
+        return { ...item, quantity: 8 };
+      }
+      if (item.productId === 'prod-cafe' && (item.quantity === 3 || !item.quantity)) {
+        needsUpdate = true;
+        return { ...item, quantity: 1.5 };
+      }
+      if (item.productId === 'prod-oleo' && (item.quantity === 1.5 || !item.quantity)) {
+        needsUpdate = true;
+        return { ...item, quantity: 1 };
+      }
+      return item;
+    });
+
+    if (needsUpdate) {
+      batch.set(kitRef, cleanForFirestore({ ...existingKit, items: updatedItems }), { merge: true });
+      writes++;
+    }
   }
 
   if (writes > 0) await batch.commit();

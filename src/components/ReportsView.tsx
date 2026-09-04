@@ -241,7 +241,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
 
     msg += `🚨 *ITEM EM NÍVEL CRÍTICO DE REPOSIÇÃO:*\n`;
     if (feijao) {
-      const daily = feijao.dailyAvgConsumption || 9;
+      const daily = feijao.dailyAvgConsumption || 8;
       const days = (feijao.currentStock / daily).toFixed(1);
       msg += `• *Produto:* Feijão Carioca\n`;
       msg += `• *Estoque Físico Atual:* *${feijao.currentStock} kg*\n`;

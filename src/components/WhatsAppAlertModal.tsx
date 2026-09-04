@@ -36,7 +36,7 @@ export const WhatsAppAlertModal: React.FC<WhatsAppAlertModalProps> = ({
 
   message += `🚨 *ITEM EM NÍVEL CRÍTICO DE REPOSIÇÃO:*\n`;
   if (feijao) {
-    const daily = feijao.dailyAvgConsumption || 9;
+    const daily = feijao.dailyAvgConsumption || 8;
     const days = (feijao.currentStock / daily).toFixed(1);
     message += `• *Produto:* Feijão Carioca\n`;
     message += `• *Estoque Físico Atual:* *${feijao.currentStock} kg*\n`;
