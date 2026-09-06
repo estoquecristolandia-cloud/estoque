@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Product, Category, Unit } from '../types';
 import { UserRole } from '../firebase';
-import { calculateDaysRemaining, getProductStockStatus, formatDaysRemainingText, getProductAlertDays } from '../utils/storage';
+import { calculateDaysRemaining, getProductStockStatus, formatDaysRemainingText, getProductAlertDays, getProductAutonomyLabel } from '../utils/storage';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
 import { Search, Plus, Edit2, History, Package, AlertTriangle, MapPin, Sparkles, X, Check, Lock, Camera, Barcode, Scan, CheckCircle2, BellRing, Calendar, LayoutGrid, Table } from 'lucide-react';
 
@@ -28,8 +28,9 @@ export function getDetailedStockNote(p: Product): string | null {
     return `Garante cerca de ${refeicoes} refeições grandes (quartas/domingos)`;
   }
   if (nameLower.includes('flocão') || nameLower.includes('flocao')) {
-    const refeicoes = Math.floor(p.currentStock / 15);
-    return `Garante cerca de ${refeicoes} cuscuzes grandes (quartas/domingos)`;
+    const preparos = Math.floor(p.currentStock / 22);
+    const sobra = p.currentStock % 22;
+    return `Garante ${preparos} preparos (22 pc/preparo às quartas e domingos)${sobra > 0 ? ` + ${sobra} pc de sobra` : ''}`;
   }
   if (nameLower.includes('suco') && p.unit === 'pacote') {
     return `Total de ${p.currentStock * 250}g em pó para suco`;
@@ -617,10 +618,21 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                       </td>
 
                       <td className="p-3.5 text-slate-700 dark:text-slate-300">
-                        <div className="font-bold">{p.dailyAvgConsumption} {p.unit}/dia</div>
-                        <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
-                          {p.usageFrequency || 'Uso Diário'}
-                        </div>
+                        {p.id === 'prod-flocao' || p.name.toLowerCase().includes('flocão') || p.name.toLowerCase().includes('flocao') ? (
+                          <>
+                            <div className="font-bold text-amber-600 dark:text-amber-400">22 pacotes / preparo</div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
+                              Somente Quartas e Domingos (não diário)
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="font-bold">{p.dailyAvgConsumption} {p.unit}/dia</div>
+                            <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
+                              {p.usageFrequency || 'Uso Diário'}
+                            </div>
+                          </>
+                        )}
                       </td>
 
                       <td className="p-3.5 font-bold">
@@ -631,7 +643,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                             ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300'
                             : 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300'
                         }`}>
-                          {days} {days === 1 ? 'dia' : 'dias'}
+                          {getProductAutonomyLabel(p)}
                         </span>
                       </td>
 

@@ -48,7 +48,19 @@ export function subscribeToProducts(onData: (products: Product[]) => void, onErr
   return onSnapshot(
     collection(db, PRODUCTS_COLLECTION),
     (snapshot) => {
-      onData(snapshot.docs.map((d) => d.data() as Product).sort((a, b) => a.name.localeCompare(b.name)));
+      const list = snapshot.docs.map((d) => {
+        const prod = d.data() as Product;
+        const normId = (prod.id || '').toLowerCase();
+        const normName = (prod.name || '').toLowerCase();
+        if (normId.includes('flocao') || normName.includes('flocão')) {
+          if (!prod.usageFrequency || prod.usageFrequency.includes('15') || !prod.usageFrequency.includes('22')) {
+            prod.usageFrequency = 'Somente Quartas e Domingos (22 pacotes/preparo)';
+            prod.dailyAvgConsumption = 6.29;
+          }
+        }
+        return prod;
+      }).sort((a, b) => a.name.localeCompare(b.name));
+      onData(list);
     },
     (err) => {
       console.error('Error listening to products:', err);

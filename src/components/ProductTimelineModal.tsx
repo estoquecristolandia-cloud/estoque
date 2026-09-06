@@ -2,7 +2,7 @@ import React from 'react';
 import { X, ArrowDownLeft, ArrowUpRight, ShieldCheck, Clock, User, Building2, Package, Sparkles, AlertTriangle, Scale } from 'lucide-react';
 import { Product, StockMovement } from '../types';
 import { UserRole } from '../firebase';
-import { calculateDaysRemaining, verifyProductAudit, formatDaysRemainingText } from '../utils/storage';
+import { calculateDaysRemaining, verifyProductAudit, formatDaysRemainingText, getProductAutonomyLabel } from '../utils/storage';
 
 interface ProductTimelineModalProps {
   product: Product | null;
@@ -79,10 +79,25 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
             </div>
 
             <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
-              <span className="text-xs text-slate-400 block">Consumo Diário</span>
-              <span className="text-xl font-bold text-amber-400 mt-1 block">
-                {product.dailyAvgConsumption} <span className="text-xs font-normal text-slate-400">{product.unit}/dia</span>
-              </span>
+              {product.id === 'prod-flocao' || product.name.toLowerCase().includes('flocão') || product.name.toLowerCase().includes('flocao') ? (
+                <>
+                  <span className="text-xs text-slate-400 block">Consumo por Preparo</span>
+                  <span className="text-xl font-bold text-amber-400 mt-1 block">
+                    22 <span className="text-xs font-normal text-slate-400">pacotes/preparo</span>
+                  </span>
+                  <span className="text-[10px] text-amber-400/80 block mt-0.5">Somente Quartas e Domingos</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs text-slate-400 block">Consumo Diário</span>
+                  <span className="text-xl font-bold text-amber-400 mt-1 block">
+                    {product.dailyAvgConsumption} <span className="text-xs font-normal text-slate-400">{product.unit}/dia</span>
+                  </span>
+                  {product.usageFrequency && (
+                    <span className="text-[10px] text-slate-400 block mt-0.5">{product.usageFrequency}</span>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
@@ -93,9 +108,9 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
             </div>
 
             <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-3">
-              <span className="text-xs text-slate-400 block">Previsão</span>
-              <span className={`text-base font-bold mt-1 block ${daysRemaining <= 5 ? 'text-rose-400' : 'text-emerald-400'}`}>
-                {formatDaysRemainingText(daysRemaining)}
+              <span className="text-xs text-slate-400 block">Autonomia Estimada</span>
+              <span className={`text-sm font-bold mt-1 block ${daysRemaining <= 5 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                {getProductAutonomyLabel(product)}
               </span>
             </div>
           </div>

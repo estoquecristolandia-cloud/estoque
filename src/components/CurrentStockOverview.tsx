@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Product } from '../types';
+import { Product, StockMovement, InventoryAudit } from '../types';
 import { UserRole } from '../firebase';
 import {
   Boxes,
@@ -18,11 +18,15 @@ import {
   Layers,
   AlertCircle,
   Scale,
+  Mail,
 } from 'lucide-react';
-import { getProductStockStatus, calculateDaysRemaining } from '../utils/storage';
+import { getProductStockStatus, calculateDaysRemaining, getProductAutonomyLabel } from '../utils/storage';
+import { StockNewsletterModal } from './StockNewsletterModal';
 
 interface CurrentStockOverviewProps {
   products: Product[];
+  movements?: StockMovement[];
+  inventoryAudits?: InventoryAudit[];
   userRole?: UserRole;
   onOpenEntry: (product: Product) => void;
   onOpenExit: (product: Product) => void;
@@ -34,6 +38,8 @@ interface CurrentStockOverviewProps {
 
 export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
   products,
+  movements = [],
+  inventoryAudits = [],
   userRole = 'admin',
   onOpenEntry,
   onOpenExit,
@@ -46,6 +52,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'warning' | 'normal'>('all');
+  const [isNewsletterOpen, setIsNewsletterOpen] = useState(false);
 
   // Stats calculation
   const totalProducts = products.length;
@@ -148,13 +155,22 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
           {onOpenReconciliationPreview && (
             <button
               onClick={onOpenReconciliationPreview}
-              className="px-3 py-1.5 rounded-2xl text-xs font-black bg-amber-500/10 dark:bg-amber-950/40 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ml-auto"
+              className="px-3 py-1.5 rounded-2xl text-xs font-black bg-amber-500/10 dark:bg-amber-950/40 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
               title="Abrir Prévia da Conciliação Física dos 14 produtos (Marco Zero)"
             >
               <Scale className="w-3.5 h-3.5 text-amber-500" />
               <span>Prévia Marco Zero</span>
             </button>
           )}
+
+          <button
+            onClick={() => setIsNewsletterOpen(true)}
+            className="px-3.5 py-1.5 rounded-2xl text-xs font-black bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 shadow-md shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ml-auto"
+            title="Gerar e-mail executivo / newsletter profissional com a tabela detalhada de saldos físicos"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>✉️ Gerar Newsletter / E-mail</span>
+          </button>
         </div>
       </div>
 
@@ -316,7 +332,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
                           : 'text-emerald-600 dark:text-emerald-400'
                       }`}
                     >
-                      {days >= 900 ? 'Esporádico' : `${days} dias`}
+                      {getProductAutonomyLabel(p)}
                     </span>
                   </td>
 
@@ -391,6 +407,15 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
           </tbody>
         </table>
       </div>
+
+      {/* Stock Newsletter Modal */}
+      <StockNewsletterModal
+        isOpen={isNewsletterOpen}
+        onClose={() => setIsNewsletterOpen(false)}
+        products={products}
+        movements={movements}
+        inventoryAudits={inventoryAudits}
+      />
     </div>
   );
 };

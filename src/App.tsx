@@ -285,6 +285,8 @@ export default function App() {
 
             <CurrentStockOverview
               products={products}
+              movements={movements}
+              inventoryAudits={inventoryAudits}
               userRole={currentUser.role}
               onOpenEntry={(p) => handleOpenEntryModal(p)}
               onOpenExit={(p) => handleOpenExitModal(p)}

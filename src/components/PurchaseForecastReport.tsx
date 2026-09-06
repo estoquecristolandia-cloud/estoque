@@ -1,7 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { Product, StockMovement, Category, InventoryAudit } from '../types';
 import { UserRole } from '../firebase';
-import { calculatePurchaseForecast, ForecastItem } from '../utils/purchaseForecasting';
+import {
+  calculatePurchaseForecast,
+  ForecastItem,
+  ForecastPeriodDays,
+  PurchaseForecastResult,
+} from '../utils/purchaseForecasting';
 import { generatePurchaseForecastPDF } from '../utils/pdfExport';
 import {
   ShoppingCart,
@@ -24,7 +29,13 @@ import {
   Info,
   Layers,
   FileText,
-  Eye,
+  Mail,
+  ExternalLink,
+  Download,
+  X,
+  Sparkles,
+  DollarSign,
+  AlertCircle,
 } from 'lucide-react';
 
 interface PurchaseForecastReportProps {
@@ -53,15 +64,27 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   userRole = 'admin',
   userName = 'Marconi Castro (Gestor do Estoque)',
 }) => {
-  // Period filter: 7, 15, 30 days (default: 30)
-  const [periodDays, setPeriodDays] = useState<7 | 15 | 30>(30);
+  // Horizon planning period: 8 (default), 14, 21, 30 days
+  const [periodDays, setPeriodDays] = useState<ForecastPeriodDays>(8);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'buy_only' | 'urgent_only' | 'warning_only' | 'comfortable_only'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'critical_only' | 'warning_only' | 'normal_only' | 'buy_only'>('all');
+  const [onlyNeedsPurchase, setOnlyNeedsPurchase] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [subView, setSubView] = useState<'coordination_list' | 'full_table'>('coordination_list');
+
+  // Copy feedback states
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
   const [copiedManagerialNote, setCopiedManagerialNote] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  // Email modal state
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [emailRecipients, setEmailRecipients] = useState(
+    'humbertohpp.59@gmail.com, chefmarcusviniciuses@gmail.com'
+  );
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailCopied, setEmailCopied] = useState(false);
+  const [customEmailNote, setCustomEmailNote] = useState('');
 
   // Pure read-only computation of forecast data
   const forecast = useMemo(() => {
@@ -69,8 +92,136 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       category: categoryFilter,
       statusFilter,
       searchTerm,
+      onlyNeedsPurchase,
     });
-  }, [products, movements, periodDays, inventoryAudits, categoryFilter, statusFilter, searchTerm]);
+  }, [products, movements, periodDays, inventoryAudits, categoryFilter, statusFilter, searchTerm, onlyNeedsPurchase]);
+
+  // Generate Email Content
+  const emailContent = useMemo(() => {
+    const today = new Date().toLocaleDateString('pt-BR');
+    const subject = `[ESTOQUE CRISTOLÂNDIA] Previsão Semanal de Compras — Ciclo de ${periodDays} Dias (Próxima Compra: ${forecast.nextPurchaseDateFormatted})`;
+
+    let body = `A/C: Pastor Humberto (humbertohpp.59@gmail.com) e Chefe Marcos (chefmarcusviniciuses@gmail.com)\n`;
+    body += `Cc: Marconi Castro (Almoxarifado / Estoque)\n`;
+    body += `Data da Emissão: ${today}\n\n`;
+
+    body += `Prezados Pastor Humberto e Chefe Marcos,\n\n`;
+    body += `Graça e paz!\n\n`;
+    body += `Apresentamos a Previsão Semanal de Compras e Abastecimento do Estoque da Cristolândia (LEM/BA) referente ao horizonte de ${periodDays} dias.\n\n`;
+
+    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    body += `📊 1. RESUMO EXECUTIVO DO ABASTECIMENTO (${periodDays} DIAS)\n`;
+    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    body += `• Ciclo Operacional: ${forecast.baseDateFormatted} a ${forecast.endDateFormatted}\n`;
+    body += `• Data Prevista de Compra: ${forecast.nextPurchaseDateFormatted} (Quarta-feira)\n`;
+    body += `• Total de Itens Analisados: ${forecast.totalProducts} produtos\n`;
+    body += `• Itens com Sugestão de Compra: ${forecast.itemsNeedingPurchaseCount} itens\n`;
+    body += `• Itens em Nível Crítico (Risco de Falta): ${forecast.criticalCount}\n`;
+    body += `• Itens em Atenção (Abaixo da Margem de Segurança): ${forecast.warningCount}\n`;
+    body += `• Itens com Estoque Normal / Seguro: ${forecast.normalCount}\n`;
+    body += `• Custo Total Estimado de Reposição: R$ ${(forecast.totalEstimatedCost ?? 0).toFixed(2).replace('.', ',')}\n\n`;
+
+    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    body += `🚨 2. LISTA PRIORITÁRIA DE COMPRAS (POR GRAU DE URGÊNCIA)\n`;
+    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    if (forecast.purchasesList.length === 0) {
+      body += `✅ Não há produtos necessitando de compra imediata. O estoque atual atende com segurança a operação pelos próximos ${periodDays} dias.\n\n`;
+    } else {
+      // Criticals first
+      const criticals = forecast.purchasesList.filter((i) => i.status === 'CRITICO');
+      if (criticals.length > 0) {
+        body += `🔴 ITENS CRÍTICOS (RISCO IMINENTE DE RUPTURA):\n`;
+        criticals.forEach((item) => {
+          body += `• ${item.name} (${item.category})\n`;
+          body += `   - Estoque Atual: ${item.currentStock} ${item.unit}\n`;
+          body += `   - Consumo Previsto (${periodDays}d): ${item.projectedConsumption} ${item.unit} | Autonomia: ${item.autonomyText}\n`;
+          body += `   - Saldo Projetado ao Fim: ${item.projectedBalance} ${item.unit} (Estoque Segurança: ${item.safetyStock} ${item.unit})\n`;
+          body += `   ➔ COMPRA SUGERIDA: +${item.suggestedPurchaseQty} ${item.unit} (Estimativa: R$ ${(item.estimatedCost ?? item.estimatedTotalCost ?? 0).toFixed(2).replace('.', ',')})\n\n`;
+        });
+      }
+
+      // Attention items
+      const attentions = forecast.purchasesList.filter((i) => i.status === 'ATENCAO');
+      if (attentions.length > 0) {
+        body += `🟡 ITENS EM ATENÇÃO (ABAIXO DO ESTOQUE DE SEGURANÇA):\n`;
+        attentions.forEach((item) => {
+          body += `• ${item.name} (${item.category})\n`;
+          body += `   - Estoque Atual: ${item.currentStock} ${item.unit}\n`;
+          body += `   - Consumo Previsto: ${item.projectedConsumption} ${item.unit} | Autonomia: ${item.autonomyText}\n`;
+          body += `   ➔ COMPRA SUGERIDA: +${item.suggestedPurchaseQty} ${item.unit} (Estimativa: R$ ${(item.estimatedCost ?? item.estimatedTotalCost ?? 0).toFixed(2).replace('.', ',')})\n\n`;
+        });
+      }
+
+      // Other regular needs if any
+      const normalsWithPurchase = forecast.purchasesList.filter((i) => i.status === 'NORMAL');
+      if (normalsWithPurchase.length > 0) {
+        body += `🟢 ITENS COMPLEMENTARES DE REPOSIÇÃO:\n`;
+        normalsWithPurchase.forEach((item) => {
+          body += `• ${item.name}: Atual ${item.currentStock} ${item.unit} ➔ COMPRA: +${item.suggestedPurchaseQty} ${item.unit}\n`;
+        });
+        body += `\n`;
+      }
+    }
+
+    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    body += `🥩 3. DESTAQUE DOS ITENS PRINCIPAIS DE CONSUMO DA COZINHA\n`;
+    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    const stapleNames = ['Arroz Branco', 'Feijão Carioca', 'Óleo de Soja', 'Frango Inteiro', 'Frango Resfriado', 'Carne Bovina', 'Farinha de Trigo', 'Açúcar Cristal', 'Leite Integral'];
+    const stapleItems = forecast.allItems.filter((item) =>
+      stapleNames.some((sn) => item.name.toLowerCase().includes(sn.toLowerCase()))
+    );
+
+    stapleItems.forEach((st) => {
+      const statusIcon = st.status === 'CRITICO' ? '🔴' : st.status === 'ATENCAO' ? '🟡' : '🟢';
+      body += `${statusIcon} ${st.name}: Atual: ${st.currentStock} ${st.unit} | Autonomia: ${st.autonomyText} | Sugestão: ${st.suggestedPurchaseQty > 0 ? `+${st.suggestedPurchaseQty} ${st.unit}` : 'Sem compra necessária'}\n`;
+    });
+    body += `\n`;
+
+    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    body += `📌 4. PARECER GERENCIAL DO ALMOXARIFADO & RECONCILIAÇÃO\n`;
+    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    body += `${forecast.managerialObservation}\n\n`;
+
+    if (customEmailNote.trim()) {
+      body += `📝 OBSERVAÇÃO ADICIONAL DO GESTOR:\n`;
+      body += `${customEmailNote.trim()}\n\n`;
+    }
+
+    body += `Atenciosamente,\n\n`;
+    body += `Marconi Castro\n`;
+    body += `Responsável pelo Almoxarifado e Controle de Estoque\n`;
+    body += `Missão Cristolândia — LEM/BA\n`;
+    body += `Junta de Missões Nacionais — CBB\n`;
+
+    return { subject, body };
+  }, [forecast, periodDays, customEmailNote]);
+
+  const handleOpenEmailModal = () => {
+    setEmailSubject(emailContent.subject);
+    setIsEmailModalOpen(true);
+  };
+
+  const handleCopyEmailText = () => {
+    navigator.clipboard.writeText(emailContent.body);
+    setEmailCopied(true);
+    setTimeout(() => setEmailCopied(false), 3000);
+  };
+
+  const handleOpenInGmail = () => {
+    const to = encodeURIComponent(emailRecipients.trim());
+    const su = encodeURIComponent(emailSubject || emailContent.subject);
+    const body = encodeURIComponent(emailContent.body);
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${su}&body=${body}`;
+    window.open(gmailUrl, '_blank');
+  };
+
+  const handleSendViaMailto = () => {
+    const to = encodeURIComponent(emailRecipients.trim());
+    const su = encodeURIComponent(emailSubject || emailContent.subject);
+    const body = encodeURIComponent(emailContent.body);
+    window.location.href = `mailto:${to}?subject=${su}&body=${body}`;
+  };
 
   const handleGeneratePDF = () => {
     setIsGeneratingPdf(true);
@@ -78,6 +229,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       generatePurchaseForecastPDF(products, movements, periodDays, inventoryAudits, userName, {
         category: categoryFilter,
         statusFilter,
+        searchTerm,
+        onlyNeedsPurchase,
       });
     } catch (err) {
       console.error('Error generating Purchase Forecast PDF:', err);
@@ -87,46 +240,78 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   };
 
   const handlePrintReport = () => {
-    // Generate PDF for immediate high-quality print or invoke print
     handleGeneratePDF();
     setTimeout(() => {
       window.print();
     }, 400);
   };
 
+  const handleExportCSV = () => {
+    const headers = [
+      'Item',
+      'Categoria',
+      'Estoque Atual',
+      'Unidade',
+      'Consumo Médio',
+      'Autonomia (dias)',
+      'Consumo Previsto',
+      'Saldo Projetado',
+      'Estoque Segurança (3d)',
+      'Sugestão de Compra',
+      'Custo Estimado (R$)',
+      'Status',
+    ];
+
+    const rows = forecast.filteredItems.map((item) => [
+      `"${item.name.replace(/"/g, '""')}"`,
+      `"${item.category}"`,
+      item.currentStock,
+      item.unit,
+      item.consumptionUnitText,
+      item.daysAutonomy != null ? Number(item.daysAutonomy).toFixed(1) : 'Indeterminado',
+      item.projectedConsumption,
+      item.projectedBalance,
+      item.safetyStock,
+      item.suggestedPurchaseQty,
+      (item.estimatedCost ?? item.estimatedTotalCost ?? 0).toFixed(2),
+      item.statusLabel,
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(';'), ...rows.map((e) => e.join(';'))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Previsao_Compras_Cristolandia_${periodDays}dias_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleCopyCoordinationList = () => {
     let msg = `🏛️ *JUNTA DE MISSÕES NACIONAIS - CRISTOLÂNDIA (LEM/BA)*\n`;
-    msg += `📋 *RELATÓRIO DE NECESSIDADE DE COMPRAS E PREVISÃO DE ESTOQUE*\n`;
-    msg += `📅 *Período de Análise:* Últimos ${periodDays} dias (${forecast.startDateFormatted} a ${forecast.endDateFormatted})\n`;
-    msg += `👤 *Responsável:* ${userName}\n\n`;
+    msg += `📋 *RELATÓRIO DE PREVISÃO DE COMPRAS (${periodDays} DIAS)*\n`;
+    msg += `📅 *Ciclo:* ${forecast.baseDateFormatted} a ${forecast.endDateFormatted} | Compra Prevista: *${forecast.nextPurchaseDateFormatted}*\n`;
+    msg += `💰 *Custo Total Estimado:* R$ ${(forecast.totalEstimatedCost ?? 0).toFixed(2).replace('.', ',')}\n\n`;
 
-    if (forecast.urgentItems.length > 0) {
-      msg += `🚨 *ITENS COM PRIORIDADE URGENTE / CRÍTICA:*\n`;
-      forecast.urgentItems.forEach((item) => {
-        const autText = item.daysAutonomy !== null ? `${item.daysAutonomy.toFixed(1)} dias` : 'Indeterminada';
-        msg += `• *${item.name}*: Estoque Atual: *${item.currentStock} ${item.unit}* | Mínimo: ${item.minStock} ${item.unit} | Autonomia: ${autText} ➔ *COMPRAR: +${item.suggestedPurchaseQty} ${item.unit}*\n`;
+    if (forecast.criticalItems.length > 0) {
+      msg += `🚨 *ITENS CRÍTICOS (RUPTURA IMINENTE):*\n`;
+      forecast.criticalItems.forEach((item) => {
+        msg += `• *${item.name}*: Atual: *${item.currentStock} ${item.unit}* | Consumo: ${item.projectedConsumption} ${item.unit} ➔ *COMPRAR: +${item.suggestedPurchaseQty} ${item.unit}*\n`;
       });
       msg += `\n`;
     }
 
-    const otherPurchases = forecast.purchasesList.filter((i) => i.priority !== 'URGENTE');
+    const otherPurchases = forecast.purchasesList.filter((i) => i.status !== 'CRITICO');
     if (otherPurchases.length > 0) {
-      msg += `📦 *OUTRAS NECESSIDADES DE REPOSIÇÃO (META ESTOQUE IDEAL):*\n`;
+      msg += `🟡 *ITENS EM ATENÇÃO / REPOSIÇÃO:*\n`;
       otherPurchases.forEach((item) => {
-        const autText = item.daysAutonomy !== null ? `${item.daysAutonomy.toFixed(1)} dias` : 'Sem consumo reg.';
-        msg += `• *${item.name}*: Estoque Atual: ${item.currentStock} ${item.unit} (Ideal: ${item.idealStock} ${item.unit}) ➔ *Sugerido: +${item.suggestedPurchaseQty} ${item.unit}*\n`;
+        msg += `• *${item.name}*: Atual: ${item.currentStock} ${item.unit} ➔ *Sugerido: +${item.suggestedPurchaseQty} ${item.unit}*\n`;
       });
       msg += `\n`;
     }
 
-    msg += `📊 *Resumo da Análise:*\n`;
-    msg += `• Total de Produtos Analisados: ${forecast.totalProducts}\n`;
-    msg += `• Itens Sem Estoque: ${forecast.outOfStockCount}\n`;
-    msg += `• Itens para Comprar (Críticos): ${forecast.needPurchaseCount}\n`;
-    msg += `• Itens em Atenção: ${forecast.warningCount}\n`;
-    msg += `• Itens com Estoque Confortável: ${forecast.comfortableCount}\n`;
-    msg += `• Total Sugerido de Reposição: ${forecast.totalSuggestedPurchaseUnits} unidades/kg\n\n`;
-    msg += `*Documento gerado automaticamente pelo sistema Estoque Cristolândia.*`;
+    msg += `📊 *Resumo:* Analisados: ${forecast.totalProducts} | Críticos: ${forecast.criticalCount} | Atenção: ${forecast.warningCount} | Normais: ${forecast.normalCount}\n`;
+    msg += `*Documento gerado automaticamente pelo Estoque Cristolândia.*`;
 
     navigator.clipboard.writeText(msg);
     setCopiedWhatsApp(true);
@@ -139,47 +324,26 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     setTimeout(() => setCopiedManagerialNote(false), 3000);
   };
 
-  const handleWhatsAppChefeMarcos = () => {
-    let msg = `🏛️ *JUNTA DE MISSÕES NACIONAIS - CRISTOLÂNDIA (LEM/BA)*\n`;
-    msg += `📋 *COMUNICADO OFICIAL DE COMPRAS & ABASTECIMENTO*\n\n`;
-    msg += `Prezado *Chefe Marcos*,\n`;
-    msg += `Segue a previsão oficial de compras baseada no consumo real dos últimos ${periodDays} dias:\n\n`;
-
-    if (forecast.urgentItems.length > 0) {
-      msg += `🚨 *ITENS URGENTES:*\n`;
-      forecast.urgentItems.forEach((i) => {
-        msg += `• *${i.name}*: Atual: ${i.currentStock} ${i.unit} (Mín: ${i.minStock}) ➔ *Comprar: +${i.suggestedPurchaseQty} ${i.unit}*\n`;
-      });
-      msg += `\n`;
-    }
-
-    if (forecast.purchasesList.length > 0) {
-      msg += `🛒 *Total de Itens com Sugestão de Reposição:* ${forecast.purchasesList.length} produtos (Total: +${forecast.totalSuggestedPurchaseUnits} unidades).\n`;
-    } else {
-      msg += `✅ *Todos os produtos estão com níveis confortáveis de estoque.*\n`;
-    }
-
-    msg += `\nAlmoxarifado / Estoque Cristolândia`;
-
-    const encoded = encodeURIComponent(msg);
-    window.open(`https://wa.me/5562999746823?text=${encoded}`, '_blank');
-  };
-
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header Banner with Title and Action Controls */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      {/* Top Banner with Title, Horizon Description and Action Controls */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-5">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
               <ShoppingCart className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-                Relatório de Compras / Previsão de Estoque
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Cálculo de consumo médio diário, autonomia, meta de estoque ideal e conciliação física de auditoria.
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                  Relatório de Previsão de Compras
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                  Planejamento de {periodDays} dias
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Cálculo de consumo diário e regras para dias específicos (Qua/Dom), estoque de segurança de 3 dias e saldo projetado.
               </p>
             </div>
           </div>
@@ -187,29 +351,52 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
         {/* Primary Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Gerar E-mail Semanal Button (Highlight) */}
+          <button
+            onClick={handleOpenEmailModal}
+            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-black text-xs sm:text-sm shadow-md shadow-indigo-600/20 transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+            title="Gerar e-mail profissional semanal para o Pastor Humberto e Chef Marcos"
+          >
+            <Mail className="w-4 h-4 text-amber-300" />
+            <span>✉️ Gerar E-mail Semanal</span>
+          </button>
+
+          {/* Gerar PDF */}
           <button
             onClick={handleGeneratePDF}
             disabled={isGeneratingPdf}
             className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs sm:text-sm shadow-md shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-2 active:scale-95 disabled:opacity-50"
-            title="Gerar e baixar PDF em formato A4 paisagem profissional pronto para envio à Coordenação"
+            title="Baixar PDF do Relatório de Previsão de Compras em A4 Paisagem"
           >
             <FileDown className="w-4 h-4" />
             <span>📄 Gerar PDF</span>
           </button>
 
+          {/* Exportar Excel / CSV */}
           <button
-            onClick={handlePrintReport}
-            className="px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs sm:text-sm shadow-md shadow-slate-900/10 transition-all cursor-pointer flex items-center gap-2 active:scale-95"
-            title="Imprimir relatório formatado"
+            onClick={handleExportCSV}
+            className="px-3.5 py-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 border border-emerald-200 dark:border-emerald-800 shadow-sm active:scale-95"
+            title="Exportar dados para planilha Excel (CSV)"
           >
-            <Printer className="w-4 h-4 text-amber-400" />
-            <span>🖨️ Imprimir Relatório</span>
+            <Download className="w-4 h-4 text-emerald-600" />
+            <span>Planilha Excel</span>
           </button>
 
+          {/* Imprimir */}
+          <button
+            onClick={handlePrintReport}
+            className="px-3.5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md shadow-slate-900/10 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+            title="Imprimir relatório"
+          >
+            <Printer className="w-4 h-4 text-amber-400" />
+            <span>Imprimir</span>
+          </button>
+
+          {/* Copiar Resumo WhatsApp */}
           <button
             onClick={handleCopyCoordinationList}
             className="px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 shadow-sm active:scale-95"
-            title="Copiar lista consolidada formatada para envio via WhatsApp"
+            title="Copiar lista consolidada para WhatsApp"
           >
             {copiedWhatsApp ? (
               <>
@@ -219,67 +406,71 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             ) : (
               <>
                 <Copy className="w-4 h-4 text-slate-500" />
-                <span>Copiar p/ WhatsApp</span>
+                <span>WhatsApp</span>
               </>
             )}
-          </button>
-
-          <button
-            onClick={handleWhatsAppChefeMarcos}
-            className="px-3.5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
-            title="Disparo direto no WhatsApp para o Chefe Marcos"
-          >
-            <Send className="w-4 h-4" />
-            <span>Chefe Marcos</span>
           </button>
         </div>
       </div>
 
-      {/* Filter and Period Selection Bar (Flow: 1. Escolher período -> 2. Prévia -> 3. Gerar PDF / Imprimir) */}
+      {/* Horizon Selector and Filter Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Period Selector (7, 15, 30 days) */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Horizon Selection: 8, 14, 21, 30 days */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 mr-1">
-              <Calendar className="w-4 h-4 text-indigo-500" />
-              Período de Análise:
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mr-1">
+              <Calendar className="w-4 h-4 text-amber-500" />
+              Horizonte de Previsão:
             </span>
-            <button
-              onClick={() => setPeriodDays(7)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                periodDays === 7
-                  ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              7 dias
-            </button>
-            <button
-              onClick={() => setPeriodDays(15)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                periodDays === 15
-                  ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              15 dias
-            </button>
-            <button
-              onClick={() => setPeriodDays(30)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                periodDays === 30
-                  ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              30 dias (Padrão)
-            </button>
-            <span className="text-[11px] text-slate-400 ml-1">
-              ({forecast.startDateFormatted} a {forecast.endDateFormatted})
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl">
+              <button
+                onClick={() => setPeriodDays(8)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  periodDays === 8
+                    ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                8 dias (Padrão)
+              </button>
+              <button
+                onClick={() => setPeriodDays(14)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  periodDays === 14
+                    ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                14 dias
+              </button>
+              <button
+                onClick={() => setPeriodDays(21)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  periodDays === 21
+                    ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                21 dias
+              </button>
+              <button
+                onClick={() => setPeriodDays(30)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  periodDays === 30
+                    ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                30 dias
+              </button>
+            </div>
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 ml-1">
+              Ciclo: <strong>{forecast.baseDateFormatted} a {forecast.endDateFormatted}</strong> | Próxima compra:{' '}
+              <strong className="text-amber-600 dark:text-amber-400">{forecast.nextPurchaseDateFormatted}</strong>
             </span>
           </div>
 
-          {/* Sub-view switcher: Coordination List vs Full Forecast Table */}
+          {/* Sub-view switcher: Prioritária vs Visão Geral */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl">
             <button
               onClick={() => setSubView('coordination_list')}
@@ -299,28 +490,28 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              📋 2. Visão Completa & Auditoria ({forecast.totalProducts})
+              📋 2. Quadro Geral de Estoque ({forecast.totalProducts})
             </button>
           </div>
         </div>
 
-        {/* Filters Row: Situation, Category & Search */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-          {/* Situation Filter */}
+        {/* Filters Row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          {/* Status Filter */}
           <div>
             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-              Situação do Produto
+              Status do Produto
             </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
               className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
-              <option value="all">Todas as Situações</option>
-              <option value="buy_only">🔴 Somente para Comprar (Críticos & Zerados)</option>
-              <option value="urgent_only">🚨 Somente Urgentes (Autonomia ≤ 3 dias)</option>
-              <option value="warning_only">🟡 Somente em Atenção</option>
-              <option value="comfortable_only">🟢 Somente Estoque Confortável</option>
+              <option value="all">Todos os Status</option>
+              <option value="buy_only">🛒 Somente Necessidade de Compra</option>
+              <option value="critical_only">🔴 Crítico (Risco de Falta)</option>
+              <option value="warning_only">🟡 Atenção (Abaixo da Margem)</option>
+              <option value="normal_only">🟢 Normal (Estoque Seguro)</option>
             </select>
           </div>
 
@@ -343,6 +534,21 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             </select>
           </div>
 
+          {/* Quick Toggle: Only Need Purchase */}
+          <div className="flex flex-col justify-end">
+            <label className="flex items-center gap-2 cursor-pointer p-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={onlyNeedsPurchase}
+                onChange={(e) => setOnlyNeedsPurchase(e.target.checked)}
+                className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 focus:ring-offset-0"
+              />
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 select-none">
+                Filtrar apenas com compra sugerida
+              </span>
+            </label>
+          </div>
+
           {/* Search Term */}
           <div>
             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
@@ -352,7 +558,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Ex: Arroz, Feijão, Óleo..."
+                placeholder="Ex: Arroz, Feijão, Frango..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -362,149 +568,114 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         </div>
       </div>
 
-      {/* Executive Summary Cards (7 key metrics) - Responsive Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-2.5 sm:gap-3">
+      {/* Executive Summary Cards: 5 Key Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {/* Total Products */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1">
-            <span>Analisados</span>
-            <Package className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Total Analisado</span>
+            <Package className="w-4 h-4 text-indigo-500" />
           </div>
-          <div className="text-xl font-black text-slate-900 dark:text-white">
+          <div className="text-2xl font-black text-slate-900 dark:text-white">
             {forecast.totalProducts}
           </div>
-          <p className="text-[9px] text-slate-400 mt-0.5">
-            Cadastrados
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            Produtos no catálogo
           </p>
         </div>
 
-        {/* Sem Estoque */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1">
-            <span>Sem Estoque</span>
-            <span className="text-[10px]">⚫</span>
+        {/* Crítico */}
+        <div className="bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-900/60 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-[11px] font-bold text-rose-600 mb-1">
+            <span>Críticos (Risco)</span>
+            <Flame className="w-4 h-4 text-rose-500" />
           </div>
-          <div className={`text-xl font-black ${forecast.outOfStockCount > 0 ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
-            {forecast.outOfStockCount}
+          <div className={`text-2xl font-black ${forecast.criticalCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
+            {forecast.criticalCount}
           </div>
-          <p className="text-[9px] text-slate-400 mt-0.5">
-            Estoque zerado
-          </p>
-        </div>
-
-        {/* Urgente */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-[11px] font-bold text-rose-500 mb-1">
-            <span>Urgente</span>
-            <Flame className="w-3.5 h-3.5 text-rose-500" />
-          </div>
-          <div className={`text-xl font-black ${forecast.urgentCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
-            {forecast.urgentCount}
-          </div>
-          <p className="text-[9px] text-rose-500/80 mt-0.5">
-            Autonomia ≤ 3d
-          </p>
-        </div>
-
-        {/* Comprar (Crítico) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-[11px] font-bold text-orange-500 mb-1">
-            <span>Comprar</span>
-            <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />
-          </div>
-          <div className={`text-xl font-black ${forecast.needPurchaseCount > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-slate-400'}`}>
-            {forecast.needPurchaseCount}
-          </div>
-          <p className="text-[9px] text-orange-500/80 mt-0.5">
-            Abaixo do mínimo
+          <p className="text-[10px] text-rose-500/80 mt-0.5">
+            Risco iminente de falta
           </p>
         </div>
 
         {/* Atenção */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-[11px] font-bold text-amber-500 mb-1">
+        <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-900/60 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-[11px] font-bold text-amber-600 mb-1">
             <span>Em Atenção</span>
-            <Clock className="w-3.5 h-3.5 text-amber-500" />
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
           </div>
-          <div className={`text-xl font-black ${forecast.warningCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
+          <div className={`text-2xl font-black ${forecast.warningCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
             {forecast.warningCount}
           </div>
-          <p className="text-[9px] text-amber-500/80 mt-0.5">
-            Autonomia ≤ 15d
+          <p className="text-[10px] text-amber-500/80 mt-0.5">
+            Abaixo da segurança (3d)
           </p>
         </div>
 
-        {/* Estoque Confortável */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm">
-          <div className="flex items-center justify-between text-[11px] font-bold text-emerald-500 mb-1">
-            <span>Confortável</span>
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+        {/* Normal */}
+        <div className="bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-900/60 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-[11px] font-bold text-emerald-600 mb-1">
+            <span>Normais</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-            {forecast.comfortableCount}
+          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+            {forecast.normalCount}
           </div>
-          <p className="text-[9px] text-emerald-500/80 mt-0.5">
-            Níveis normais
+          <p className="text-[10px] text-emerald-500/80 mt-0.5">
+            Estoque seguro p/ {periodDays}d
           </p>
         </div>
 
-        {/* Total Reposição Sugerida */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-sm col-span-2 sm:col-span-1">
-          <div className="flex items-center justify-between text-[11px] font-bold text-blue-500 mb-1">
-            <span>Total Reposição</span>
-            <Layers className="w-3.5 h-3.5 text-blue-500" />
+        {/* Custo Total Estimado */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-800/80 rounded-2xl p-4 shadow-sm col-span-2 sm:col-span-1">
+          <div className="flex items-center justify-between text-[11px] font-bold text-blue-600 dark:text-blue-400 mb-1">
+            <span>Custo Total Estimado</span>
+            <DollarSign className="w-4 h-4 text-blue-500" />
           </div>
-          <div className="text-xl font-black text-blue-600 dark:text-blue-400">
-            {forecast.totalSuggestedPurchaseUnits}
+          <div className="text-2xl font-black text-blue-700 dark:text-blue-300">
+            R$ {(forecast.totalEstimatedCost ?? 0).toFixed(2).replace('.', ',')}
           </div>
-          <p className="text-[9px] text-blue-500/80 mt-0.5">
-            Unidades / kg total
+          <p className="text-[10px] text-blue-600/80 dark:text-blue-400/80 mt-0.5">
+            {forecast.totalSuggestedPurchaseUnits} un. sugeridas
           </p>
         </div>
       </div>
 
-      {/* Urgent Alert Banner (if any item is urgent) */}
-      {forecast.urgentItems.length > 0 && (
-        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900 text-rose-600 dark:text-rose-300">
-              <Flame className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-black text-rose-900 dark:text-rose-200">
-                🚨 {forecast.urgentItems.length} {forecast.urgentItems.length === 1 ? 'Item com Prioridade Urgente' : 'Itens com Prioridade Urgente'} de Compra
-              </h4>
-              <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
-                Produtos esgotados ou com autonomia crítica de 3 dias ou menos:{' '}
-                <strong>{forecast.urgentItems.map((i) => `${i.name} (+${i.suggestedPurchaseQty} ${i.unit})`).join(', ')}</strong>.
-              </p>
-            </div>
+      {/* Physical Reconciliation Warning (e.g. Arroz Branco physical count ~30kg vs system 14.5kg) */}
+      {forecast.allItems.some((i) => i.inventoryStatus === 'DIVERGENTE') && (
+        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-2xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-900 dark:text-amber-200">
+            <span className="font-bold">Aviso de Auditoria Física Reconciliada: </span>
+            Foram detectados produtos com diferença entre a contagem física oficial e o saldo do sistema.
+            A previsão utiliza o estoque de segurança e o consumo real auditado para evitar desabastecimento.
+            {forecast.allItems
+              .filter((i) => i.inventoryStatus === 'DIVERGENTE')
+              .map((item) => (
+                <span key={item.id} className="ml-1 font-mono font-bold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded text-[11px]">
+                  {item.name}: Físico {item.physicalStock} {item.unit} vs Sistema {item.currentStock} {item.unit} (Dif: {item.physicalDifference > 0 ? `+${item.physicalDifference}` : item.physicalDifference})
+                </span>
+              ))}
           </div>
-          <button
-            onClick={handleGeneratePDF}
-            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs transition-all cursor-pointer whitespace-nowrap shadow-sm"
-          >
-            Emitir PDF Imediato
-          </button>
         </div>
       )}
 
-      {/* SUB-VIEW 1: LISTA CONSOLIDADA DE COMPRAS PARA A COORDENAÇÃO */}
+      {/* SUB-VIEW 1: LISTA PRIORITÁRIA DE COMPRAS */}
       {subView === 'coordination_list' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-amber-500" />
-                1. Necessidade de Compras (Lista Consolidada para a Coordenação)
+                1. Necessidade de Compras — Lista Prioritária ({forecast.purchasesList.length} itens)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Exibindo somente os produtos classificados como URGENTE, COMPRAR ou ATENÇÃO ordenados por prioridade estrita.
+                Itens com sugestão de compra no período de {periodDays} dias ordenados por criticidade.
               </p>
             </div>
 
-            <div className="text-xs text-slate-400 font-mono">
-              Fórmula: <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-amber-600 dark:text-amber-400 font-bold">Qtd Sugerida = max(0, Ideal - Atual)</code>
+            <div className="text-xs text-slate-500 dark:text-slate-400 font-mono bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl">
+              Fórmula: <span className="font-bold text-amber-600 dark:text-amber-400">Compra = Consumo Previsto + Est. Segurança - Estoque Atual</span>
             </div>
           </div>
 
@@ -512,10 +683,10 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
               <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
               <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                Estoque 100% Suprido
+                Estoque 100% Suprido para o Ciclo de {periodDays} Dias!
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                Nenhum produto analisado encontra-se abaixo do estoque mínimo ou necessitando de reposição no momento.
+                Todos os produtos analisados possuem saldo suficiente para cobrir o consumo previsto e a margem de segurança de 3 dias.
               </p>
             </div>
           ) : (
@@ -523,71 +694,103 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                    <th className="py-3 px-3">Prioridade</th>
-                    <th className="py-3 px-3">Produto / Item</th>
-                    <th className="py-3 px-3">Unidade</th>
+                    <th className="py-3 px-3">Status</th>
+                    <th className="py-3 px-3">Item / Produto</th>
                     <th className="py-3 px-3">Estoque Atual</th>
-                    <th className="py-3 px-3">Consumo Diário</th>
-                    <th className="py-3 px-3">Autonomia</th>
-                    <th className="py-3 px-3">Estoque Ideal</th>
-                    <th className="py-3 px-3 text-right">Comprar (Sugerido)</th>
+                    <th className="py-3 px-3">Consumo Médio</th>
+                    <th className="py-3 px-3 text-center">Autonomia</th>
+                    <th className="py-3 px-3 text-right">Cons. Previsto ({periodDays}d)</th>
+                    <th className="py-3 px-3 text-right">Saldo Projetado</th>
+                    <th className="py-3 px-3 text-right">Segurança (3d)</th>
+                    <th className="py-3 px-3 text-right">Compra Sugerida</th>
+                    <th className="py-3 px-3 text-right">Custo Est.</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {forecast.purchasesList.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                      {/* Status */}
                       <td className="py-3.5 px-3">
                         <span
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black ${
-                            item.priority === 'URGENTE'
+                            item.status === 'CRITICO'
                               ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                              : item.priority === 'ALTA'
-                              ? 'bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800'
-                              : 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                              : item.status === 'ATENCAO'
+                              ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                              : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                           }`}
                         >
-                          {item.priorityLabel}
+                          {item.statusBadge}
                         </span>
                       </td>
+
+                      {/* Item */}
                       <td className="py-3.5 px-3">
-                        <div className="font-extrabold text-slate-900 dark:text-white">{item.name}</div>
+                        <div className="font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          {item.name}
+                          {item.inventoryStatus === 'DIVERGENTE' && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 font-bold" title={`Contagem física: ${item.physicalStock} ${item.unit}`}>
+                              Físico: {item.physicalStock}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[10px] text-slate-400">{item.category}</div>
                       </td>
-                      <td className="py-3.5 px-3 text-slate-500">
-                        {item.unit}
-                      </td>
+
+                      {/* Estoque Atual */}
                       <td className="py-3.5 px-3">
                         <span className={`font-black ${item.currentStock <= 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>
                           {item.currentStock} {item.unit}
                         </span>
                       </td>
+
+                      {/* Consumo Médio Diário/Semanal */}
                       <td className="py-3.5 px-3 text-slate-600 dark:text-slate-300 font-semibold">
-                        {item.dailyAvgConsumption > 0 ? `${item.dailyAvgConsumption} ${item.unit}/dia` : 'Sem consumo'}
+                        {item.consumptionUnitText}
                       </td>
-                      <td className="py-3.5 px-3">
-                        {item.daysAutonomy !== null ? (
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs ${
-                              item.daysAutonomy <= 3
-                                ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
-                                : item.daysAutonomy <= 7
-                                ? 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300'
-                                : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
-                            }`}
-                          >
-                            {item.daysAutonomy.toFixed(1)} dias
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic">Indeterminada</span>
-                        )}
+
+                      {/* Autonomia */}
+                      <td className="py-3.5 px-3 text-center">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs ${
+                            item.daysAutonomy !== null && item.daysAutonomy <= 3
+                              ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
+                              : item.daysAutonomy !== null && item.daysAutonomy <= 7
+                              ? 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300'
+                              : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                          }`}
+                        >
+                          {item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} dias` : 'Eventual')}
+                        </span>
                       </td>
-                      <td className="py-3.5 px-3 text-indigo-600 dark:text-indigo-400 font-bold">
-                        {item.idealStock} {item.unit}
+
+                      {/* Consumo Previsto do Período */}
+                      <td className="py-3.5 px-3 text-right font-semibold text-slate-700 dark:text-slate-300">
+                        {item.projectedConsumption} {item.unit}
                       </td>
+
+                      {/* Saldo Projetado ao Final */}
+                      <td className="py-3.5 px-3 text-right font-black">
+                        <span className={item.projectedBalance < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}>
+                          {item.projectedBalance} {item.unit}
+                        </span>
+                      </td>
+
+                      {/* Estoque de Segurança (3 dias) */}
+                      <td className="py-3.5 px-3 text-right text-indigo-600 dark:text-indigo-400 font-bold">
+                        {item.safetyStock} {item.unit}
+                      </td>
+
+                      {/* Sugestão de Compra */}
                       <td className="py-3.5 px-3 text-right">
-                        <span className="inline-flex items-center gap-1 font-black text-rose-600 dark:text-rose-400 text-sm bg-rose-50 dark:bg-rose-950/60 px-3 py-1 rounded-xl border border-rose-200 dark:border-rose-800">
+                        <span className="inline-flex items-center gap-1 font-black text-rose-600 dark:text-rose-400 text-sm bg-rose-50 dark:bg-rose-950/60 px-2.5 py-1 rounded-xl border border-rose-200 dark:border-rose-800">
                           +{item.suggestedPurchaseQty} {item.unit}
                         </span>
+                      </td>
+
+                      {/* Custo Estimado */}
+                      <td className="py-3.5 px-3 text-right font-bold text-slate-900 dark:text-white">
+                        R$ {(item.estimatedCost ?? item.estimatedTotalCost ?? 0).toFixed(2).replace('.', ',')}
                       </td>
                     </tr>
                   ))}
@@ -598,22 +801,22 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         </div>
       )}
 
-      {/* SUB-VIEW 2: QUADRO GERAL DE PREVISÃO & CONCILIAÇÃO FÍSICA (TODOS OS PRODUTOS) */}
+      {/* SUB-VIEW 2: QUADRO GERAL DE PREVISÃO DE ESTOQUE (TODOS OS PRODUTOS) */}
       {subView === 'full_table' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Package className="w-5 h-5 text-indigo-500" />
-                2. Visão Completa do Estoque, Conciliação Física & Autonomia
+                2. Quadro Geral de Previsão de Estoque ({forecast.filteredItems.length} produtos)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Relação dinâmica de todos os {forecast.totalProducts} produtos cadastrados, contagem física e consumo médio diário.
+                Visão de todos os produtos, consumo histórico, autonomia, saldo projetado e estoque de segurança.
               </p>
             </div>
 
             <div className="text-xs text-slate-400 font-mono">
-              Consumo baseado exclusivamente em saídas (type: "saida")
+              Horizonte: {periodDays} dias ({forecast.baseDateFormatted} a {forecast.endDateFormatted})
             </div>
           </div>
 
@@ -621,104 +824,104 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
-                  <th className="py-3 px-3">Produto</th>
-                  <th className="py-3 px-3">Unid.</th>
-                  <th className="py-3 px-3 text-right">Sistema</th>
-                  <th className="py-3 px-3 text-right">Físico</th>
-                  <th className="py-3 px-3 text-center">Diferença</th>
-                  <th className="py-3 px-3 text-right">Cons. Médio/Dia</th>
+                  <th className="py-3 px-3">Item / Produto</th>
+                  <th className="py-3 px-3">Estoque Atual</th>
+                  <th className="py-3 px-3">Consumo Médio</th>
                   <th className="py-3 px-3 text-center">Autonomia</th>
-                  <th className="py-3 px-3 text-right">Mínimo</th>
-                  <th className="py-3 px-3 text-right">Ideal</th>
-                  <th className="py-3 px-3 text-right">Comprar</th>
-                  <th className="py-3 px-3">Situação</th>
+                  <th className="py-3 px-3 text-right">Cons. Previsto</th>
+                  <th className="py-3 px-3 text-right">Saldo Projetado</th>
+                  <th className="py-3 px-3 text-right">Est. Segurança</th>
+                  <th className="py-3 px-3 text-right">Sugestão Compra</th>
+                  <th className="py-3 px-3 text-right">Custo Est.</th>
+                  <th className="py-3 px-3 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {forecast.filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                  <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    {/* Item */}
                     <td className="py-3.5 px-3 font-extrabold text-slate-900 dark:text-white">
-                      <div>{item.name}</div>
+                      <div className="flex items-center gap-1.5">
+                        {item.name}
+                        {item.inventoryStatus === 'DIVERGENTE' && (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-bold">
+                            Físico: {item.physicalStock} {item.unit}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[10px] text-slate-400 font-normal">{item.category}</div>
                     </td>
-                    <td className="py-3.5 px-3 text-slate-500">
-                      {item.unit}
+
+                    {/* Estoque Atual */}
+                    <td className="py-3.5 px-3 font-black text-slate-900 dark:text-white">
+                      {item.currentStock} {item.unit}
                     </td>
-                    <td className="py-3.5 px-3 text-right font-black text-slate-900 dark:text-white">
-                      {item.currentStock}
+
+                    {/* Consumo Médio */}
+                    <td className="py-3.5 px-3 text-slate-600 dark:text-slate-300 font-semibold">
+                      {item.consumptionUnitText}
                     </td>
-                    <td className="py-3.5 px-3 text-right text-slate-700 dark:text-slate-300 font-semibold">
-                      {item.hasPhysicalCount ? item.physicalStock : '-'}
-                    </td>
+
+                    {/* Autonomia */}
                     <td className="py-3.5 px-3 text-center">
-                      {item.hasPhysicalCount ? (
-                        item.inventoryStatus === 'DIVERGENTE' ? (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                            ⚠️ {item.physicalDifference > 0 ? `+${item.physicalDifference}` : item.physicalDifference}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">
-                            CONFERIDO
-                          </span>
-                        )
-                      ) : (
-                        <span className="text-slate-400">-</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-3 text-right font-semibold text-slate-700 dark:text-slate-300">
-                      {item.dailyAvgConsumption > 0 ? (
-                        <span>{item.dailyAvgConsumption} /dia</span>
-                      ) : (
-                        <span className="text-slate-400 italic">0.0 (sem reg.)</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-3 text-center">
-                      {item.daysAutonomy !== null ? (
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-extrabold ${
-                            item.daysAutonomy <= 3
-                              ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300'
-                              : item.daysAutonomy <= 7
-                              ? 'bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-300'
-                              : item.daysAutonomy <= 15
-                              ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300'
-                              : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
-                          }`}
-                        >
-                          {item.daysAutonomy.toFixed(1)} dias
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 italic">Indeterminada</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-3 text-right text-slate-500">
-                      {item.minStock}
-                    </td>
-                    <td className="py-3.5 px-3 text-right text-indigo-600 dark:text-indigo-400 font-bold">
-                      {item.idealStock}
-                    </td>
-                    <td className="py-3.5 px-3 text-right">
-                      {item.suggestedPurchaseQty > 0 ? (
-                        <span className="font-black text-rose-600 dark:text-rose-400">
-                          +{item.suggestedPurchaseQty}
-                        </span>
-                      ) : (
-                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">0</span>
-                      )}
-                    </td>
-                    <td className="py-3.5 px-3">
                       <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black ${
-                          item.situation === 'SEM_ESTOQUE'
-                            ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                            : item.situation === 'COMPRAR'
-                            ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                            : item.situation === 'ATENCAO'
-                            ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                            : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                        className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold ${
+                          item.daysAutonomy !== null && item.daysAutonomy <= 3
+                            ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300'
+                            : item.daysAutonomy !== null && item.daysAutonomy <= 7
+                            ? 'bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-300'
+                            : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
                         }`}
                       >
-                        {item.situationBadge}
+                        {item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} d` : 'Eventual')}
+                      </span>
+                    </td>
+
+                    {/* Consumo Previsto */}
+                    <td className="py-3.5 px-3 text-right text-slate-700 dark:text-slate-300 font-semibold">
+                      {item.projectedConsumption} {item.unit}
+                    </td>
+
+                    {/* Saldo Projetado */}
+                    <td className="py-3.5 px-3 text-right font-black">
+                      <span className={item.projectedBalance < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}>
+                        {item.projectedBalance} {item.unit}
+                      </span>
+                    </td>
+
+                    {/* Estoque de Segurança */}
+                    <td className="py-3.5 px-3 text-right text-slate-500 font-semibold">
+                      {item.safetyStock} {item.unit}
+                    </td>
+
+                    {/* Sugestão de Compra */}
+                    <td className="py-3.5 px-3 text-right font-black">
+                      {item.suggestedPurchaseQty > 0 ? (
+                        <span className="text-rose-600 dark:text-rose-400">
+                          +{item.suggestedPurchaseQty} {item.unit}
+                        </span>
+                      ) : (
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">0</span>
+                      )}
+                    </td>
+
+                    {/* Custo Estimado */}
+                    <td className="py-3.5 px-3 text-right font-semibold text-slate-600 dark:text-slate-300">
+                      {(item.estimatedCost ?? item.estimatedTotalCost ?? 0) > 0 ? `R$ ${(item.estimatedCost ?? item.estimatedTotalCost ?? 0).toFixed(2).replace('.', ',')}` : '-'}
+                    </td>
+
+                    {/* Status */}
+                    <td className="py-3.5 px-3 text-center">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black ${
+                          item.status === 'CRITICO'
+                            ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300'
+                            : item.status === 'ATENCAO'
+                            ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300'
+                            : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
+                        }`}
+                      >
+                        {item.statusBadge}
                       </span>
                     </td>
                   </tr>
@@ -763,13 +966,152 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
           <span>
-            <strong>Garantia de Integridade e Somente Leitura:</strong> A emissão do relatório e os cálculos de previsão de estoque operam exclusivamente em modo de leitura (Read-Only), sem realizar qualquer gravação, ajuste automático de saldo ou mutação de dados no Firestore.
+            <strong>Garantia de Integridade e Somente Leitura:</strong> A previsão de compras e o gerador de e-mail operam exclusivamente em modo de leitura (Read-Only), sem realizar qualquer gravação, alteração de saldos ou baixa fictícia de consumo no banco de dados.
           </span>
         </div>
         <span className="text-[11px] font-mono text-slate-400 shrink-0">
-          Período: {periodDays} dias ({forecast.startDateFormatted} a {forecast.endDateFormatted})
+          Horizonte: {periodDays} dias | Próxima compra: {forecast.nextPurchaseDateFormatted}
         </span>
       </div>
+
+      {/* EMAIL GENERATION MODAL */}
+      {isEmailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    E-mail Semanal de Previsão de Compras
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Formato profissional e direto pronto para envio à Coordenação e Cozinha
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsEmailModalOpen(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
+              {/* Recipients Row */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Destinatários (Pastor Humberto & Chef Marcos):
+                </label>
+                <input
+                  type="text"
+                  value={emailRecipients}
+                  onChange={(e) => setEmailRecipients(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="email1@exemplo.com, email2@exemplo.com"
+                />
+              </div>
+
+              {/* Subject Row */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Assunto do E-mail:
+                </label>
+                <input
+                  type="text"
+                  value={emailSubject || emailContent.subject}
+                  onChange={(e) => setEmailSubject(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Optional Custom Note */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Observação Adicional / Recado Específico (Opcional):
+                </label>
+                <input
+                  type="text"
+                  value={customEmailNote}
+                  onChange={(e) => setCustomEmailNote(e.target.value)}
+                  placeholder="Ex: Favor dar prioridade ao pedido do fornecedor local de carnes até terça às 14h..."
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Preview of Email Body */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Conteúdo Formatado do E-mail:
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-mono">
+                    Ciclo de {periodDays} dias | R$ {(forecast.totalEstimatedCost ?? 0).toFixed(2).replace('.', ',')}
+                  </span>
+                </div>
+                <textarea
+                  readOnly
+                  rows={14}
+                  value={emailContent.body}
+                  className="w-full bg-slate-50 dark:bg-slate-950 font-mono text-xs text-slate-800 dark:text-slate-200 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 focus:outline-none leading-relaxed"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer with Actions */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-slate-500">
+                Selecione a forma mais conveniente para enviar o e-mail:
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Copiar Texto */}
+                <button
+                  onClick={handleCopyEmailText}
+                  className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                >
+                  {emailCopied ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-500" />
+                      <span className="text-emerald-600 dark:text-emerald-400">Texto Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copiar Texto</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Abrir no Gmail */}
+                <button
+                  onClick={handleOpenInGmail}
+                  className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
+                  title="Abrir diretamente na caixa de composição do Gmail Web"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Abrir no Gmail Web</span>
+                </button>
+
+                {/* Abrir Cliente Padrão (mailto) */}
+                <button
+                  onClick={handleSendViaMailto}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
+                  title="Abrir no Outlook, Apple Mail ou cliente nativo"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Enviar via App de E-mail</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

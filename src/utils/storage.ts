@@ -11,7 +11,7 @@ export function getTodayDateString(): string { const now = new Date(); return `$
 export function getNowTimeString(): string { return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
 export function getStoredMissionaries(): Missionary[] { try { const data = localStorage.getItem(MISSIONARIES_KEY); if (!data) return INITIAL_MISSIONARIES; const parsed = JSON.parse(data) as Missionary[]; return parsed.length > 0 ? parsed : INITIAL_MISSIONARIES; } catch { return INITIAL_MISSIONARIES; } }
 export function saveMissionaries(missionaries: Missionary[]): void { try { localStorage.setItem(MISSIONARIES_KEY, JSON.stringify(missionaries)); } catch (err) { console.error('Error saving missionaries:', err); } }
-export function getStoredProducts(): Product[] { try { const data = localStorage.getItem(PRODUCTS_KEY); if (!data) return INITIAL_PRODUCTS; const parsed = JSON.parse(data) as Product[]; return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_PRODUCTS; } catch { return INITIAL_PRODUCTS; } }
+export function getStoredProducts(): Product[] { try { const data = localStorage.getItem(PRODUCTS_KEY); if (!data) return INITIAL_PRODUCTS; const parsed = JSON.parse(data) as Product[]; if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_PRODUCTS; return parsed.map((p) => { const normId = (p.id || '').toLowerCase(); const normName = (p.name || '').toLowerCase(); if (normId.includes('flocao') || normName.includes('flocão')) { return { ...p, usageFrequency: 'Somente Quartas e Domingos (22 pacotes/preparo)', dailyAvgConsumption: 6.29, minStock: Math.max(p.minStock || 0, 44) }; } return p; }); } catch { return INITIAL_PRODUCTS; } }
 export function saveProducts(products: Product[]): void { try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products)); } catch (err) { console.error('Error saving products:', err); } }
 export function getStoredMovements(): StockMovement[] { try { const data = localStorage.getItem(MOVEMENTS_KEY); if (!data) return INITIAL_MOVEMENTS; const parsed = JSON.parse(data) as StockMovement[]; return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_MOVEMENTS; } catch { return INITIAL_MOVEMENTS; } }
 export function saveMovements(movements: StockMovement[]): void { try { localStorage.setItem(MOVEMENTS_KEY, JSON.stringify(movements)); } catch (err) { console.error('Error saving movements:', err); } }
@@ -68,7 +68,38 @@ export function addOrUpdateMealRecord(allMeals: DailyMealRecord[], record: Omit<
 export function deleteStoredMealRecord(allMeals: DailyMealRecord[], id: string): DailyMealRecord[] { return allMeals.filter((m) => m.id !== id); }
 export function resetAllDataToDefault(): { products: Product[]; movements: StockMovement[] } { return { products: getStoredProducts(), movements: getStoredMovements() }; }
 export function getProductAlertDays(product: Product): number { return product.alertDays && product.alertDays > 0 ? product.alertDays : 3; }
-export function calculateDaysRemaining(product: Product): number { if (!product.dailyAvgConsumption || product.dailyAvgConsumption <= 0) return 999; return Math.round((product.currentStock / product.dailyAvgConsumption) * 10) / 10; }
+export function calculateDaysRemaining(product: Product): number {
+  const normId = (product.id || '').toLowerCase();
+  const normName = (product.name || '').toLowerCase();
+  // Flocão de Milho: uso exclusivo às quartas e domingos, 22 pacotes em cada dia de preparo (44 pc/semana)
+  if (normId.includes('flocao') || normName.includes('flocão')) {
+    const weeklyRate = 22 * 2; // 44 pacotes por semana
+    const dailyRate = weeklyRate / 7; // ~6.29 pacotes/dia equivalente
+    return Math.round((product.currentStock / dailyRate) * 10) / 10;
+  }
+  if (!product.dailyAvgConsumption || product.dailyAvgConsumption <= 0) return 999;
+  return Math.round((product.currentStock / product.dailyAvgConsumption) * 10) / 10;
+}
+export function getProductAutonomyLabel(product: Product): string {
+  const normId = (product.id || '').toLowerCase();
+  const normName = (product.name || '').toLowerCase();
+  if (normId.includes('flocao') || normName.includes('flocão')) {
+    const preparos = Math.floor(product.currentStock / 22);
+    const sobra = product.currentStock % 22;
+    const days = calculateDaysRemaining(product);
+    if (product.currentStock <= 0) return '0 preparos (Esgotado)';
+    return `${preparos} preparo${preparos === 1 ? '' : 's'} (Qua/Dom)${sobra > 0 ? ` +${sobra}pc` : ''} ~${Math.round(days)}d`;
+  }
+  if (normId.includes('macarrao') || normName.includes('macarrão')) {
+    const preparos = Math.floor(product.currentStock / 10);
+    const days = calculateDaysRemaining(product);
+    return `${preparos} preparos (Qua/Dom) ~${Math.round(days)}d`;
+  }
+  const days = calculateDaysRemaining(product);
+  if (days >= 900) return 'Esporádico';
+  if (days <= 0) return 'Esgotado';
+  return `${days} dias`;
+}
 export function formatDaysRemainingText(days: number): string { if (days >= 900) return 'Consumo não estimado'; if (days <= 0) return 'Estoque esgotado!'; if (days === 1) return '1 dia restante'; return `${days} dias restantes`; }
 export function getRecommendedPurchaseDate(products: Product[]): { dateStr: string; criticalCount: number } { let minDays = 999; let criticalCount = 0; products.forEach((p) => { const days = calculateDaysRemaining(p); if (days <= 3 || p.currentStock <= p.minStock) criticalCount++; if (days < minDays) minDays = days; }); const today = new Date(); const targetDaysAhead = Math.max(1, Math.min(Math.floor(minDays) - 1, 3)); const targetDate = new Date(today.getTime() + targetDaysAhead * 24 * 60 * 60 * 1000); return { dateStr: `${String(targetDate.getDate()).padStart(2, '0')}/${String(targetDate.getMonth() + 1).padStart(2, '0')}/${targetDate.getFullYear()}`, criticalCount }; }
 export function getProductStockStatus(product: Product): 'critical' | 'warning' | 'normal' { const days = calculateDaysRemaining(product); const alertDays = getProductAlertDays(product); if (days <= 0 || product.currentStock <= 0 || days <= 1.5 || product.currentStock <= product.minStock / 2) return 'critical'; if (days <= alertDays || days <= 3 || product.currentStock <= product.minStock) return 'warning'; return 'normal'; }

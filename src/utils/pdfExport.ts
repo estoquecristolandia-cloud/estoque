@@ -393,12 +393,14 @@ export function generateMovementsDetailedPDF(
 export function generatePurchaseForecastPDF(
   products: Product[],
   movements: StockMovement[],
-  periodDays: 7 | 15 | 30 = 30,
+  periodDays: 8 | 14 | 21 | 30 = 8,
   inventoryAudits: any[] = [],
   responsibleName = 'Marconi Castro (Gestor do Estoque)',
   options?: {
     category?: string;
-    statusFilter?: 'all' | 'buy_only' | 'urgent_only' | 'warning_only' | 'comfortable_only';
+    statusFilter?: 'all' | 'critical_only' | 'warning_only' | 'normal_only' | 'buy_only';
+    searchTerm?: string;
+    onlyNeedsPurchase?: boolean;
   }
 ) {
   const now = new Date();
@@ -431,14 +433,14 @@ export function generatePurchaseForecastPDF(
 
     doc.setFontSize(9);
     doc.setTextColor(245, 158, 11); // amber-500
-    doc.text('CRISTOLÂNDIA LEM/BA — RELATÓRIO DE ESTOQUE E NECESSIDADE DE COMPRAS', margin, 15);
+    doc.text('CRISTOLÂNDIA LEM/BA — RELATÓRIO DE PREVISÃO DE COMPRAS E ESTOQUE', margin, 15);
 
     // Meta details line
     doc.setFontSize(7.5);
     doc.setTextColor(203, 213, 225); // slate-300
     doc.setFont('helvetica', 'normal');
     doc.text(
-      `Período de análise: ${forecast.startDateFormatted} a ${forecast.endDateFormatted} (${periodDays} dias) | Produtos Analisados: ${forecast.totalProducts}`,
+      `Ciclo de Análise: ${forecast.baseDateFormatted} a ${forecast.endDateFormatted} (${periodDays} dias) | Próxima Compra: ${forecast.nextPurchaseDateFormatted} | Produtos: ${forecast.totalProducts}`,
       margin,
       21
     );
@@ -456,7 +458,7 @@ export function generatePurchaseForecastPDF(
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(148, 163, 184);
-    doc.text('AUDITORIA E ABASTECIMENTO', pageWidth - margin - 65, 17);
+    doc.text('ABASTECIMENTO SEMANAL', pageWidth - margin - 65, 17);
   };
 
   let y = 35;
@@ -467,26 +469,24 @@ export function generatePurchaseForecastPDF(
   doc.setFontSize(7);
   doc.setFont('helvetica', 'italic');
   doc.text(
-    '* Relatório gerado com base no consumo real de saídas (type === "saida"). Não altera saldos ou registros do sistema.',
+    '* Previsão gerada automaticamente com base no estoque atual, consumo médio, dias específicos e estoque de segurança (3 dias). Read-Only.',
     margin,
     y
   );
   y += 4.5;
 
-  // Executive Summary Cards Bar (7 metrics)
-  const cardW = (contentWidth - 6 * 2.5) / 7;
+  // Executive Summary Cards Bar (5 metrics)
+  const cardW = (contentWidth - 4 * 3) / 5;
   const cards = [
     { label: 'Analisados', val: `${forecast.totalProducts}`, color: [15, 23, 42], bg: [241, 245, 249] },
-    { label: 'Sem Estoque', val: `${forecast.outOfStockCount}`, color: [15, 23, 42], bg: [254, 242, 242] },
-    { label: 'Urgente', val: `${forecast.urgentCount}`, color: [225, 29, 72], bg: [255, 241, 242] },
-    { label: 'Comprar', val: `${forecast.needPurchaseCount}`, color: [234, 88, 12], bg: [255, 247, 237] },
-    { label: 'Atenção', val: `${forecast.warningCount}`, color: [217, 119, 6], bg: [254, 252, 232] },
-    { label: 'Confortável', val: `${forecast.comfortableCount}`, color: [16, 185, 129], bg: [240, 253, 244] },
-    { label: 'Total Reposição', val: `${forecast.totalSuggestedPurchaseUnits} un.`, color: [37, 99, 235], bg: [239, 246, 255] },
+    { label: 'Críticos (Ruptura)', val: `${forecast.criticalCount}`, color: [225, 29, 72], bg: [255, 241, 242] },
+    { label: 'Atenção (Abaixo Margem)', val: `${forecast.warningCount}`, color: [217, 119, 6], bg: [254, 252, 232] },
+    { label: 'Normais (Estáveis)', val: `${forecast.normalCount}`, color: [16, 185, 129], bg: [240, 253, 244] },
+    { label: 'Total Reposição', val: `${forecast.totalSuggestedPurchaseUnits} un. (R$ ${(forecast.totalEstimatedCost ?? 0).toFixed(2)})`, color: [37, 99, 235], bg: [239, 246, 255] },
   ];
 
   cards.forEach((c, i) => {
-    const x = margin + i * (cardW + 2.5);
+    const x = margin + i * (cardW + 3);
     doc.setFillColor(c.bg[0], c.bg[1], c.bg[2]);
     doc.roundedRect(x, y, cardW, 11, 1.5, 1.5, 'F');
 
@@ -495,7 +495,7 @@ export function generatePurchaseForecastPDF(
     doc.setTextColor(100, 116, 139);
     doc.text(c.label.toUpperCase(), x + 2, y + 4);
 
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(c.color[0], c.color[1], c.color[2]);
     doc.text(c.val, x + 2, y + 9);
@@ -503,20 +503,17 @@ export function generatePurchaseForecastPDF(
 
   y += 15;
 
-  // TABELA 1: NECESSIDADE DE COMPRAS (SOMENTE URGENTE, COMPRAR, ATENÇÃO)
+  // TABELA 1: NECESSIDADE DE COMPRAS (SOMENTE ITENS COM COMPRA SUGERIDA)
   doc.setFillColor(245, 158, 11); // amber-500
   doc.rect(margin, y, 3, 5.5, 'F');
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text('1. NECESSIDADE DE COMPRAS — LISTA CONSOLIDADA PARA A COORDENAÇÃO (PRIORIDADES)', margin + 5, y + 4.2);
+  doc.text(`1. NECESSIDADE DE COMPRAS — LISTA PRIORITÁRIA (${forecast.itemsNeedingPurchaseCount} ITENS)`, margin + 5, y + 4.2);
 
   y += 7;
 
-  // Filter shopping list items: priority URGENTE, COMPRAR, or ATENCAO
-  const shoppingItems = forecast.allItems.filter(
-    (i: any) => i.priority === 'URGENTE' || i.priority === 'COMPRAR' || i.priority === 'ATENCAO'
-  );
+  const shoppingItems = forecast.purchasesList;
 
   if (shoppingItems.length === 0) {
     doc.setFillColor(240, 253, 244);
@@ -524,7 +521,7 @@ export function generatePurchaseForecastPDF(
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(5, 150, 105);
-    doc.text('[NORMAL] Todos os produtos analisados estão abastecidos e dentro dos níveis ideais de segurança.', margin + 4, y + 4.8);
+    doc.text('[NORMAL] Todos os produtos analisados estão abastecidos e possuem saldo suficiente para o período de ' + periodDays + ' dias.', margin + 4, y + 4.8);
     y += 10;
   } else {
     // Header for Table 1
@@ -534,19 +531,19 @@ export function generatePurchaseForecastPDF(
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(255, 255, 255);
 
-    // Columns: Prioridade | Produto | Unidade | Estoque Atual | Consumo/Dia | Autonomia | Estoque Ideal | Comprar
-    doc.text('PRIORIDADE', margin + 3, y + 4.2);
-    doc.text('PRODUTO / ITEM', margin + 28, y + 4.2);
-    doc.text('UNIDADE', margin + 95, y + 4.2);
-    doc.text('ESTOQUE ATUAL', margin + 120, y + 4.2);
-    doc.text('CONSUMO/DIA', margin + 155, y + 4.2);
-    doc.text('AUTONOMIA', margin + 190, y + 4.2);
-    doc.text('ESTOQUE IDEAL', margin + 225, y + 4.2);
-    doc.text('COMPRAR (SUGESTÃO)', margin + 250, y + 4.2);
+    doc.text('STATUS', margin + 3, y + 4.2);
+    doc.text('ITEM / PRODUTO', margin + 26, y + 4.2);
+    doc.text('ESTOQUE ATUAL', margin + 85, y + 4.2);
+    doc.text('CONSUMO MÉDIO', margin + 115, y + 4.2);
+    doc.text('AUTONOMIA', margin + 150, y + 4.2);
+    doc.text('CONS. PREVISTO', margin + 175, y + 4.2);
+    doc.text('SALDO PROJ.', margin + 203, y + 4.2);
+    doc.text('EST. SEGURANÇA', margin + 228, y + 4.2);
+    doc.text('COMPRA SUGERIDA', margin + 252, y + 4.2);
 
     y += 6;
 
-    shoppingItems.forEach((item: any, idx: number) => {
+    shoppingItems.forEach((item, idx: number) => {
       if (y > 190) {
         doc.addPage();
         renderHeader(doc.getNumberOfPages());
@@ -558,14 +555,15 @@ export function generatePurchaseForecastPDF(
         doc.setFontSize(6.5);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(255, 255, 255);
-        doc.text('PRIORIDADE', margin + 3, y + 4.2);
-        doc.text('PRODUTO / ITEM', margin + 28, y + 4.2);
-        doc.text('UNIDADE', margin + 95, y + 4.2);
-        doc.text('ESTOQUE ATUAL', margin + 120, y + 4.2);
-        doc.text('CONSUMO/DIA', margin + 155, y + 4.2);
-        doc.text('AUTONOMIA', margin + 190, y + 4.2);
-        doc.text('ESTOQUE IDEAL', margin + 225, y + 4.2);
-        doc.text('COMPRAR (SUGESTÃO)', margin + 250, y + 4.2);
+        doc.text('STATUS', margin + 3, y + 4.2);
+        doc.text('ITEM / PRODUTO', margin + 26, y + 4.2);
+        doc.text('ESTOQUE ATUAL', margin + 85, y + 4.2);
+        doc.text('CONSUMO MÉDIO', margin + 115, y + 4.2);
+        doc.text('AUTONOMIA', margin + 150, y + 4.2);
+        doc.text('CONS. PREVISTO', margin + 175, y + 4.2);
+        doc.text('SALDO PROJ.', margin + 203, y + 4.2);
+        doc.text('EST. SEGURANÇA', margin + 228, y + 4.2);
+        doc.text('COMPRA SUGERIDA', margin + 252, y + 4.2);
         y += 6;
       }
 
@@ -577,53 +575,61 @@ export function generatePurchaseForecastPDF(
 
       doc.setFontSize(6.5);
       doc.setFont('helvetica', 'bold');
-      if (item.priority === 'URGENTE') {
+      if (item.status === 'CRITICO') {
         doc.setFillColor(225, 29, 72); // rose-600
         doc.circle(margin + 4.5, y + 2.7, 1.2, 'F');
-        doc.setTextColor(225, 29, 72); // rose-600
-        doc.text('URGENTE', margin + 7.5, y + 3.8);
-      } else if (item.priority === 'COMPRAR') {
-        doc.setFillColor(234, 88, 12); // orange-600
-        doc.circle(margin + 4.5, y + 2.7, 1.2, 'F');
-        doc.setTextColor(234, 88, 12); // orange-600
-        doc.text('COMPRAR', margin + 7.5, y + 3.8);
-      } else {
+        doc.setTextColor(225, 29, 72);
+        doc.text('CRÍTICO', margin + 7.5, y + 3.8);
+      } else if (item.status === 'ATENCAO') {
         doc.setFillColor(217, 119, 6); // amber-600
         doc.circle(margin + 4.5, y + 2.7, 1.2, 'F');
-        doc.setTextColor(217, 119, 6); // amber-600
+        doc.setTextColor(217, 119, 6);
         doc.text('ATENÇÃO', margin + 7.5, y + 3.8);
+      } else {
+        doc.setFillColor(16, 185, 129); // emerald-600
+        doc.circle(margin + 4.5, y + 2.7, 1.2, 'F');
+        doc.setTextColor(16, 185, 129);
+        doc.text('NORMAL', margin + 7.5, y + 3.8);
       }
 
       doc.setTextColor(15, 23, 42);
-      doc.text(item.name, margin + 28, y + 3.8);
+      doc.text(item.name, margin + 26, y + 3.8);
 
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(71, 85, 105);
-      doc.text(item.unit, margin + 95, y + 3.8);
-      doc.text(`${item.currentStock}`, margin + 120, y + 3.8);
-
-      if (item.dailyAvgConsumption > 0) {
-        doc.text(`${item.dailyAvgConsumption} ${item.unit}/dia`, margin + 155, y + 3.8);
-      } else {
-        doc.text('0.0 (sem consumo)', margin + 155, y + 3.8);
-      }
+      doc.text(`${item.currentStock} ${item.unit}`, margin + 85, y + 3.8);
+      doc.text(item.consumptionUnitText, margin + 115, y + 3.8);
 
       if (item.daysAutonomy !== null) {
-        doc.text(`${item.daysAutonomy.toFixed(1)} dias`, margin + 190, y + 3.8);
+        doc.text(`${item.daysAutonomy.toFixed(1)} dias`, margin + 150, y + 3.8);
       } else {
-        doc.text('Indeterminada', margin + 190, y + 3.8);
+        doc.text(item.autonomyText, margin + 150, y + 3.8);
       }
 
-      doc.text(`${item.idealStock} ${item.unit}`, margin + 225, y + 3.8);
+      doc.text(`${item.projectedConsumption} ${item.unit}`, margin + 175, y + 3.8);
 
-      // Comprar column
+      // Saldo projetado (red if negative)
+      if (item.projectedBalance < 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(225, 29, 72);
+      } else {
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105);
+      }
+      doc.text(`${item.projectedBalance} ${item.unit}`, margin + 203, y + 3.8);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+      doc.text(`${item.safetyStock} ${item.unit}`, margin + 228, y + 3.8);
+
+      // Compra sugerida
       doc.setFont('helvetica', 'bold');
       if (item.suggestedPurchaseQty > 0) {
         doc.setTextColor(225, 29, 72);
-        doc.text(`+${item.suggestedPurchaseQty} ${item.unit}`, margin + 250, y + 3.8);
+        doc.text(`+${item.suggestedPurchaseQty} ${item.unit}`, margin + 252, y + 3.8);
       } else {
         doc.setTextColor(16, 185, 129);
-        doc.text('0', margin + 250, y + 3.8);
+        doc.text('0', margin + 252, y + 3.8);
       }
 
       y += 5.5;
@@ -632,7 +638,7 @@ export function generatePurchaseForecastPDF(
     y += 4;
   }
 
-  // TABELA 2: VISÃO COMPLETA DO ESTOQUE & CONCILIAÇÃO FÍSICA (TODOS OS PRODUTOS)
+  // TABELA 2: RELATÓRIO COMPLETO DE TODOS OS PRODUTOS
   if (y > 145) {
     doc.addPage();
     renderHeader(doc.getNumberOfPages());
@@ -644,59 +650,53 @@ export function generatePurchaseForecastPDF(
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text('2. VISÃO COMPLETA DO ESTOQUE — CONCILIAÇÃO FÍSICA, CONSUMO MÉDIO E AUTONOMIA', margin + 5, y + 4.2);
+  doc.text('2. QUADRO GERAL DE PREVISÃO DE COMPRAS E AUTONOMIA (TODOS OS PRODUTOS)', margin + 5, y + 4.2);
 
   y += 7;
 
-  // Header Table 2
-  // Colunas: Produto | Unid. | Sistema | Físico | Diferença | Consumo/Dia | Autonomia | Mínimo | Ideal | Comprar | Situação
   doc.setFillColor(15, 23, 42); // slate-900
   doc.rect(margin, y, contentWidth, 6, 'F');
   doc.setFontSize(6);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
 
-  doc.text('PRODUTO / ITEM', margin + 3, y + 4.2);
-  doc.text('UNID.', margin + 65, y + 4.2);
-  doc.text('SISTEMA', margin + 78, y + 4.2);
-  doc.text('FÍSICO', margin + 98, y + 4.2);
-  doc.text('DIFERENÇA', margin + 116, y + 4.2);
-  doc.text('CONSUMO/DIA', margin + 146, y + 4.2);
-  doc.text('AUTONOMIA', margin + 176, y + 4.2);
-  doc.text('MÍNIMO', margin + 204, y + 4.2);
-  doc.text('IDEAL', margin + 220, y + 4.2);
-  doc.text('COMPRAR', margin + 236, y + 4.2);
-  doc.text('SITUAÇÃO', margin + 252, y + 4.2);
+  doc.text('ITEM / PRODUTO', margin + 3, y + 4.2);
+  doc.text('ESTOQUE ATUAL', margin + 65, y + 4.2);
+  doc.text('UNID.', margin + 92, y + 4.2);
+  doc.text('CONSUMO MÉDIO', margin + 104, y + 4.2);
+  doc.text('AUTONOMIA', margin + 138, y + 4.2);
+  doc.text('CONS. PREVISTO', margin + 162, y + 4.2);
+  doc.text('SALDO PROJ.', margin + 190, y + 4.2);
+  doc.text('EST. SEGURANÇA', margin + 215, y + 4.2);
+  doc.text('COMPRA SUGERIDA', margin + 240, y + 4.2);
+  doc.text('STATUS', margin + 262, y + 4.2);
 
   y += 6;
 
-  forecast.allItems.forEach((item: any, idx: number) => {
+  forecast.filteredItems.forEach((item, idx: number) => {
     if (y > 185) {
       doc.addPage();
       renderHeader(doc.getNumberOfPages());
       y = 35;
 
-      // Repeat Table 2 Header
       doc.setFillColor(15, 23, 42);
       doc.rect(margin, y, contentWidth, 6, 'F');
       doc.setFontSize(6);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(255, 255, 255);
-      doc.text('PRODUTO / ITEM', margin + 3, y + 4.2);
-      doc.text('UNID.', margin + 65, y + 4.2);
-      doc.text('SISTEMA', margin + 78, y + 4.2);
-      doc.text('FÍSICO', margin + 98, y + 4.2);
-      doc.text('DIFERENÇA', margin + 116, y + 4.2);
-      doc.text('CONSUMO/DIA', margin + 146, y + 4.2);
-      doc.text('AUTONOMIA', margin + 176, y + 4.2);
-      doc.text('MÍNIMO', margin + 204, y + 4.2);
-      doc.text('IDEAL', margin + 220, y + 4.2);
-      doc.text('COMPRAR', margin + 236, y + 4.2);
-      doc.text('SITUAÇÃO', margin + 252, y + 4.2);
+      doc.text('ITEM / PRODUTO', margin + 3, y + 4.2);
+      doc.text('ESTOQUE ATUAL', margin + 65, y + 4.2);
+      doc.text('UNID.', margin + 92, y + 4.2);
+      doc.text('CONSUMO MÉDIO', margin + 104, y + 4.2);
+      doc.text('AUTONOMIA', margin + 138, y + 4.2);
+      doc.text('CONS. PREVISTO', margin + 162, y + 4.2);
+      doc.text('SALDO PROJ.', margin + 190, y + 4.2);
+      doc.text('EST. SEGURANÇA', margin + 215, y + 4.2);
+      doc.text('COMPRA SUGERIDA', margin + 240, y + 4.2);
+      doc.text('STATUS', margin + 262, y + 4.2);
       y += 6;
     }
 
-    // Zebra striping
     if (idx % 2 === 0) {
       doc.setFillColor(248, 250, 252);
       doc.rect(margin, y, contentWidth, 5.2, 'F');
@@ -710,42 +710,9 @@ export function generatePurchaseForecastPDF(
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(71, 85, 105);
-    doc.text(item.unit, margin + 65, y + 3.6);
-    doc.text(`${item.currentStock}`, margin + 78, y + 3.6);
-
-    // Physical count & difference
-    if (item.hasPhysicalCount) {
-      doc.text(`${item.physicalStock}`, margin + 98, y + 3.6);
-      if (item.inventoryStatus === 'DIVERGENTE') {
-        doc.setFont('helvetica', 'bold');
-        const diffSign = item.physicalDifference > 0 ? `+${item.physicalDifference}` : `${item.physicalDifference}`;
-        if (item.physicalDifference > 0) {
-          doc.setFillColor(234, 88, 12); // orange
-          doc.circle(margin + 114.5, y + 2.5, 1, 'F');
-          doc.setTextColor(234, 88, 12);
-        } else {
-          doc.setFillColor(225, 29, 72); // rose
-          doc.circle(margin + 114.5, y + 2.5, 1, 'F');
-          doc.setTextColor(225, 29, 72);
-        }
-        doc.text(diffSign, margin + 117.5, y + 3.6);
-      } else {
-        doc.setTextColor(5, 150, 105);
-        doc.text('0 (OK)', margin + 116, y + 3.6);
-      }
-    } else {
-      doc.text('-', margin + 98, y + 3.6);
-      doc.text('-', margin + 116, y + 3.6);
-    }
-
-    // Daily Avg
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(71, 85, 105);
-    if (item.dailyAvgConsumption > 0) {
-      doc.text(`${item.dailyAvgConsumption} /dia`, margin + 146, y + 3.6);
-    } else {
-      doc.text('0.0 (sem reg.)', margin + 146, y + 3.6);
-    }
+    doc.text(`${item.currentStock}`, margin + 65, y + 3.6);
+    doc.text(item.unit, margin + 92, y + 3.6);
+    doc.text(item.consumptionUnitText, margin + 104, y + 3.6);
 
     // Autonomy
     if (item.daysAutonomy !== null) {
@@ -754,46 +721,54 @@ export function generatePurchaseForecastPDF(
         doc.setTextColor(225, 29, 72);
       } else if (item.daysAutonomy <= 7) {
         doc.setTextColor(234, 88, 12);
-      } else if (item.daysAutonomy <= 15) {
-        doc.setTextColor(217, 119, 6);
       } else {
         doc.setTextColor(16, 185, 129);
       }
-      doc.text(`${item.daysAutonomy.toFixed(1)} d`, margin + 176, y + 3.6);
+      doc.text(`${item.daysAutonomy.toFixed(1)} d`, margin + 138, y + 3.6);
     } else {
       doc.setTextColor(148, 163, 184);
-      doc.text('Indeterm.', margin + 176, y + 3.6);
+      doc.text('Eventual', margin + 138, y + 3.6);
     }
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(71, 85, 105);
-    doc.text(`${item.minStock}`, margin + 204, y + 3.6);
-    doc.text(`${item.idealStock}`, margin + 220, y + 3.6);
+    doc.text(`${item.projectedConsumption}`, margin + 162, y + 3.6);
 
-    // Suggested purchase
+    if (item.projectedBalance < 0) {
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(225, 29, 72);
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(71, 85, 105);
+    }
+    doc.text(`${item.projectedBalance}`, margin + 190, y + 3.6);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text(`${item.safetyStock}`, margin + 215, y + 3.6);
+
+    // Compra sugerida
     if (item.suggestedPurchaseQty > 0) {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(225, 29, 72);
-      doc.text(`+${item.suggestedPurchaseQty}`, margin + 236, y + 3.6);
+      doc.text(`+${item.suggestedPurchaseQty}`, margin + 240, y + 3.6);
     } else {
+      doc.setFont('helvetica', 'normal');
       doc.setTextColor(16, 185, 129);
-      doc.text('0', margin + 236, y + 3.6);
+      doc.text('0', margin + 240, y + 3.6);
     }
 
-    // Situation
+    // Status
     doc.setFont('helvetica', 'bold');
-    if (item.situation === 'SEM_ESTOQUE') {
-      doc.setTextColor(15, 23, 42);
-      doc.text('SEM ESTOQUE', margin + 252, y + 3.6);
-    } else if (item.situation === 'COMPRAR') {
+    if (item.status === 'CRITICO') {
       doc.setTextColor(225, 29, 72);
-      doc.text('COMPRAR', margin + 252, y + 3.6);
-    } else if (item.situation === 'ATENCAO') {
+      doc.text('CRÍTICO', margin + 262, y + 3.6);
+    } else if (item.status === 'ATENCAO') {
       doc.setTextColor(217, 119, 6);
-      doc.text('ATENÇÃO', margin + 252, y + 3.6);
+      doc.text('ATENÇÃO', margin + 262, y + 3.6);
     } else {
       doc.setTextColor(16, 185, 129);
-      doc.text('CONFORTÁVEL', margin + 252, y + 3.6);
+      doc.text('NORMAL', margin + 262, y + 3.6);
     }
 
     y += 5.2;
@@ -801,14 +776,14 @@ export function generatePurchaseForecastPDF(
 
   y += 4;
 
-  // OBSERVAÇÃO GERENCIAL DA COORDENAÇÃO
+  // OBSERVAÇÃO GERENCIAL
   if (y > 165) {
     doc.addPage();
     renderHeader(doc.getNumberOfPages());
     y = 35;
   }
 
-  doc.setFillColor(248, 250, 252); // slate-50
+  doc.setFillColor(248, 250, 252);
   doc.roundedRect(margin, y, contentWidth, 14, 1.5, 1.5, 'F');
   doc.setDrawColor(226, 232, 240);
   doc.roundedRect(margin, y, contentWidth, 14, 1.5, 1.5, 'S');
@@ -816,21 +791,21 @@ export function generatePurchaseForecastPDF(
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(15, 23, 42);
-  doc.text('PARECER GERENCIAL AUTOMÁTICO PARA A COORDENAÇÃO:', margin + 4, y + 4.5);
+  doc.text('PARECER GERENCIAL AUTOMÁTICO:', margin + 4, y + 4.5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
-  doc.setTextColor(51, 65, 85);
+  doc.setFontSize(6);
+  doc.setTextColor(71, 85, 105);
   const splitNotes = doc.splitTextToSize(forecast.managerialObservation, contentWidth - 8);
   doc.text(splitNotes, margin + 4, y + 8.5);
 
   y += 18;
 
-  // ASSINATURAS
-  if (y > 175) {
+  // Signatures
+  if (y > 180) {
     doc.addPage();
     renderHeader(doc.getNumberOfPages());
-    y = 45;
+    y = 40;
   }
 
   doc.setLineWidth(0.4);
@@ -860,7 +835,7 @@ export function generatePurchaseForecastPDF(
   }
 
   // Save / Download PDF
-  const filename = `Relatorio_Estoque_Necessidade_Compras_Cristolandia_${periodDays}dias_${now.toISOString().split('T')[0]}.pdf`;
+  const filename = `Previsao_Compras_Cristolandia_${periodDays}dias_${now.toISOString().split('T')[0]}.pdf`;
   doc.save(filename);
 }
 
