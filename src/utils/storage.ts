@@ -101,5 +101,24 @@ export function getProductAutonomyLabel(product: Product): string {
   return `${days} dias`;
 }
 export function formatDaysRemainingText(days: number): string { if (days >= 900) return 'Consumo não estimado'; if (days <= 0) return 'Estoque esgotado!'; if (days === 1) return '1 dia restante'; return `${days} dias restantes`; }
-export function getRecommendedPurchaseDate(products: Product[]): { dateStr: string; criticalCount: number } { let minDays = 999; let criticalCount = 0; products.forEach((p) => { const days = calculateDaysRemaining(p); if (days <= 3 || p.currentStock <= p.minStock) criticalCount++; if (days < minDays) minDays = days; }); const today = new Date(); const targetDaysAhead = Math.max(1, Math.min(Math.floor(minDays) - 1, 3)); const targetDate = new Date(today.getTime() + targetDaysAhead * 24 * 60 * 60 * 1000); return { dateStr: `${String(targetDate.getDate()).padStart(2, '0')}/${String(targetDate.getMonth() + 1).padStart(2, '0')}/${targetDate.getFullYear()}`, criticalCount }; }
+export function getRecommendedPurchaseDate(products: Product[]): { dateStr: string; criticalCount: number } {
+  let minDays = 999;
+  let criticalCount = 0;
+  products.forEach((p) => {
+    const days = calculateDaysRemaining(p);
+    if (!isNaN(days)) {
+      if (days <= 3 || p.currentStock <= p.minStock) criticalCount++;
+      if (days < minDays) minDays = days;
+    }
+  });
+  const today = new Date();
+  const safeMinDays = isFinite(minDays) && !isNaN(minDays) ? minDays : 3;
+  const targetDaysAhead = Math.max(1, Math.min(Math.floor(safeMinDays) - 1, 3));
+  const targetDate = new Date(today.getTime() + targetDaysAhead * 24 * 60 * 60 * 1000);
+  const safeDate = isNaN(targetDate.getTime()) ? today : targetDate;
+  return {
+    dateStr: `${String(safeDate.getDate()).padStart(2, '0')}/${String(safeDate.getMonth() + 1).padStart(2, '0')}/${safeDate.getFullYear()}`,
+    criticalCount,
+  };
+}
 export function getProductStockStatus(product: Product): 'critical' | 'warning' | 'normal' { const days = calculateDaysRemaining(product); const alertDays = getProductAlertDays(product); if (days <= 0 || product.currentStock <= 0 || days <= 1.5 || product.currentStock <= product.minStock / 2) return 'critical'; if (days <= alertDays || days <= 3 || product.currentStock <= product.minStock) return 'warning'; return 'normal'; }

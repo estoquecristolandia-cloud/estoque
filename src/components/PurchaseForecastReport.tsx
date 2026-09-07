@@ -36,6 +36,7 @@ import {
   Sparkles,
   DollarSign,
   AlertCircle,
+  Eye,
 } from 'lucide-react';
 
 interface PurchaseForecastReportProps {
@@ -84,6 +85,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   );
   const [emailSubject, setEmailSubject] = useState('');
   const [emailCopied, setEmailCopied] = useState(false);
+  const [emailCopiedHtml, setEmailCopiedHtml] = useState(false);
+  const [emailModalTab, setEmailModalTab] = useState<'preview' | 'plain'>('preview');
   const [customEmailNote, setCustomEmailNote] = useState('');
 
   // Pure read-only computation of forecast data
@@ -96,109 +99,228 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     });
   }, [products, movements, periodDays, inventoryAudits, categoryFilter, statusFilter, searchTerm, onlyNeedsPurchase]);
 
-  // Generate Email Content
+  // Generate Email Content (Professional, Objective and Direct)
   const emailContent = useMemo(() => {
     const today = new Date().toLocaleDateString('pt-BR');
-    const subject = `[ESTOQUE CRISTOLÂNDIA] Previsão Semanal de Compras — Ciclo de ${periodDays} Dias (Próxima Compra: ${forecast.nextPurchaseDateFormatted})`;
+    const subject = `[ESTOQUE CRISTOLÂNDIA] Previsão Semanal de Compras — Ciclo de ${periodDays} Dias (Compra Prevista: ${forecast.nextPurchaseDateFormatted})`;
 
-    let body = `A/C: Pastor Humberto (humbertohpp.59@gmail.com) e Chefe Marcos (chefmarcusviniciuses@gmail.com)\n`;
+    // 1. Plain Text Version (Direct, Executive, Clear)
+    let body = `A/C: Pastor Humberto e Chefe Marcos\n`;
     body += `Cc: Marconi Castro (Almoxarifado / Estoque)\n`;
     body += `Data da Emissão: ${today}\n\n`;
 
     body += `Prezados Pastor Humberto e Chefe Marcos,\n\n`;
     body += `Graça e paz!\n\n`;
-    body += `Apresentamos a Previsão Semanal de Compras e Abastecimento do Estoque da Cristolândia (LEM/BA) referente ao horizonte de ${periodDays} dias.\n\n`;
+    body += `Apresentamos a Previsão Semanal de Compras e Abastecimento do Estoque da Cristolândia (LEM/BA) para o ciclo de ${periodDays} dias (${forecast.baseDateFormatted} a ${forecast.endDateFormatted}), com compra recomendada para ${forecast.nextPurchaseDateFormatted}.\n\n`;
 
-    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    body += `📊 1. RESUMO EXECUTIVO DO ABASTECIMENTO (${periodDays} DIAS)\n`;
-    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    body += `• Ciclo Operacional: ${forecast.baseDateFormatted} a ${forecast.endDateFormatted}\n`;
-    body += `• Data Prevista de Compra: ${forecast.nextPurchaseDateFormatted} (Quarta-feira)\n`;
-    body += `• Total de Itens Analisados: ${forecast.totalProducts} produtos\n`;
-    body += `• Itens com Sugestão de Compra: ${forecast.itemsNeedingPurchaseCount} itens\n`;
-    body += `• Itens em Nível Crítico (Risco de Falta): ${forecast.criticalCount}\n`;
-    body += `• Itens em Atenção (Abaixo da Margem de Segurança): ${forecast.warningCount}\n`;
-    body += `• Itens com Estoque Normal / Seguro: ${forecast.normalCount}\n`;
-    body += `• Custo Total Estimado de Reposição: R$ ${(forecast.totalEstimatedCost ?? 0).toFixed(2).replace('.', ',')}\n\n`;
+    body += `RESUMO DO HORIZONTE DE ABASTECIMENTO:\n`;
+    body += `• Itens Analisados: ${forecast.totalProducts} produtos\n`;
+    body += `• Itens com Sugestão de Compra: ${forecast.itemsNeedingPurchaseCount} (${forecast.criticalCount} críticos, ${forecast.warningCount} em atenção)\n`;
+    body += `• Itens com Estoque Seguro: ${forecast.normalCount} produtos\n\n`;
 
-    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    body += `🚨 2. LISTA PRIORITÁRIA DE COMPRAS (POR GRAU DE URGÊNCIA)\n`;
-    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+    body += `════════════════════════════════════════════════════════════════════════\n`;
+    body += `TABELA DE COMPRAS NECESSÁRIAS (ORDEM DE URGÊNCIA)\n`;
+    body += `════════════════════════════════════════════════════════════════════════\n\n`;
 
     if (forecast.purchasesList.length === 0) {
-      body += `✅ Não há produtos necessitando de compra imediata. O estoque atual atende com segurança a operação pelos próximos ${periodDays} dias.\n\n`;
+      body += `✅ Não há produtos necessitando de compra no momento. O estoque atual atende com total segurança a demanda prevista para os próximos ${periodDays} dias.\n\n`;
     } else {
-      // Criticals first
-      const criticals = forecast.purchasesList.filter((i) => i.status === 'CRITICO');
-      if (criticals.length > 0) {
-        body += `🔴 ITENS CRÍTICOS (RISCO IMINENTE DE RUPTURA):\n`;
-        criticals.forEach((item) => {
-          body += `• ${item.name} (${item.category})\n`;
-          body += `   - Estoque Atual: ${item.currentStock} ${item.unit}\n`;
-          body += `   - Consumo Previsto (${periodDays}d): ${item.projectedConsumption} ${item.unit} | Autonomia: ${item.autonomyText}\n`;
-          body += `   - Saldo Projetado ao Fim: ${item.projectedBalance} ${item.unit} (Estoque Segurança: ${item.safetyStock} ${item.unit})\n`;
-          body += `   ➔ COMPRA SUGERIDA: +${item.suggestedPurchaseQty} ${item.unit} (Estimativa: R$ ${(item.estimatedCost ?? item.estimatedTotalCost ?? 0).toFixed(2).replace('.', ',')})\n\n`;
-        });
-      }
+      forecast.purchasesList.forEach((item, index) => {
+        const isCritical = item.status === 'CRITICO';
+        const statusBadge = isCritical ? '🔴 CRÍTICO' : '🟡 ATENÇÃO';
+        const detailStatus = isCritical
+          ? 'Risco iminente de ruptura antes do fim do ciclo'
+          : 'Abaixo do estoque de segurança (3 dias)';
 
-      // Attention items
-      const attentions = forecast.purchasesList.filter((i) => i.status === 'ATENCAO');
-      if (attentions.length > 0) {
-        body += `🟡 ITENS EM ATENÇÃO (ABAIXO DO ESTOQUE DE SEGURANÇA):\n`;
-        attentions.forEach((item) => {
-          body += `• ${item.name} (${item.category})\n`;
-          body += `   - Estoque Atual: ${item.currentStock} ${item.unit}\n`;
-          body += `   - Consumo Previsto: ${item.projectedConsumption} ${item.unit} | Autonomia: ${item.autonomyText}\n`;
-          body += `   ➔ COMPRA SUGERIDA: +${item.suggestedPurchaseQty} ${item.unit} (Estimativa: R$ ${(item.estimatedCost ?? item.estimatedTotalCost ?? 0).toFixed(2).replace('.', ',')})\n\n`;
-        });
-      }
-
-      // Other regular needs if any
-      const normalsWithPurchase = forecast.purchasesList.filter((i) => i.status === 'NORMAL');
-      if (normalsWithPurchase.length > 0) {
-        body += `🟢 ITENS COMPLEMENTARES DE REPOSIÇÃO:\n`;
-        normalsWithPurchase.forEach((item) => {
-          body += `• ${item.name}: Atual ${item.currentStock} ${item.unit} ➔ COMPRA: +${item.suggestedPurchaseQty} ${item.unit}\n`;
-        });
-        body += `\n`;
-      }
+        body += `${index + 1}. ${item.name} (${item.category})\n`;
+        body += `   • Estoque Atual: ${item.currentStock} ${item.unit}\n`;
+        body += `   • Autonomia Estimada: ${item.autonomyText}\n`;
+        body += `   • Consumo Previsto (${periodDays}d): ${item.projectedConsumption} ${item.unit}\n`;
+        body += `   ➔ COMPRA SUGERIDA: +${item.suggestedPurchaseQty} ${item.unit}\n`;
+        body += `   • Situação: ${statusBadge} — ${detailStatus}\n\n`;
+      });
     }
 
-    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    body += `🥩 3. DESTAQUE DOS ITENS PRINCIPAIS DE CONSUMO DA COZINHA\n`;
-    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    const stapleNames = ['Arroz Branco', 'Feijão Carioca', 'Óleo de Soja', 'Frango Inteiro', 'Frango Resfriado', 'Carne Bovina', 'Farinha de Trigo', 'Açúcar Cristal', 'Leite Integral'];
-    const stapleItems = forecast.allItems.filter((item) =>
-      stapleNames.some((sn) => item.name.toLowerCase().includes(sn.toLowerCase()))
+    // Itens em Atenção com Estoque Suficiente para esta semana (Programar para próxima compra)
+    const nextCycleAlerts = forecast.warningItems.filter((i) => i.suggestedPurchaseQty === 0);
+    if (nextCycleAlerts.length > 0) {
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      body += `ITENS EM ATENÇÃO (ATENDEM ESTA SEMANA — PROGRAMAR PRÓXIMA TERÇA):\n`;
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      nextCycleAlerts.forEach((item) => {
+        body += `• ${item.name}: Estoque Atual ${item.currentStock} ${item.unit} atende os preparos da semana (${item.projectedConsumption} ${item.unit}). Saldo final: ${item.projectedBalance} ${item.unit}.\n`;
+        body += `  ➔ Orientação: NÃO comprar amanhã (suficiente). Programar compra para a próxima terça-feira (+${item.nextCyclePurchaseQty} ${item.unit}).\n\n`;
+      });
+    }
+
+    // Itens de alto consumo com estoque seguro (sem compra)
+    const stapleNames = [
+      'Arroz Branco',
+      'Feijão Carioca',
+      'Óleo de Soja',
+      'Frango Resfriado',
+      'Frango Inteiro',
+      'Carne Bovina',
+      'Farinha de Trigo',
+      'Açúcar Cristal',
+      'Leite Integral',
+    ];
+    const safeStaples = forecast.allItems.filter(
+      (item) =>
+        item.suggestedPurchaseQty === 0 &&
+        stapleNames.some((sn) => item.name.toLowerCase().includes(sn.toLowerCase()))
     );
 
-    stapleItems.forEach((st) => {
-      const statusIcon = st.status === 'CRITICO' ? '🔴' : st.status === 'ATENCAO' ? '🟡' : '🟢';
-      body += `${statusIcon} ${st.name}: Atual: ${st.currentStock} ${st.unit} | Autonomia: ${st.autonomyText} | Sugestão: ${st.suggestedPurchaseQty > 0 ? `+${st.suggestedPurchaseQty} ${st.unit}` : 'Sem compra necessária'}\n`;
-    });
-    body += `\n`;
-
-    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    body += `📌 4. PARECER GERENCIAL DO ALMOXARIFADO & RECONCILIAÇÃO\n`;
-    body += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-    body += `${forecast.managerialObservation}\n\n`;
+    if (safeStaples.length > 0) {
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      body += `ITENS DE ALTO CONSUMO COM ESTOQUE SEGURO (NÃO REQUEREM COMPRA):\n`;
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      safeStaples.forEach((item) => {
+        body += `• ${item.name}: ${item.currentStock} ${item.unit} | Autonomia: ${item.autonomyText} — OK (Estoque Seguro)\n`;
+      });
+      body += `\n`;
+    }
 
     if (customEmailNote.trim()) {
-      body += `📝 OBSERVAÇÃO ADICIONAL DO GESTOR:\n`;
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      body += `OBSERVAÇÕES DA GESTÃO DO ALMOXARIFADO:\n`;
       body += `${customEmailNote.trim()}\n\n`;
     }
 
-    body += `Atenciosamente,\n\n`;
+    body += `Permanecemos à disposição para quaisquer dúvidas ou ajustes operacionais.\n\n`;
+    body += `Fraternalmente,\n\n`;
     body += `Marconi Castro\n`;
-    body += `Responsável pelo Almoxarifado e Controle de Estoque\n`;
+    body += `Almoxarifado e Controle de Estoque\n`;
     body += `Missão Cristolândia — LEM/BA\n`;
     body += `Junta de Missões Nacionais — CBB\n`;
 
-    return { subject, body };
+    // 2. Rich HTML Table Version for Gmail / Outlook
+    const purchasesHtmlRows = forecast.purchasesList
+      .map((item) => {
+        const isCrit = item.status === 'CRITICO';
+        const statusBg = isCrit ? '#fef2f2' : '#fffbeb';
+        const statusColor = isCrit ? '#b91c1c' : '#b45309';
+        const statusBorder = isCrit ? '#fecaca' : '#fde68a';
+        const statusText = isCrit ? '🔴 Crítico' : '🟡 Atenção';
+
+        return `
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 10px 12px; font-weight: 700; color: #0f172a;">
+              <div>${item.name}</div>
+              <div style="font-size: 11px; color: #64748b; font-weight: 400;">${item.category}</div>
+            </td>
+            <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: #334155;">
+              ${item.currentStock} ${item.unit}
+            </td>
+            <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: ${isCrit ? '#dc2626' : '#d97706'};">
+              ${item.autonomyText}
+            </td>
+            <td style="padding: 10px 12px; text-align: center; color: #475569;">
+              ${item.projectedConsumption} ${item.unit}
+            </td>
+            <td style="padding: 10px 12px; text-align: center;">
+              <span style="display: inline-block; padding: 4px 12px; border-radius: 9999px; background-color: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; font-weight: 900; font-size: 12px;">
+                +${item.suggestedPurchaseQty} ${item.unit}
+              </span>
+            </td>
+            <td style="padding: 10px 12px; text-align: center;">
+              <span style="display: inline-block; padding: 3px 10px; border-radius: 6px; background-color: ${statusBg}; border: 1px solid ${statusBorder}; color: ${statusColor}; font-weight: 700; font-size: 11px;">
+                ${statusText}
+              </span>
+            </td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; max-width: 760px; margin: 0 auto; line-height: 1.6; font-size: 13px;">
+        <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
+          <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Missão Cristolândia &bull; LEM/BA &bull; Almoxarifado</div>
+          <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 2px;">Previsão Semanal de Compras e Abastecimento</div>
+          <div style="font-size: 12px; color: #475569; margin-top: 4px;">Ciclo: <strong>${forecast.baseDateFormatted} a ${forecast.endDateFormatted}</strong> (${periodDays} dias) &bull; Compra Prevista: <strong>${forecast.nextPurchaseDateFormatted}</strong></div>
+        </div>
+
+        <p style="margin: 0 0 12px 0;">Prezados Pastor Humberto e Chefe Marcos, graça e paz!</p>
+        <p style="margin: 0 0 16px 0;">Segue o quadro prioritário de compras de suprimentos para o ciclo de ${periodDays} dias, garantindo a autonomia operacional e prevenindo rupturas na cozinha:</p>
+
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 18px;">
+          <thead>
+            <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1; color: #475569; font-size: 11px; text-transform: uppercase; font-weight: 800;">
+              <th style="padding: 10px 12px;">Item / Produto</th>
+              <th style="padding: 10px 12px; text-align: center;">Estoque Atual</th>
+              <th style="padding: 10px 12px; text-align: center;">Autonomia</th>
+              <th style="padding: 10px 12px; text-align: center;">Consumo Prev.</th>
+              <th style="padding: 10px 12px; text-align: center;">Compra Sugerida</th>
+              <th style="padding: 10px 12px; text-align: center;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${purchasesHtmlRows}
+          </tbody>
+        </table>
+
+        ${
+          nextCycleAlerts.length > 0
+            ? `
+          <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px;">
+            <strong style="color: #b45309;">🟡 Itens em Atenção (Estoque suficiente para esta semana — Programar p/ próxima compra):</strong>
+            <div style="color: #92400e; margin-top: 6px; line-height: 1.6;">
+              ${nextCycleAlerts
+                .map(
+                  (item) => `
+                <div style="padding: 3px 0;">
+                  &bull; <strong>${item.name}</strong>: Estoque de <strong>${item.currentStock} ${item.unit}</strong> atende os preparos da semana (${item.projectedConsumption} ${item.unit}). Restarão <strong>${item.projectedBalance} ${item.unit}</strong>.
+                  <br/>
+                  <span style="color: #b45309; font-weight: 700;">➔ Orientação: Não comprar amanhã (suficiente). Programar compra para a próxima terça-feira (+${item.nextCyclePurchaseQty} ${item.unit}).</span>
+                </div>
+              `
+                )
+                .join('')}
+            </div>
+          </div>
+        `
+            : ''
+        }
+
+        ${
+          safeStaples.length > 0
+            ? `
+          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px;">
+            <strong style="color: #166534;">Itens de Alto Consumo com Estoque Seguro (Sem compra necessária):</strong>
+            <div style="color: #15803d; margin-top: 4px;">
+              ${safeStaples.map((s) => `${s.name}: <strong>${s.currentStock} ${s.unit}</strong> (${s.autonomyText})`).join(' &bull; ')}
+            </div>
+          </div>
+        `
+            : ''
+        }
+
+        ${
+          customEmailNote.trim()
+            ? `
+          <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px; color: #1e40af;">
+            <strong>Observação da Gestão:</strong> ${customEmailNote.trim()}
+          </div>
+        `
+            : ''
+        }
+
+        <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569;">
+          <div>Fraternalmente,</div>
+          <div style="font-weight: 800; color: #0f172a; margin-top: 4px;">Marconi Castro</div>
+          <div>Almoxarifado e Controle de Estoque &bull; Missão Cristolândia LEM/BA</div>
+          <div style="font-size: 11px; color: #94a3b8;">Junta de Missões Nacionais — CBB</div>
+        </div>
+      </div>
+    `;
+
+    return { subject, body, html };
   }, [forecast, periodDays, customEmailNote]);
 
   const handleOpenEmailModal = () => {
     setEmailSubject(emailContent.subject);
+    setEmailModalTab('preview'); // Tabela Executiva Visual definida sempre como padrão
     setIsEmailModalOpen(true);
   };
 
@@ -206,6 +328,24 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     navigator.clipboard.writeText(emailContent.body);
     setEmailCopied(true);
     setTimeout(() => setEmailCopied(false), 3000);
+  };
+
+  const handleCopyEmailHtml = async () => {
+    try {
+      const blobHtml = new Blob([emailContent.html], { type: 'text/html' });
+      const blobText = new Blob([emailContent.body], { type: 'text/plain' });
+      const clipboardItem = new ClipboardItem({
+        'text/html': blobHtml,
+        'text/plain': blobText,
+      });
+      await navigator.clipboard.write([clipboardItem]);
+      setEmailCopiedHtml(true);
+      setTimeout(() => setEmailCopiedHtml(false), 3000);
+    } catch {
+      navigator.clipboard.writeText(emailContent.body);
+      setEmailCopied(true);
+      setTimeout(() => setEmailCopied(false), 3000);
+    }
   };
 
   const handleOpenInGmail = () => {
@@ -289,29 +429,37 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
   const handleCopyCoordinationList = () => {
     let msg = `🏛️ *JUNTA DE MISSÕES NACIONAIS - CRISTOLÂNDIA (LEM/BA)*\n`;
-    msg += `📋 *RELATÓRIO DE PREVISÃO DE COMPRAS (${periodDays} DIAS)*\n`;
-    msg += `📅 *Ciclo:* ${forecast.baseDateFormatted} a ${forecast.endDateFormatted} | Compra Prevista: *${forecast.nextPurchaseDateFormatted}*\n`;
-    msg += `💰 *Custo Total Estimado:* R$ ${(forecast.totalEstimatedCost ?? 0).toFixed(2).replace('.', ',')}\n\n`;
+    msg += `📋 *PREVISÃO DE COMPRAS E ABASTECIMENTO (${periodDays} DIAS)*\n`;
+    msg += `📅 *Ciclo:* ${forecast.baseDateFormatted} a ${forecast.endDateFormatted} | Compra Prevista: *${forecast.nextPurchaseDateFormatted}*\n\n`;
 
     if (forecast.criticalItems.length > 0) {
       msg += `🚨 *ITENS CRÍTICOS (RUPTURA IMINENTE):*\n`;
       forecast.criticalItems.forEach((item) => {
-        msg += `• *${item.name}*: Atual: *${item.currentStock} ${item.unit}* | Consumo: ${item.projectedConsumption} ${item.unit} ➔ *COMPRAR: +${item.suggestedPurchaseQty} ${item.unit}*\n`;
+        msg += `• *${item.name}*: Estoque Atual: *${item.currentStock} ${item.unit}* | Autonomia: *${item.autonomyText}* ➔ *COMPRAR: +${item.suggestedPurchaseQty} ${item.unit}*\n`;
       });
       msg += `\n`;
     }
 
     const otherPurchases = forecast.purchasesList.filter((i) => i.status !== 'CRITICO');
     if (otherPurchases.length > 0) {
-      msg += `🟡 *ITENS EM ATENÇÃO / REPOSIÇÃO:*\n`;
+      msg += `🟡 *ITENS EM ATENÇÃO (COMPRA AMANHÃ):*\n`;
       otherPurchases.forEach((item) => {
-        msg += `• *${item.name}*: Atual: ${item.currentStock} ${item.unit} ➔ *Sugerido: +${item.suggestedPurchaseQty} ${item.unit}*\n`;
+        msg += `• *${item.name}*: Estoque Atual: *${item.currentStock} ${item.unit}* | Autonomia: *${item.autonomyText}* ➔ *COMPRAR: +${item.suggestedPurchaseQty} ${item.unit}*\n`;
       });
       msg += `\n`;
     }
 
-    msg += `📊 *Resumo:* Analisados: ${forecast.totalProducts} | Críticos: ${forecast.criticalCount} | Atenção: ${forecast.warningCount} | Normais: ${forecast.normalCount}\n`;
-    msg += `*Documento gerado automaticamente pelo Estoque Cristolândia.*`;
+    const nextCycleAlerts = forecast.warningItems.filter((i) => i.suggestedPurchaseQty === 0);
+    if (nextCycleAlerts.length > 0) {
+      msg += `⏳ *ITENS MONITORADOS (ATENDEM ESTA SEMANA — COMPRAR NA PRÓXIMA TERÇA):*\n`;
+      nextCycleAlerts.forEach((item) => {
+        msg += `• *${item.name}*: Estoque *${item.currentStock} ${item.unit}* cobre a semana (${item.projectedConsumption} ${item.unit}). Restam *${item.projectedBalance} ${item.unit}* ➔ *Comprar na próxima terça-feira (+${item.nextCyclePurchaseQty} ${item.unit})*\n`;
+      });
+      msg += `\n`;
+    }
+
+    msg += `📊 *Resumo Geral:* ${forecast.totalProducts} produtos analisados | ${forecast.itemsNeedingPurchaseCount} para compra | ${forecast.normalCount} com estoque seguro\n`;
+    msg += `👤 *Responsável:* Marconi Castro — Almoxarifado Cristolândia`;
 
     navigator.clipboard.writeText(msg);
     setCopiedWhatsApp(true);
@@ -355,10 +503,10 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
           <button
             onClick={handleOpenEmailModal}
             className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-black text-xs sm:text-sm shadow-md shadow-indigo-600/20 transition-all cursor-pointer flex items-center gap-2 active:scale-95"
-            title="Gerar e-mail profissional semanal para o Pastor Humberto e Chef Marcos"
+            title="Gerar e-mail com a Tabela Executiva Visual pré-formatada para o Pastor Humberto e Chefe Marcos"
           >
             <Mail className="w-4 h-4 text-amber-300" />
-            <span>✉️ Gerar E-mail Semanal</span>
+            <span>✉️ E-mail Semanal (Tabela Executiva)</span>
           </button>
 
           {/* Gerar PDF */}
@@ -568,8 +716,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         </div>
       </div>
 
-      {/* Executive Summary Cards: 5 Key Metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      {/* Executive Summary Cards: 4 Key Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Products */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1">
@@ -625,40 +773,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             Estoque seguro p/ {periodDays}d
           </p>
         </div>
-
-        {/* Custo Total Estimado */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-800/80 rounded-2xl p-4 shadow-sm col-span-2 sm:col-span-1">
-          <div className="flex items-center justify-between text-[11px] font-bold text-blue-600 dark:text-blue-400 mb-1">
-            <span>Custo Total Estimado</span>
-            <DollarSign className="w-4 h-4 text-blue-500" />
-          </div>
-          <div className="text-2xl font-black text-blue-700 dark:text-blue-300">
-            R$ {(forecast.totalEstimatedCost ?? 0).toFixed(2).replace('.', ',')}
-          </div>
-          <p className="text-[10px] text-blue-600/80 dark:text-blue-400/80 mt-0.5">
-            {forecast.totalSuggestedPurchaseUnits} un. sugeridas
-          </p>
-        </div>
       </div>
-
-      {/* Physical Reconciliation Warning (e.g. Arroz Branco physical count ~30kg vs system 14.5kg) */}
-      {forecast.allItems.some((i) => i.inventoryStatus === 'DIVERGENTE') && (
-        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-2xl p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-900 dark:text-amber-200">
-            <span className="font-bold">Aviso de Auditoria Física Reconciliada: </span>
-            Foram detectados produtos com diferença entre a contagem física oficial e o saldo do sistema.
-            A previsão utiliza o estoque de segurança e o consumo real auditado para evitar desabastecimento.
-            {forecast.allItems
-              .filter((i) => i.inventoryStatus === 'DIVERGENTE')
-              .map((item) => (
-                <span key={item.id} className="ml-1 font-mono font-bold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded text-[11px]">
-                  {item.name}: Físico {item.physicalStock} {item.unit} vs Sistema {item.currentStock} {item.unit} (Dif: {item.physicalDifference > 0 ? `+${item.physicalDifference}` : item.physicalDifference})
-                </span>
-              ))}
-          </div>
-        </div>
-      )}
 
       {/* SUB-VIEW 1: LISTA PRIORITÁRIA DE COMPRAS */}
       {subView === 'coordination_list' && (
@@ -703,7 +818,6 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                     <th className="py-3 px-3 text-right">Saldo Projetado</th>
                     <th className="py-3 px-3 text-right">Segurança (3d)</th>
                     <th className="py-3 px-3 text-right">Compra Sugerida</th>
-                    <th className="py-3 px-3 text-right">Custo Est.</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -787,15 +901,53 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                           +{item.suggestedPurchaseQty} {item.unit}
                         </span>
                       </td>
-
-                      {/* Custo Estimado */}
-                      <td className="py-3.5 px-3 text-right font-bold text-slate-900 dark:text-white">
-                        R$ {(item.estimatedCost ?? item.estimatedTotalCost ?? 0).toFixed(2).replace('.', ',')}
-                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Itens em Atenção que cobrem a semana atual */}
+          {forecast.warningItems.some((i) => i.suggestedPurchaseQty === 0) && (
+            <div className="mt-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 space-y-3">
+              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs sm:text-sm">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Itens em Atenção (Estoque Cobre Esta Semana — Compra Programada para a Próxima Terça-Feira)</span>
+              </div>
+              <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                Os itens abaixo possuem estoque suficiente para atender 100% da demanda desta semana. Portanto, <strong>não precisam ser comprados amanhã</strong>. O saldo projetado terminará abaixo da margem de segurança, e a compra deverá ocorrer na próxima terça-feira.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {forecast.warningItems
+                  .filter((i) => i.suggestedPurchaseQty === 0)
+                  .map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-amber-200/80 dark:border-amber-900/60 shadow-xs flex items-center justify-between gap-3 text-xs"
+                    >
+                      <div>
+                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          {item.name}
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 font-bold">
+                            🟡 Atenção
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          Estoque: <strong>{item.currentStock} {item.unit}</strong> | Consumo semana: <strong>{item.projectedConsumption} {item.unit}</strong> | Saldo: <strong>{item.projectedBalance} {item.unit}</strong>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 block">
+                          Sem compra amanhã
+                        </span>
+                        <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold">
+                          Próx. Terça: +{item.nextCyclePurchaseQty} {item.unit}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
             </div>
           )}
         </div>
@@ -832,7 +984,6 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                   <th className="py-3 px-3 text-right">Saldo Projetado</th>
                   <th className="py-3 px-3 text-right">Est. Segurança</th>
                   <th className="py-3 px-3 text-right">Sugestão Compra</th>
-                  <th className="py-3 px-3 text-right">Custo Est.</th>
                   <th className="py-3 px-3 text-center">Status</th>
                 </tr>
               </thead>
@@ -900,14 +1051,14 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                         <span className="text-rose-600 dark:text-rose-400">
                           +{item.suggestedPurchaseQty} {item.unit}
                         </span>
+                      ) : item.purchaseTiming === 'PROXIMA_SEMANA' ? (
+                        <div className="flex flex-col items-end">
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">0 (Amanhã)</span>
+                          <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">Próx. Terça: +{item.nextCyclePurchaseQty} {item.unit}</span>
+                        </div>
                       ) : (
                         <span className="text-emerald-600 dark:text-emerald-400 font-semibold">0</span>
                       )}
-                    </td>
-
-                    {/* Custo Estimado */}
-                    <td className="py-3.5 px-3 text-right font-semibold text-slate-600 dark:text-slate-300">
-                      {(item.estimatedCost ?? item.estimatedTotalCost ?? 0) > 0 ? `R$ ${(item.estimatedCost ?? item.estimatedTotalCost ?? 0).toFixed(2).replace('.', ',')}` : '-'}
                     </td>
 
                     {/* Status */}
@@ -986,10 +1137,10 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900 dark:text-white">
-                    E-mail Semanal de Previsão de Compras
+                    E-mail Semanal de Abastecimento e Compras
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Formato profissional e direto pronto para envio à Coordenação e Cozinha
+                    Formato objetivo com visibilidade imediata de estoque, autonomia e previsão de compras
                   </p>
                 </div>
               </div>
@@ -1006,7 +1157,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               {/* Recipients Row */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Destinatários (Pastor Humberto & Chef Marcos):
+                  Destinatários (Pastor Humberto & Chefe Marcos):
                 </label>
                 <input
                   type="text"
@@ -1033,47 +1184,98 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               {/* Optional Custom Note */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Observação Adicional / Recado Específico (Opcional):
+                  Observação Adicional do Almoxarifado (Opcional):
                 </label>
                 <input
                   type="text"
                   value={customEmailNote}
                   onChange={(e) => setCustomEmailNote(e.target.value)}
-                  placeholder="Ex: Favor dar prioridade ao pedido do fornecedor local de carnes até terça às 14h..."
+                  placeholder="Ex: Favor priorizar pedido do fornecedor de hortifrúti na terça de manhã..."
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
 
-              {/* Preview of Email Body */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Conteúdo Formatado do E-mail:
-                  </label>
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    Ciclo de {periodDays} dias | R$ {(forecast.totalEstimatedCost ?? 0).toFixed(2).replace('.', ',')}
-                  </span>
+              {/* Tab Selector: Tabela Formatada vs Texto Simples */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setEmailModalTab('preview')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      emailModalTab === 'preview'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Tabela Executiva (Visual)</span>
+                    <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-extrabold uppercase">
+                      Padrão
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmailModalTab('plain')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      emailModalTab === 'plain'
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Texto Simples (Monospace)</span>
+                  </button>
                 </div>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  Ciclo de {periodDays} dias &bull; {forecast.purchasesList.length} itens com sugestão de compra
+                </span>
+              </div>
+
+              {/* View Content */}
+              {emailModalTab === 'preview' ? (
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 overflow-x-auto shadow-inner max-h-[340px] overflow-y-auto">
+                  <div dangerouslySetInnerHTML={{ __html: emailContent.html }} />
+                </div>
+              ) : (
                 <textarea
                   readOnly
-                  rows={14}
+                  rows={13}
                   value={emailContent.body}
                   className="w-full bg-slate-50 dark:bg-slate-950 font-mono text-xs text-slate-800 dark:text-slate-200 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 focus:outline-none leading-relaxed"
                 />
-              </div>
+              )}
             </div>
 
             {/* Modal Footer with Actions */}
             <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-xs text-slate-500">
-                Selecione a forma mais conveniente para enviar o e-mail:
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Pronto para copiar ou enviar diretamente:
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {/* Copiar Texto */}
+                {/* Copiar Tabela Formatada (Gmail / Outlook) */}
+                <button
+                  onClick={handleCopyEmailHtml}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-indigo-600/25 active:scale-95 ring-2 ring-indigo-400/30"
+                  title="Copia a tabela com formatação visual completa para colar (Ctrl+V) no Gmail ou Outlook"
+                >
+                  {emailCopiedHtml ? (
+                    <>
+                      <Check className="w-4 h-4 text-emerald-300" />
+                      <span>Tabela Copiada (HTML)!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>Copiar Tabela Executiva (Padrão)</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Copiar Texto Simples */}
                 <button
                   onClick={handleCopyEmailText}
-                  className="px-4 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  className="px-3.5 py-2.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-900 dark:text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                 >
                   {emailCopied ? (
                     <>
@@ -1091,7 +1293,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 {/* Abrir no Gmail */}
                 <button
                   onClick={handleOpenInGmail}
-                  className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
+                  className="px-3.5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
                   title="Abrir diretamente na caixa de composição do Gmail Web"
                 >
                   <ExternalLink className="w-4 h-4" />
@@ -1101,11 +1303,11 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 {/* Abrir Cliente Padrão (mailto) */}
                 <button
                   onClick={handleSendViaMailto}
-                  className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
-                  title="Abrir no Outlook, Apple Mail ou cliente nativo"
+                  className="px-3.5 py-2.5 rounded-xl bg-slate-800 dark:bg-slate-700 hover:bg-slate-900 text-white font-bold text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
+                  title="Abrir no Outlook, Apple Mail ou cliente padrão"
                 >
                   <Send className="w-4 h-4" />
-                  <span>Enviar via App de E-mail</span>
+                  <span>Enviar via App</span>
                 </button>
               </div>
             </div>

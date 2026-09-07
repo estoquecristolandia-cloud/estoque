@@ -17,6 +17,9 @@ export interface ForecastItem {
   projectedBalance: number;
   safetyStock: number;
   suggestedPurchaseQty: number;
+  nextCyclePurchaseQty: number;
+  purchaseTiming: 'IMEDIATA' | 'PROXIMA_SEMANA' | 'NAO_NECESSARIA';
+  purchaseTimingText: string;
   status: ForecastStatus;
   statusLabel: string;
   statusBadge: string;
@@ -139,8 +142,10 @@ function formatDateBR(isoDateStr: string): string {
  */
 function countWeekdayOccurrences(startDateStr: string, days: number, targetDaysOfWeek: number[]): number {
   let count = 0;
-  const start = new Date(startDateStr + 'T12:00:00Z');
-  for (let i = 0; i < days; i++) {
+  const numDays = Number(days) > 0 ? Number(days) : 8;
+  const start = new Date(startDateStr ? (startDateStr.includes('T') ? startDateStr : startDateStr + 'T12:00:00Z') : Date.now());
+  if (isNaN(start.getTime())) return 0;
+  for (let i = 0; i < numDays; i++) {
     const current = new Date(start.getTime() + i * 24 * 60 * 60 * 1000);
     const dayOfWeek = current.getUTCDay();
     if (targetDaysOfWeek.includes(dayOfWeek)) {
@@ -154,7 +159,11 @@ function countWeekdayOccurrences(startDateStr: string, days: number, targetDaysO
  * Calculates next Tuesday (standard purchase date) and subsequent revision date.
  */
 function getCycleDates(baseDateStr: string, periodDays: number) {
-  const base = new Date(baseDateStr + 'T12:00:00Z');
+  const validPeriodDays = Number(periodDays) > 0 ? Number(periodDays) : 8;
+  let base = new Date(baseDateStr ? (baseDateStr.includes('T') ? baseDateStr : baseDateStr + 'T12:00:00Z') : Date.now());
+  if (isNaN(base.getTime())) {
+    base = new Date();
+  }
   
   // Find next Tuesday (2) from base date
   const dayOfWeek = base.getUTCDay();
@@ -164,15 +173,19 @@ function getCycleDates(baseDateStr: string, periodDays: number) {
   const purchaseDate = new Date(base.getTime() + daysUntilTuesday * 24 * 60 * 60 * 1000);
   
   // Period end date
-  const endDate = new Date(base.getTime() + (periodDays - 1) * 24 * 60 * 60 * 1000);
+  const endDate = new Date(base.getTime() + (validPeriodDays - 1) * 24 * 60 * 60 * 1000);
 
   // Next revision is usually 7 days after purchase
   const nextReviewDate = new Date(purchaseDate.getTime() + 7 * 24 * 60 * 60 * 1000);
 
+  const safeToISO = (d: Date): string => {
+    return isNaN(d.getTime()) ? new Date().toISOString().split('T')[0] : d.toISOString().split('T')[0];
+  };
+
   return {
-    purchaseDateStr: purchaseDate.toISOString().split('T')[0],
-    endDateStr: endDate.toISOString().split('T')[0],
-    nextReviewDateStr: nextReviewDate.toISOString().split('T')[0],
+    purchaseDateStr: safeToISO(purchaseDate),
+    endDateStr: safeToISO(endDate),
+    nextReviewDateStr: safeToISO(nextReviewDate),
   };
 }
 
@@ -278,8 +291,8 @@ export function calculatePurchaseForecast(
 
       projectedConsumption = occurrencesInPeriod * consumptionPerMeal;
       
-      // Safety Stock for weekly items: 1 week buffer (2 preparations = 44 pc for Flocão)
-      safetyStock = consumptionPerMeal * 2;
+      // Safety Stock for weekly items: 1 preparation buffer (e.g. 22 pc for Flocão = ~3.5 days safety buffer)
+      safetyStock = consumptionPerMeal;
 
       // Autonomy calculation based on real preparation rate
       const totalPreparations = Math.floor(currentStock / consumptionPerMeal);
@@ -302,13 +315,42 @@ export function calculatePurchaseForecast(
       autonomyText = 'Eventual';
     }
 
-    // Saldo Projetado = Estoque Atual - Consumo Previsto
+    // Saldo Projetado = Estoque Atual - Consumo Previsto no Ciclo
     const projectedBalance = Number((currentStock - projectedConsumption).toFixed(1));
 
-    // Quantidade Sugerida para Compra = Consumo Previsto + Estoque de Segurança - Estoque Atual
-    // Se resultado < 0, considerar 0.
-    const rawSuggested = projectedConsumption + safetyStock - currentStock;
-    const suggestedPurchaseQty = Math.max(0, Number(rawSuggested.toFixed(1)));
+    // Regra Operacional Cristolândia (LEM/BA):
+    // 1. SE O ESTOQUE ATUAL ATENDE 100% DO CICLO (currentStock >= projectedConsumption):
+    //    A cozinha possui suprimento garantido para todos os preparos até a próxima compra.
+    //    Portanto, a Compra Imediata (de amanhã) é ZERO (suggestedPurchaseQty = 0).
+    //    Se o saldo restante terminar abaixo da margem de segurança (projectedBalance < safetyStock),
+    //    o item entra como ALERTA (🟡 Atenção) com compra prevista para a PRÓXIMA semana (próxima terça-feira).
+    //
+    // 2. SE O ESTOQUE ATUAL NÃO COBRE O CICLO (currentStock < projectedConsumption):
+    //    Haverá risco real de ruptura durante a semana! Compra Imediata é necessária (suggestedPurchaseQty > 0).
+    let suggestedPurchaseQty = 0;
+    let nextCyclePurchaseQty = 0;
+    let purchaseTiming: 'IMEDIATA' | 'PROXIMA_SEMANA' | 'NAO_NECESSARIA' = 'NAO_NECESSARIA';
+    let purchaseTimingText = 'Estoque seguro';
+
+    if (currentStock < projectedConsumption) {
+      // Compra Imediata necessária para não faltar na semana + repor segurança
+      const rawSuggested = projectedConsumption + safetyStock - currentStock;
+      suggestedPurchaseQty = Math.max(0, Number(rawSuggested.toFixed(1)));
+      purchaseTiming = 'IMEDIATA';
+      purchaseTimingText = 'Compra Imediata (Amanhã)';
+    } else {
+      // Atendido nesta semana: Compra de amanhã é 0
+      suggestedPurchaseQty = 0;
+      if (projectedBalance < safetyStock) {
+        const rawNext = projectedConsumption + safetyStock - projectedBalance;
+        nextCyclePurchaseQty = Math.max(0, Number(rawNext.toFixed(1)));
+        purchaseTiming = 'PROXIMA_SEMANA';
+        purchaseTimingText = 'Suficiente p/ esta semana. Comprar na próxima terça-feira';
+      } else {
+        purchaseTiming = 'NAO_NECESSARIA';
+        purchaseTimingText = 'Estoque suficiente e seguro';
+      }
+    }
 
     // Classificação Automática do Status:
     // 🔴 CRÍTICO:
@@ -400,6 +442,9 @@ export function calculatePurchaseForecast(
       projectedBalance,
       safetyStock,
       suggestedPurchaseQty,
+      nextCyclePurchaseQty,
+      purchaseTiming,
+      purchaseTimingText,
       status,
       statusLabel,
       statusBadge,
@@ -491,7 +536,7 @@ export function calculatePurchaseForecast(
     managerialObservation += `Existem ${warningCount} item(ns) em ATENÇÃO que terminarão abaixo do estoque de segurança. `;
   }
   if (itemsNeedingPurchaseCount > 0) {
-    managerialObservation += `Recomendamos a aquisição prioritária de ${itemsNeedingPurchaseCount} produto(s), totalizando +${totalSuggestedPurchaseUnits} unidades/kg (estimativa financeira de R$ ${totalEstimatedCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}).`;
+    managerialObservation += `Recomendamos a aquisição prioritária de ${itemsNeedingPurchaseCount} produto(s), totalizando +${totalSuggestedPurchaseUnits} unidades/kg para garantir o abastecimento com margem de segurança.`;
   } else {
     managerialObservation += `Todos os produtos permanecem com estoque suficiente e margem de segurança garantida para o período projetado.`;
   }
