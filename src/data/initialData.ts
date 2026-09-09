@@ -35,6 +35,9 @@ export const INITIAL_MISSIONARIES: Missionary[] = [
   { id: 'm-coz-1', name: 'Equipe 1 (Café da Manhã)', role: 'Resp. Turno 1 (Café / Manhã)', sector: 'Cozinha', shift: 'Café / Manhã' },
   { id: 'm-coz-2', name: 'Equipe 2 (Almoço)', role: 'Resp. Turno 2 (Almoço)', sector: 'Cozinha', shift: 'Almoço' },
   { id: 'm-coz-3', name: 'Equipe 3 (Jantar / Tarde)', role: 'Resp. Turno 3 (Jantar / Ceia)', sector: 'Cozinha', shift: 'Jantar / Tarde' },
+
+  // Padaria
+  { id: 'm-pad-1', name: 'Fernando Pates', role: 'Responsável pela Padaria', sector: 'Padaria' },
 ];
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -364,7 +367,7 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
     date: '2026-08-04',
     time: '07:30',
     sector: 'Padaria',
-    retrievedBy: 'Antônio Ferreira (Padaria)',
+    retrievedBy: 'Fernando Pates (Padaria)',
     deliveredBy: 'Marconi Castro (Gestor do Estoque)',
     notes: 'Farinha para fornada de pães da Padaria (10 kg)',
     createdAt: '2026-08-04T07:30:00Z',
@@ -379,7 +382,7 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
     date: '2026-08-08',
     time: '07:45',
     sector: 'Padaria',
-    retrievedBy: 'Antônio Ferreira (Padaria)',
+    retrievedBy: 'Fernando Pates (Padaria)',
     deliveredBy: 'Marconi Castro (Gestor do Estoque)',
     notes: 'Açúcar para broas e doces da Padaria (3 kg)',
     createdAt: '2026-08-08T07:45:00Z',
@@ -593,7 +596,7 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
     date: '2026-08-11',
     time: '07:30',
     sector: 'Padaria',
-    retrievedBy: 'Antônio Ferreira (Padaria)',
+    retrievedBy: 'Fernando Pates (Padaria)',
     deliveredBy: 'Marconi Castro (Gestor do Estoque)',
     notes: 'Insumo para produção de pães e broas',
     createdAt: '2026-08-11T07:30:00Z',
@@ -608,7 +611,7 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
     date: '2026-08-11',
     time: '07:35',
     sector: 'Padaria',
-    retrievedBy: 'Antônio Ferreira (Padaria)',
+    retrievedBy: 'Fernando Pates (Padaria)',
     deliveredBy: 'Marconi Castro (Gestor do Estoque)',
     notes: 'Açúcar para massa e pães doces da padaria',
     createdAt: '2026-08-11T07:35:00Z',
@@ -623,7 +626,7 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
     date: '2026-08-11',
     time: '07:40',
     sector: 'Padaria',
-    retrievedBy: 'Antônio Ferreira (Padaria)',
+    retrievedBy: 'Fernando Pates (Padaria)',
     deliveredBy: 'Marconi Castro (Gestor do Estoque)',
     notes: 'Margarina para fornada de pães',
     createdAt: '2026-08-11T07:40:00Z',
@@ -4645,9 +4648,9 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
     date: '2026-08-29',
     time: '10:00',
     sector: 'Padaria',
-    retrievedBy: 'Sr. Pateis',
+    retrievedBy: 'Fernando Pates',
     deliveredBy: 'Marconi Castro (Gestor do Estoque)',
-    notes: 'Saída de leite — Padaria (Sr. Pateis)',
+    notes: 'Saída de leite — Padaria (Fernando Pates)',
     createdAt: '2026-08-29T10:00:00Z',
   },
   {
@@ -4693,9 +4696,9 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
     date: '2026-08-30',
     time: '10:00',
     sector: 'Padaria',
-    retrievedBy: 'Fernando Pateis',
+    retrievedBy: 'Fernando Pates',
     deliveredBy: 'Marconi Castro (Gestor do Estoque)',
-    notes: 'Saída de leite — Padaria (Fernando Pateis)',
+    notes: 'Saída de leite — Padaria (Fernando Pates)',
     createdAt: '2026-08-30T10:00:00Z',
   },
   {

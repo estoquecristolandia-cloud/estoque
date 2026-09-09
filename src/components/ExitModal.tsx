@@ -148,7 +148,7 @@ export const ExitModal: React.FC<ExitModalProps> = ({
     } else if (sec === 'Cozinha') {
       setRetrievedBy('Equipe 1');
     } else if (sec === 'Padaria') {
-      setRetrievedBy('Missionário Antônio Ferreira');
+      setRetrievedBy('Fernando Pates');
     } else if (sec === 'Casa Missionária Masculina') {
       setRetrievedBy('Missionário Carlos Silva');
     } else if (sec === 'Casa Missionária Feminina') {

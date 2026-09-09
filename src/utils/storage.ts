@@ -4,16 +4,61 @@ import { INITIAL_PRODUCTS, INITIAL_MOVEMENTS, DEFAULT_DAILY_KIT, INITIAL_MISSION
 const PRODUCTS_KEY = 'cristolandia_products_v54';
 const MOVEMENTS_KEY = 'cristolandia_movements_v53';
 const DAILY_KIT_KEY = 'cristolandia_daily_kit_v54';
-const MISSIONARIES_KEY = 'cristolandia_missionaries_v4';
+const MISSIONARIES_KEY = 'cristolandia_missionaries_v5';
 const MEALS_KEY = 'cristolandia_meals_v6';
 
 export function getTodayDateString(): string { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`; }
 export function getNowTimeString(): string { return new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
-export function getStoredMissionaries(): Missionary[] { try { const data = localStorage.getItem(MISSIONARIES_KEY); if (!data) return INITIAL_MISSIONARIES; const parsed = JSON.parse(data) as Missionary[]; return parsed.length > 0 ? parsed : INITIAL_MISSIONARIES; } catch { return INITIAL_MISSIONARIES; } }
+export function getStoredMissionaries(): Missionary[] {
+  try {
+    const data = localStorage.getItem(MISSIONARIES_KEY);
+    if (!data) return INITIAL_MISSIONARIES;
+    let parsed = JSON.parse(data) as Missionary[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_MISSIONARIES;
+    // Ensure Padaria has Fernando Pates as responsible
+    const hasPadaria = parsed.some((m) => m.sector === 'Padaria');
+    if (!hasPadaria) {
+      parsed.push({ id: 'm-pad-1', name: 'Fernando Pates', role: 'Responsável pela Padaria', sector: 'Padaria' });
+    } else {
+      parsed = parsed.map((m) => {
+        if (m.sector === 'Padaria') {
+          return { ...m, name: 'Fernando Pates', role: 'Responsável pela Padaria' };
+        }
+        return m;
+      });
+    }
+    return parsed;
+  } catch {
+    return INITIAL_MISSIONARIES;
+  }
+}
 export function saveMissionaries(missionaries: Missionary[]): void { try { localStorage.setItem(MISSIONARIES_KEY, JSON.stringify(missionaries)); } catch (err) { console.error('Error saving missionaries:', err); } }
 export function getStoredProducts(): Product[] { try { const data = localStorage.getItem(PRODUCTS_KEY); if (!data) return INITIAL_PRODUCTS; const parsed = JSON.parse(data) as Product[]; if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_PRODUCTS; return parsed.map((p) => { const normId = (p.id || '').toLowerCase(); const normName = (p.name || '').toLowerCase(); if (normId.includes('flocao') || normName.includes('flocão')) { return { ...p, usageFrequency: 'Somente Quartas e Domingos (22 pacotes/preparo)', dailyAvgConsumption: 6.29, minStock: Math.max(p.minStock || 0, 44) }; } return p; }); } catch { return INITIAL_PRODUCTS; } }
 export function saveProducts(products: Product[]): void { try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products)); } catch (err) { console.error('Error saving products:', err); } }
-export function getStoredMovements(): StockMovement[] { try { const data = localStorage.getItem(MOVEMENTS_KEY); if (!data) return INITIAL_MOVEMENTS; const parsed = JSON.parse(data) as StockMovement[]; return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_MOVEMENTS; } catch { return INITIAL_MOVEMENTS; } }
+export function getStoredMovements(): StockMovement[] {
+  try {
+    const data = localStorage.getItem(MOVEMENTS_KEY);
+    if (!data) return INITIAL_MOVEMENTS;
+    const parsed = JSON.parse(data) as StockMovement[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_MOVEMENTS;
+    return parsed.map((m) => {
+      let ret = m.retrievedBy || '';
+      let notes = m.notes || '';
+      if (ret.includes('Antônio Ferreira') || ret.includes('Fernando Pateis') || ret.includes('Sr. Pateis')) {
+        ret = ret.replace('Antônio Ferreira', 'Fernando Pates').replace('Fernando Pateis', 'Fernando Pates').replace('Sr. Pateis', 'Fernando Pates');
+      }
+      if (notes.includes('Antônio Ferreira') || notes.includes('Fernando Pateis') || notes.includes('Sr. Pateis')) {
+        notes = notes.replace('Antônio Ferreira', 'Fernando Pates').replace('Fernando Pateis', 'Fernando Pates').replace('Sr. Pateis', 'Fernando Pates');
+      }
+      if (ret !== m.retrievedBy || notes !== m.notes) {
+        return { ...m, retrievedBy: ret, notes };
+      }
+      return m;
+    });
+  } catch {
+    return INITIAL_MOVEMENTS;
+  }
+}
 export function saveMovements(movements: StockMovement[]): void { try { localStorage.setItem(MOVEMENTS_KEY, JSON.stringify(movements)); } catch (err) { console.error('Error saving movements:', err); } }
 export function getStoredDailyKit(): DailyKit { try { const data = localStorage.getItem(DAILY_KIT_KEY); if (!data) return DEFAULT_DAILY_KIT; return JSON.parse(data) as DailyKit; } catch { return DEFAULT_DAILY_KIT; } }
 export function saveDailyKit(kit: DailyKit): void { try { localStorage.setItem(DAILY_KIT_KEY, JSON.stringify(kit)); } catch (err) { console.error('Error saving daily kit:', err); } }

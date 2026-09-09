@@ -38,6 +38,8 @@ export interface ForecastItem {
   inventoryStatus: 'CONFERIDO' | 'DIVERGENTE' | 'NAO_CONFERIDO';
   inventoryStatusLabel: string;
   hasPhysicalCount: boolean;
+  customNote?: string;
+  isSectorDemand?: boolean;
 }
 
 export interface ForecastSummary {
@@ -428,6 +430,16 @@ export function calculatePurchaseForecast(
       }
     }
 
+    // Observação personalizada para itens específicos (ex.: demanda da Padaria na Cristolândia)
+    let customNote: string | undefined = undefined;
+    let isSectorDemand: boolean | undefined = undefined;
+
+    const lowerName = product.name.toLowerCase();
+    if (product.id === 'prod-sal' || lowerName.includes('sal refinado') || lowerName === 'sal') {
+      customNote = 'Item de consumo da padaria e cozinha. O estoque pode zerar e possivelmente faltar durante a semana; mantido prioritariamente na lista de compras.';
+      isSectorDemand = true;
+    }
+
     return {
       id: product.id,
       name: product.name,
@@ -462,6 +474,8 @@ export function calculatePurchaseForecast(
       inventoryStatus,
       inventoryStatusLabel,
       hasPhysicalCount,
+      customNote,
+      isSectorDemand,
     };
   });
 

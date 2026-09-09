@@ -329,7 +329,8 @@ export function findMentionedPerson(query: string, missionaries: Missionary[], m
     'rene', 'alexandre', 'marconi', 'pr marconi', 'pastor marconi',
     'valeria', 'igor', 'huberto', 'debora', 'taina', 'lana', 'joabe',
     'marcos', 'chefe marcos', 'fabiola', 'adailton', 'lucas', 'matheus',
-    'pedro', 'paulo', 'carlos', 'andre', 'diego', 'tiago', 'joao'
+    'pedro', 'paulo', 'carlos', 'andre', 'diego', 'tiago', 'joao',
+    'fernando', 'pates', 'fernando pates'
   ];
 
   // 1. Verificar missionários cadastrados
@@ -394,7 +395,10 @@ export function findMentionedPerson(query: string, missionaries: Missionary[], m
 export function findMentionedSector(query: string): string | null {
   const norm = normalizeStr(query);
 
-  if (norm.includes('cozinha') || norm.includes('refeitorio') || norm.includes('padaria')) {
+  if (norm.includes('padaria')) {
+    return 'Padaria';
+  }
+  if (norm.includes('cozinha') || norm.includes('refeitorio')) {
     return 'Cozinha';
   }
   if (norm.includes('masculina') || norm.includes('casa masculina')) {
