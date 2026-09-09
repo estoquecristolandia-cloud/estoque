@@ -274,7 +274,18 @@ export function calculatePurchaseForecast(
       projectedConsumption = Number((dailyAvgConsumption * periodDays).toFixed(1));
 
       // Standard Safety Stock = 3 days of consumption
-      safetyStock = Number((dailyAvgConsumption * 3).toFixed(1));
+      // For multi-sector items (Leite, Manteiga, Óleo, Sal), demand occurs across Cozinha, Padaria,
+      // Casas Missionárias and Adm without prior notice. An extra safety buffer (4 days) is maintained
+      // to absorb unnotified withdrawals and prevent stockouts.
+      const lowerName = product.name.toLowerCase();
+      const isMultiSector =
+        product.id === 'prod-sal' || lowerName.includes('sal') ||
+        product.id === 'prod-leite' || lowerName.includes('leite') ||
+        product.id === 'prod-oleo' || lowerName.includes('óleo') || lowerName.includes('oleo') ||
+        product.id === 'prod-manteiga' || lowerName.includes('manteiga') || lowerName.includes('margarina');
+
+      const safetyBufferDays = isMultiSector ? 4 : 3;
+      safetyStock = Number((dailyAvgConsumption * safetyBufferDays).toFixed(1));
 
       if (dailyAvgConsumption > 0) {
         daysAutonomy = Number((currentStock / dailyAvgConsumption).toFixed(1));
@@ -430,13 +441,22 @@ export function calculatePurchaseForecast(
       }
     }
 
-    // Observação personalizada para itens específicos (ex.: demanda da Padaria na Cristolândia)
+    // Observação personalizada para itens específicos com demanda multissetorial (Cozinha, Padaria, Casas Missionárias e Adm)
     let customNote: string | undefined = undefined;
     let isSectorDemand: boolean | undefined = undefined;
 
     const lowerName = product.name.toLowerCase();
     if (product.id === 'prod-sal' || lowerName.includes('sal refinado') || lowerName === 'sal') {
-      customNote = 'Item de consumo da padaria e cozinha. O estoque pode zerar e possivelmente faltar durante a semana; mantido prioritariamente na lista de compras.';
+      customNote = 'Item multissetorial (Cozinha, Padaria de Fernando Pates, Casas Missionárias e Adm). Sujeito a saídas sem aviso prévio; manter margem de segurança redobrada contra desfalques.';
+      isSectorDemand = true;
+    } else if (product.id === 'prod-leite' || lowerName.includes('leite')) {
+      customNote = 'Item multissetorial (Cozinha, Padaria, Casas Missionárias e Adm). Alto risco de desfalque por saídas avulsas não avisadas previamente; requer monitoramento constante.';
+      isSectorDemand = true;
+    } else if (product.id === 'prod-oleo' || lowerName.includes('óleo') || lowerName.includes('oleo')) {
+      customNote = 'Item multissetorial (Cozinha, Padaria, Casas Missionárias e Adm). Usado em múltiplos setores sem aviso prévio; demanda reserva técnica para não desfalcar preparos diários.';
+      isSectorDemand = true;
+    } else if (product.id === 'prod-manteiga' || lowerName.includes('manteiga') || lowerName.includes('margarina')) {
+      customNote = 'Item multissetorial (Cozinha, Padaria de Fernando Pates e Casas Missionárias). Sujeito a retiradas sem aviso prévio; exige acompanhamento preventivo constante.';
       isSectorDemand = true;
     }
 

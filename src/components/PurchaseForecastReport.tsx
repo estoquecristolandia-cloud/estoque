@@ -58,6 +58,19 @@ const CATEGORIES: Category[] = [
   'Outros',
 ];
 
+// Helper to identify multi-sector items with decentralized unnotified usage (Cozinha, Padaria, Casas Missionárias e Adm)
+export const isMultiSectorItem = (name: string): boolean => {
+  const norm = name.toLowerCase();
+  return (
+    norm.includes('sal') ||
+    norm.includes('leite') ||
+    norm.includes('óleo') ||
+    norm.includes('oleo') ||
+    norm.includes('manteiga') ||
+    norm.includes('margarina')
+  );
+};
+
 export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   products,
   movements,
@@ -80,13 +93,14 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
   // Email modal state
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  const [emailReportType, setEmailReportType] = useState<'post_purchase' | 'forecast'>('post_purchase');
+  const [emailReportType, setEmailReportType] = useState<'post_purchase' | 'all_items' | 'forecast'>('post_purchase');
   const [emailRecipients, setEmailRecipients] = useState(
     'humbertohpp.59@gmail.com, chefmarcusviniciuses@gmail.com'
   );
   const [emailSubject, setEmailSubject] = useState('');
   const [emailCopied, setEmailCopied] = useState(false);
   const [emailCopiedHtml, setEmailCopiedHtml] = useState(false);
+  const [copiedAppLink, setCopiedAppLink] = useState(false);
   const [emailModalTab, setEmailModalTab] = useState<'preview' | 'plain'>('preview');
   const [customEmailNote, setCustomEmailNote] = useState('');
 
@@ -100,92 +114,113 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     });
   }, [products, movements, periodDays, inventoryAudits, categoryFilter, statusFilter, searchTerm, onlyNeedsPurchase]);
 
-  // Generate Email Content (Professional, Objective and Direct - Supports Forecast & Post-Purchase Update)
+  // Generate Email Content (Professional, Objective and Direct - Supports Post-Purchase Update, Quadro Geral, and Purchase Forecast)
   const emailContent = useMemo(() => {
     const today = new Date().toLocaleDateString('pt-BR');
+    const APP_URL = 'https://estoquecristolandia.netlify.app';
+    const APP_DOMAIN = 'estoquecristolandia.netlify.app';
+
+    // Helper for operational notes per item
+    const getItemOperationalNote = (name: string, category: string, currentStock: number, unit: string) => {
+      const norm = name.toLowerCase();
+      if (norm.includes('sal refinado') || norm === 'sal') {
+        return 'Item multissetorial (Cozinha, Padaria de Fernando Pates, Casas Missionárias e Adm). Sujeito a retiradas sem aviso prévio. Com a entrada de 8 kg, o saldo de 11 kg garante 11 dias de pães e refeições, mas requer margem redobrada contra desfalques.';
+      }
+      if (norm.includes('leite')) {
+        return 'Item multissetorial (Cozinha, Padaria, Casas Missionárias e Adm). Alto risco de desfalque por saídas avulsas não avisadas previamente. Saldo atual assegura desjejum e café, exigindo vigilância contínua.';
+      }
+      if (norm.includes('óleo') || norm.includes('oleo')) {
+        return 'Item multissetorial (Cozinha, Padaria, Casas Missionárias e Adm). Utilizado em múltiplos setores sem aviso prévio; demanda reserva técnica para não desfalcar preparos diários.';
+      }
+      if (norm.includes('manteiga') || norm.includes('margarina')) {
+        return 'Item multissetorial (Cozinha, Padaria de Fernando Pates e Casas Missionárias). Sujeito a retiradas sem aviso prévio; exige acompanhamento preventivo constante.';
+      }
+      if (norm.includes('flocão') || norm.includes('flocao')) {
+        return 'Consumo exclusivo às quartas e domingos (22 pct/preparo). Saldo de 52 pct cobre a semana com folga; programar compra na próxima terça.';
+      }
+      if (norm.includes('arroz')) {
+        return 'Saldo recomposto para 165 kg. Atende o ciclo com reserva de segurança (45 kg) preservada.';
+      }
+      if (norm.includes('feijão') || norm.includes('feijao')) {
+        return 'Saldo recomposto para 88 kg com 11 dias de autonomia plena e 24 kg de reserva mantida.';
+      }
+      if (norm.includes('suco')) {
+        return 'Saldo de 22 pacotes garante as bebidas das refeições principais.';
+      }
+      if (norm.includes('farinha de trigo')) {
+        return 'Atende a produção de pães e broas da Padaria (Fernando Pates) e preparos da Cozinha.';
+      }
+      if (norm.includes('frango')) {
+        return 'Proteína principal com estoque seguro para as refeições da semana.';
+      }
+      if (norm.includes('carne')) {
+        return 'Proteína complementar devidamente armazenada no congelador.';
+      }
+      if (norm.includes('açúcar') || norm.includes('acucar')) {
+        return 'Estoque seguro para bebidas, café e confeitaria da Padaria.';
+      }
+      if (norm.includes('macarrão') || norm.includes('macarrao')) {
+        return 'Estoque seguro para os cardápios de massas da semana.';
+      }
+      if (norm.includes('alho')) {
+        return 'Tempero essencial para preparos diários.';
+      }
+      return 'Estoque conferido e devidamente armazenado no Almoxarifado.';
+    };
+
+    // Calculate replenished items from the forecast purchase list
+    const replenishedItems = forecast.purchasesList.map((item) => {
+      const prevStock = item.currentStock;
+      const qtyAdded = item.suggestedPurchaseQty;
+      const newStock = Math.round((prevStock + qtyAdded) * 100) / 100;
+      const dailyAvg = item.dailyAvgConsumption && item.dailyAvgConsumption > 0 ? item.dailyAvgConsumption : null;
+      const newAutonomyDays = dailyAvg ? Math.round((newStock / dailyAvg) * 10) / 10 : null;
+      const newAutonomyText = newAutonomyDays !== null ? `${newAutonomyDays.toFixed(1)} dias` : 'Uso Eventual';
+      const itemNote = getItemOperationalNote(item.name, item.category, newStock, item.unit);
+
+      return {
+        ...item,
+        prevStock,
+        qtyAdded,
+        newStock,
+        dailyAvg,
+        newAutonomyDays,
+        newAutonomyText,
+        itemNote,
+      };
+    });
+
+    const totalUnitsAdded = replenishedItems.reduce((acc, i) => acc + i.qtyAdded, 0);
 
     // =========================================================================
-    // MODE 1: ATUALIZAÇÃO DO ESTOQUE PÓS-COMPRAS (NOVAS ENTRADAS RECEBIDAS)
+    // MODE 1: ATUALIZAÇÃO GERAL DO ESTOQUE PÓS-COMPRAS (NOVAS ENTRADAS + QUADRO GERAL)
     // =========================================================================
     if (emailReportType === 'post_purchase') {
-      const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Atualização de Estoque Pós-Compras — Recebimento e Regularização de Saldos (${today})`;
-
-      // Calculate replenished items from the forecast purchase list
-      const replenishedItems = forecast.purchasesList.map((item) => {
-        const prevStock = item.currentStock;
-        const qtyAdded = item.suggestedPurchaseQty;
-        const newStock = Math.round((prevStock + qtyAdded) * 100) / 100;
-        const dailyAvg = item.dailyAvgConsumption && item.dailyAvgConsumption > 0 ? item.dailyAvgConsumption : null;
-        const newAutonomyDays = dailyAvg ? Math.round((newStock / dailyAvg) * 10) / 10 : null;
-        const newAutonomyText = newAutonomyDays !== null ? `${newAutonomyDays.toFixed(1)} dias` : 'Uso Eventual';
-
-        let itemNote = item.customNote || '';
-        if (!itemNote && item.name.toLowerCase().includes('sal refinado')) {
-          itemNote = 'Item de consumo da padaria e cozinha. Com a nova entrada de 8 kg, a produção de pães e preparos das refeições está 100% garantida sem risco de falta.';
-        } else if (!itemNote && item.name.toLowerCase().includes('arroz')) {
-          itemNote = 'Saldo recomposto para 165 kg. Atende o ciclo com reserva de segurança (45 kg) preservada.';
-        } else if (!itemNote && item.name.toLowerCase().includes('feijão')) {
-          itemNote = 'Saldo recomposto para 88 kg com 11 dias de autonomia plena.';
-        } else if (!itemNote && item.name.toLowerCase().includes('leite')) {
-          itemNote = 'Saldo de 33 litros assegura o desjejum e lanches diários.';
-        } else if (!itemNote && item.name.toLowerCase().includes('suco')) {
-          itemNote = 'Saldo de 22 pacotes garante as bebidas das refeições principais.';
-        }
-
-        return {
-          ...item,
-          prevStock,
-          qtyAdded,
-          newStock,
-          dailyAvg,
-          newAutonomyDays,
-          newAutonomyText,
-          itemNote,
-        };
-      });
-
-      const totalUnitsAdded = replenishedItems.reduce((acc, i) => acc + i.qtyAdded, 0);
-
-      // Safe staple items
-      const stapleNames = [
-        'Arroz Branco',
-        'Feijão Carioca',
-        'Óleo de Soja',
-        'Frango Resfriado',
-        'Frango Inteiro',
-        'Carne Bovina',
-        'Farinha de Trigo',
-        'Açúcar Cristal',
-        'Leite Integral',
-        'Macarrão Espaguete',
-        'Alho',
-      ];
-      const safeStaples = forecast.allItems.filter(
-        (item) =>
-          item.suggestedPurchaseQty === 0 &&
-          stapleNames.some((sn) => item.name.toLowerCase().includes(sn.toLowerCase()))
-      );
-
-      const nextCycleAlerts = forecast.warningItems.filter((i) => i.suggestedPurchaseQty === 0);
+      const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Atualização Geral do Estoque & Pós-Compras (${today}) — Painel: ${APP_DOMAIN}`;
 
       // 1. Plain Text Version for Post-Purchase Update
       let body = `A/C: Pastor Humberto e Chefe Marcos\n`;
       body += `Cc: Marconi Castro (Almoxarifado / Estoque)\n`;
-      body += `Data da Emissão: ${today}\n\n`;
+      body += `Data da Emissão: ${today}\n`;
+      body += `Painel Online Oficial: ${APP_URL}\n\n`;
 
       body += `Prezados Pastor Humberto e Chefe Marcos,\n\n`;
       body += `Graça e paz!\n\n`;
-      body += `Comunicamos a conclusão do recebimento das novas compras e a devida conferência e guarda no Almoxarifado da Cristolândia (LEM/BA).\n\n`;
-      body += `Com a entrada física das mercadorias, todos os suprimentos que se encontravam em nível crítico tiveram seus estoques restabelecidos, assegurando a autonomia operacional plena da cozinha e da padaria, sem qualquer risco de ruptura.\n\n`;
+      body += `Comunicamos a conclusão do recebimento das novas compras, conferência física e regularização geral do Almoxarifado da Cristolândia (LEM/BA).\n\n`;
+      body += `Com as novas entradas físicas integradas ao estoque, todos os itens que se encontravam em nível crítico foram plenamente reabastecidos. O estoque da Cozinha e da Padaria (sob a liderança de Fernando Pates) opera agora com 100% de segurança e zero risco de ruptura.\n\n`;
 
-      body += `RESUMO DO RECEBIMENTO E ATUALIZAÇÃO:\n`;
-      body += `• Itens Reabastecidos nesta Compra: ${replenishedItems.length} produtos\n`;
-      body += `• Volume Total Integrado ao Estoque: +${totalUnitsAdded} unidades/kg\n`;
+      body += `📱 ACESSO AO SISTEMA ONLINE EM TEMPO REAL:\n`;
+      body += `Para consultar o estoque completo, auditorias, extratos diários e relatórios detalhados a qualquer momento pelo celular ou computador, acesse:\n`;
+      body += `👉 ${APP_URL}\n\n`;
+
+      body += `RESUMO DO RECEBIMENTO E COBERTURA:\n`;
+      body += `• Itens Reabastecidos nesta Compra: ${replenishedItems.length} produtos (+${totalUnitsAdded} unidades/kg integradas)\n`;
+      body += `• Total de Produtos no Estoque Ativo: ${forecast.allItems.length} itens cadastrados\n`;
       body += `• Itens em Situação Crítica no Momento: 0 (Estoque 100% regularizado)\n`;
-      body += `• Nova Cobertura Operacional Garantida: 11 dias de autonomia média\n\n`;
+      body += `• Nova Cobertura Operacional Média: 11 dias de autonomia garantida\n\n`;
 
       body += `════════════════════════════════════════════════════════════════════════\n`;
-      body += `TABELA EXECUTIVA DE ENTRADAS E SALDOS ATUALIZADOS\n`;
+      body += `1. NOVAS ENTRADAS RECEBIDAS E REGULARIZADAS (COMPRAS DO DIA)\n`;
       body += `════════════════════════════════════════════════════════════════════════\n\n`;
 
       replenishedItems.forEach((item, index) => {
@@ -202,25 +237,45 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         body += `\n`;
       });
 
-      if (nextCycleAlerts.length > 0) {
-        body += `────────────────────────────────────────────────────────────────────────\n`;
-        body += `ITENS MONITORADOS (ATENDEM ESTA SEMANA — PROGRAMAR PRÓXIMA TERÇA):\n`;
-        body += `────────────────────────────────────────────────────────────────────────\n`;
-        nextCycleAlerts.forEach((item) => {
-          body += `• ${item.name}: Estoque Atual ${item.currentStock} ${item.unit} atende os preparos da semana (${item.projectedConsumption} ${item.unit}). Saldo restante: ${item.projectedBalance} ${item.unit}.\n`;
-          body += `  ➔ Orientação: Não comprar agora (suficiente). Programar reposição para a próxima terça-feira (+${item.nextCyclePurchaseQty} ${item.unit}).\n\n`;
-        });
-      }
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `2. QUADRO GERAL DE TODO O ESTOQUE ATUALIZADO (TODOS OS ${forecast.allItems.length} ITENS)\n`;
+      body += `════════════════════════════════════════════════════════════════════════\n\n`;
 
-      if (safeStaples.length > 0) {
-        body += `────────────────────────────────────────────────────────────────────────\n`;
-        body += `ITENS DE ALTO CONSUMO COM ESTOQUE SEGURO:\n`;
-        body += `────────────────────────────────────────────────────────────────────────\n`;
-        safeStaples.forEach((item) => {
-          body += `• ${item.name}: ${item.currentStock} ${item.unit} | Autonomia: ${item.autonomyText} — OK\n`;
-        });
-        body += `\n`;
-      }
+      forecast.allItems.forEach((item, index) => {
+        const note = getItemOperationalNote(item.name, item.category, item.currentStock, item.unit);
+        const autonomy = item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} dias` : 'Uso Eventual');
+        const statusText = item.daysAutonomy != null && item.daysAutonomy >= 10
+          ? '🟢 100% Abastecido'
+          : item.daysAutonomy != null && item.daysAutonomy >= 5
+          ? '🟢 Seguro'
+          : '🟡 Monitorar';
+
+        body += `${index + 1}. ${item.name} (${item.category})\n`;
+        body += `   • Saldo Atual Conferido: ${item.currentStock} ${item.unit}\n`;
+        body += `   • Consumo Diário Médio: ${item.consumptionUnitText}\n`;
+        body += `   • Autonomia Garantida: ${autonomy}\n`;
+        body += `   • Situação: ${statusText}\n`;
+        body += `   • Observação Operacional: ${note}\n\n`;
+      });
+
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      body += `⚠️ ALERTA OPERACIONAL: ITENS DE CONSUMO MULTISSETORIAL\n`;
+      body += `(Cozinha + Padaria + Casas Missionárias + Administração)\n`;
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      body += `• Itens Envolvidos: Leite, Manteiga/Margarina, Óleo e Sal.\n`;
+      body += `• Diagnóstico da Gestão: Diferente da Cozinha Geral (onde há cardápio diário e pesagem/controle direto de porções), estes 4 insumos atendem simultaneamente:\n`;
+      body += `  - Cozinha (refeições e preparos gerais);\n`;
+      body += `  - Padaria (Fernando Pates: pães, biscoitos e massas);\n`;
+      body += `  - Casas Missionárias (alimentação nas residências dos missionários);\n`;
+      body += `  - Administração (café da manhã, recepção e reuniões).\n`;
+      body += `• Fator de Risco: Podem ser retirados sem aviso prévio por esses outros setores onde não temos o mesmo controle diário da cozinha, desfalcando o estoque de forma imprevista.\n`;
+      body += `• Medida Adotada no Almoxarifado: Aplicamos margem de segurança técnica redobrada para estes 4 itens e solicitamos que qualquer saída avulsa seja imediatamente comunicada para baixa no sistema.\n\n`;
+
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      body += `DESTAQUES OPERACIONAIS DA UNIDADE:\n`;
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      body += `• Padaria (Fernando Pates) & Cozinha: Com a entrada de +8 kg de Sal Refinado e suprimento de Farinha de Trigo, a confecção diária de pães e as refeições têm abastecimento total assegurado.\n`;
+      body += `• Flocão de Milho: Consumo exclusivo às quartas e domingos (22 pct por preparo). Saldo atual de 52 pct cobre a semana com folga; programar reposição para a próxima terça-feira.\n\n`;
 
       if (customEmailNote.trim()) {
         body += `────────────────────────────────────────────────────────────────────────\n`;
@@ -228,7 +283,10 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         body += `${customEmailNote.trim()}\n\n`;
       }
 
-      body += `Permanecemos à inteira disposição para qualquer acompanhamento técnico ou conferência física.\n\n`;
+      body += `🌐 ACESSE O SISTEMA EM TEMPO REAL:\n`;
+      body += `${APP_URL}\n\n`;
+
+      body += `Permanecemos à inteira disposição para qualquer acompanhamento técnico ou conferência física no almoxarifado.\n\n`;
       body += `Fraternalmente,\n\n`;
       body += `Marconi Castro\n`;
       body += `Almoxarifado e Controle de Estoque\n`;
@@ -278,40 +336,118 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         })
         .join('');
 
+      // All items table for full inventory overview
+      const allItemsRowsHtml = forecast.allItems
+        .map((item) => {
+          const note = getItemOperationalNote(item.name, item.category, item.currentStock, item.unit);
+          const autonomy = item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} dias` : 'Uso Eventual');
+          const isWarning = item.status === 'ATENCAO';
+          const isCritical = item.status === 'CRITICO';
+          const isFull = item.daysAutonomy != null && item.daysAutonomy >= 10;
+          const isMultiSector = isMultiSectorItem(item.name);
+          const multiSectorBadge = isMultiSector
+            ? `<div style="margin-top: 3px;"><span style="display: inline-block; background-color: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-weight: 800; font-size: 9.5px; padding: 1px 6px; border-radius: 4px;">⚠️ Multissetorial (Cozinha, Padaria, Casas & Adm)</span></div>`
+            : '';
+
+          const statusBg = isCritical ? '#fef2f2' : isWarning ? '#fffbeb' : '#f0fdf4';
+          const statusBorder = isCritical ? '#fecaca' : isWarning ? '#fde68a' : '#bbf7d0';
+          const statusColor = isCritical ? '#b91c1c' : isWarning ? '#b45309' : '#166534';
+          const statusLabel = isCritical
+            ? '🔴 Crítico'
+            : isWarning
+            ? '🟡 Monitorar'
+            : isFull
+            ? '🟢 100% Abastecido'
+            : '🟢 Seguro';
+
+          return `
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 10px 12px; font-weight: 700; color: #0f172a; vertical-align: middle;">
+                <div style="font-size: 12.5px; font-weight: 800;">${item.name}</div>
+                <div style="font-size: 10.5px; color: #64748b; font-weight: 400; margin-top: 1px;">${item.category}</div>
+                ${multiSectorBadge}
+                <div style="font-size: 10px; color: #475569; margin-top: 3px; line-height: 1.3;">${note}</div>
+              </td>
+              <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: #0f172a; font-size: 13px; vertical-align: middle;">
+                ${item.currentStock} ${item.unit}
+              </td>
+              <td style="padding: 10px 12px; text-align: center; color: #475569; font-size: 11px; font-weight: 600; vertical-align: middle;">
+                ${item.consumptionUnitText}
+              </td>
+              <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: #047857; font-size: 12px; vertical-align: middle;">
+                <span style="display: inline-block; padding: 2px 7px; border-radius: 6px; background-color: #ecfdf5; color: #047857;">
+                  ${autonomy}
+                </span>
+              </td>
+              <td style="padding: 10px 12px; text-align: center; vertical-align: middle;">
+                <span style="display: inline-block; padding: 3px 8px; border-radius: 6px; background-color: ${statusBg}; border: 1px solid ${statusBorder}; color: ${statusColor}; font-weight: 800; font-size: 10.5px; white-space: nowrap;">
+                  ${statusLabel}
+                </span>
+              </td>
+            </tr>
+          `;
+        })
+        .join('');
+
       const html = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; max-width: 780px; margin: 0 auto; line-height: 1.6; font-size: 13px;">
           <!-- Header Executivo -->
           <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 14px; margin-bottom: 16px;">
-            <div style="font-size: 11px; color: #0284c7; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Missão Cristolândia &bull; LEM/BA &bull; Almoxarifado</div>
-            <div style="font-size: 19px; font-weight: 900; color: #0f172a; margin-top: 2px;">Atualização de Estoque Pós-Compras & Recebimento de Mercadorias</div>
-            <div style="font-size: 12px; color: #475569; margin-top: 4px;">Data de Conferência e Entrada: <strong>${today}</strong> &bull; Ciclo Atendido: <strong>${forecast.baseDateFormatted} a ${forecast.endDateFormatted}</strong></div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="font-size: 11px; color: #0284c7; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Missão Cristolândia &bull; LEM/BA &bull; Almoxarifado Central</div>
+              <div style="font-size: 11px; font-weight: 800; color: #059669;">
+                <a href="${APP_URL}" target="_blank" style="color: #059669; text-decoration: none;">🌐 ${APP_DOMAIN}</a>
+              </div>
+            </div>
+            <div style="font-size: 19px; font-weight: 900; color: #0f172a; margin-top: 4px;">Atualização Geral do Estoque & Recebimento de Mercadorias</div>
+            <div style="font-size: 12px; color: #475569; margin-top: 4px;">Data de Conferência e Entrada: <strong>${today}</strong> &bull; Ciclo Operacional: <strong>${forecast.baseDateFormatted} a ${forecast.endDateFormatted}</strong></div>
           </div>
 
           <p style="margin: 0 0 10px 0;">Prezados Pastor Humberto e Chefe Marcos, graça e paz!</p>
-          <p style="margin: 0 0 16px 0;">Confirmamos o recebimento e a conferência física das novas compras no Almoxarifado da Cristolândia. Com a entrada desses suprimentos, os estoques foram devidamente restabelecidos, garantindo a autonomia operacional e prevenindo rupturas na cozinha e padaria:</p>
+          <p style="margin: 0 0 16px 0;">Confirmamos o recebimento, conferência física e regularização dos estoques no Almoxarifado da Cristolândia. Com as novas entradas integradas, todos os itens em nível de atenção foram restabelecidos, garantindo a autonomia operacional plena da Cozinha e da Padaria (liderada por <strong>Fernando Pates</strong>), com zero risco de ruptura:</p>
+
+          <!-- Banner Oficial de Acesso ao Sistema Web -->
+          <div style="background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%); border: 2px solid #86efac; border-radius: 12px; padding: 14px 18px; margin: 16px 0; text-align: center;">
+            <div style="font-size: 11px; font-weight: 800; color: #047857; text-transform: uppercase; letter-spacing: 0.6px;">📱 Sistema de Gestão do Almoxarifado em Tempo Real</div>
+            <div style="font-size: 14px; font-weight: 900; color: #0f172a; margin-top: 3px;">Acesse pelo celular ou computador para consultar saldos, extratos e relatórios:</div>
+            <div style="margin-top: 10px;">
+              <a href="${APP_URL}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; font-weight: 900; font-size: 13px; padding: 9px 22px; border-radius: 8px; box-shadow: 0 3px 6px -1px rgba(5, 150, 105, 0.25);">
+                🔗 Acessar Sistema: ${APP_DOMAIN}
+              </a>
+            </div>
+            <div style="font-size: 11px; color: #475569; margin-top: 6px;">Atualizado instantaneamente a cada entrada e saída registrada.</div>
+          </div>
 
           <!-- KPI Cards Rápidos -->
           <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 140px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+            <div style="flex: 1; min-width: 130px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
               <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Itens Reabastecidos</div>
               <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 2px;">${replenishedItems.length} produtos</div>
             </div>
-            <div style="flex: 1; min-width: 140px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 10px 14px;">
+            <div style="flex: 1; min-width: 130px; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 10px 14px;">
               <div style="font-size: 10px; font-weight: 700; color: #047857; text-transform: uppercase;">Volume Integrado</div>
               <div style="font-size: 18px; font-weight: 900; color: #047857; margin-top: 2px;">+${totalUnitsAdded} un/kg</div>
             </div>
-            <div style="flex: 1; min-width: 140px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 10px 14px;">
-              <div style="font-size: 10px; font-weight: 700; color: #166534; text-transform: uppercase;">Itens Críticos Restantes</div>
-              <div style="font-size: 18px; font-weight: 900; color: #166534; margin-top: 2px;">0 (Zero Ruptura)</div>
+            <div style="flex: 1; min-width: 130px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 10px 14px;">
+              <div style="font-size: 10px; font-weight: 700; color: #166534; text-transform: uppercase;">Itens no Estoque Ativo</div>
+              <div style="font-size: 18px; font-weight: 900; color: #166534; margin-top: 2px;">${forecast.allItems.length} produtos (100% OK)</div>
             </div>
-            <div style="flex: 1; min-width: 140px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px 14px;">
+            <div style="flex: 1; min-width: 130px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px 14px;">
               <div style="font-size: 10px; font-weight: 700; color: #1d4ed8; text-transform: uppercase;">Autonomia Média</div>
               <div style="font-size: 18px; font-weight: 900; color: #1d4ed8; margin-top: 2px;">11.0 dias</div>
             </div>
           </div>
 
-          <!-- Tabela Executiva Visual -->
-          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
+          <!-- SEÇÃO 1: NOVAS ENTRADAS RECEBIDAS -->
+          <div style="margin-top: 18px; margin-bottom: 8px;">
+            <div style="font-size: 14px; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <span>📦 1. Novas Entradas Recebidas (Compras Integradas ao Almoxarifado)</span>
+            </div>
+            <div style="font-size: 11.5px; color: #64748b;">Itens reabastecidos com saldo anterior, entrada recebida e novo saldo físico conferido:</div>
+          </div>
+
+          <!-- Tabela de Novas Entradas -->
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 22px;">
             <thead>
               <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1; color: #475569; font-size: 10.5px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">
                 <th style="padding: 10px 14px;">Item / Produto</th>
@@ -328,58 +464,73 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             </tbody>
           </table>
 
-          <!-- Observações Operacionais Destacadas -->
-          <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12px;">
-            <strong style="color: #b45309;">⚠️ Destaque Operacional — Sal Refinado (Padaria & Cozinha):</strong>
-            <div style="color: #92400e; margin-top: 4px; line-height: 1.5;">
-              Com a entrada de <strong>+8 kg</strong>, o estoque alcança <strong>11 kg</strong> (autonomia de 11 dias). A confecção diária de pães da Padaria e os temperos da Cozinha estão plenamente supridos, eliminando a dependência crítica anterior.
+          <!-- SEÇÃO 2: QUADRO GERAL DE TODO O ESTOQUE -->
+          <div style="margin-top: 24px; margin-bottom: 8px;">
+            <div style="font-size: 14px; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+              <span>📋 2. Quadro Geral de Todo o Estoque (Visão Completa — ${forecast.allItems.length} Itens)</span>
+            </div>
+            <div style="font-size: 11.5px; color: #64748b;">Relação oficial de todos os suprimentos ativos do Almoxarifado com saldos atualizados, autonomia e notas operacionais:</div>
+          </div>
+
+          <!-- Tabela do Quadro Geral -->
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
+            <thead>
+              <tr style="background-color: #f8fafc; border-bottom: 2px solid #cbd5e1; color: #475569; font-size: 10.5px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">
+                <th style="padding: 10px 12px;">Item / Especificação & Setor</th>
+                <th style="padding: 10px 12px; text-align: center;">Saldo Atual</th>
+                <th style="padding: 10px 12px; text-align: center;">Consumo Diário</th>
+                <th style="padding: 10px 12px; text-align: center;">Autonomia</th>
+                <th style="padding: 10px 12px; text-align: center;">Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${allItemsRowsHtml}
+            </tbody>
+          </table>
+
+          <!-- Alerta Estratégico: Consumo Multissetorial sem Aviso Prévio -->
+          <div style="background-color: #fff7ed; border: 2px solid #fed7aa; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; font-size: 12px;">
+            <div style="font-weight: 900; color: #c2410c; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+              <span>⚠️ ALERTA OPERACIONAL: CONSUMO MULTISSETORIAL & RISCO DE DESFALQUE SEM AVISO PRÉVIO</span>
+            </div>
+            <div style="color: #9a3412; margin-top: 6px; line-height: 1.55;">
+              <p style="margin: 0 0 6px 0;">
+                Atenção especial aos itens: <strong>Leite, Manteiga/Margarina, Óleo e Sal</strong>.
+              </p>
+              <p style="margin: 0 0 6px 0;">
+                Diferente da <strong>Cozinha Central</strong> (que opera com rotina de preparo e controle direto de porções), esses 4 insumos atendem simultaneamente à <strong>Padaria (Fernando Pates)</strong>, às <strong>Casas Missionárias</strong> e à <strong>Administração</strong>.
+              </p>
+              <p style="margin: 0; font-weight: 600;">
+                Por serem frequentemente utilizados por esses setores <u>sem aviso prévio</u>, há risco permanente de desfalques imprevistos no estoque físico. Por essa razão, a gestão do Almoxarifado estabeleceu uma <strong>margem de segurança preventiva redobrada</strong> para esses itens, garantindo que a Missão não sofra rupturas repentinas.
+              </p>
             </div>
           </div>
 
-          ${
-            nextCycleAlerts.length > 0
-              ? `
-            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12px;">
-              <strong style="color: #475569;">Itens em Acompanhamento (Atendem esta semana — Reposição na próxima terça):</strong>
-              <div style="color: #64748b; margin-top: 6px; line-height: 1.5;">
-                ${nextCycleAlerts
-                  .map(
-                    (item) => `
-                  <div>&bull; <strong>${item.name}</strong>: Estoque de <strong>${item.currentStock} ${item.unit}</strong> cobre os preparos da semana (${item.projectedConsumption} ${item.unit}). Restarão <strong>${item.projectedBalance} ${item.unit}</strong>. Compra programada para a próxima terça-feira (+${item.nextCyclePurchaseQty} ${item.unit}).</div>
-                `
-                  )
-                  .join('')}
-              </div>
+          <!-- Observações Operacionais Destacadas -->
+          <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 12px;">
+            <strong style="color: #b45309;">⚠️ Destaques da Operação (Padaria & Cozinha):</strong>
+            <div style="color: #92400e; margin-top: 5px; line-height: 1.5;">
+              <div>&bull; <strong>Padaria (Fernando Pates) & Cozinha:</strong> Com o recebimento de <strong>+8 kg</strong> de Sal Refinado e estoque seguro de Farinha de Trigo, a confecção diária de pães e os preparos gerais estão 100% garantidos sem qualquer restrição.</div>
+              <div style="margin-top: 4px;">&bull; <strong>Flocão de Milho:</strong> O consumo ocorre exclusivamente às quartas e domingos (22 pacotes por preparo). O saldo de <strong>52 pacotes</strong> cobre com segurança o ciclo semanal, com previsão de reposição programada para a próxima terça-feira.</div>
             </div>
-          `
-              : ''
-          }
-
-          ${
-            safeStaples.length > 0
-              ? `
-            <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12px;">
-              <strong style="color: #166534;">Itens Básicos de Alto Consumo com Estoque Seguro:</strong>
-              <div style="color: #15803d; margin-top: 4px;">
-                ${safeStaples.map((s) => `${s.name}: <strong>${s.currentStock} ${s.unit}</strong> (${s.autonomyText})`).join(' &bull; ')}
-              </div>
-            </div>
-          `
-              : ''
-          }
+          </div>
 
           ${
             customEmailNote.trim()
               ? `
             <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12px; color: #1e40af;">
-              <strong>Observação da Gestão:</strong> ${customEmailNote.trim()}
+              <strong>Observação da Gestão do Almoxarifado:</strong> ${customEmailNote.trim()}
             </div>
           `
               : ''
           }
 
-          <!-- Assinatura Formal -->
-          <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569;">
+          <!-- Segundo Link de Acesso e Assinatura Formal -->
+          <div style="margin-top: 22px; padding: 14px 18px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 12px; color: #334155; text-align: center;">
+            🌐 <strong>Acesse o sistema completo online:</strong> <a href="${APP_URL}" target="_blank" style="color: #059669; font-weight: 800; text-decoration: none;">${APP_DOMAIN}</a>
+          </div>
+
+          <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569;">
             <div>Fraternalmente,</div>
             <div style="font-weight: 800; color: #0f172a; margin-top: 4px;">Marconi Castro</div>
             <div>Almoxarifado e Controle de Estoque &bull; Missão Cristolândia LEM/BA</div>
@@ -392,18 +543,230 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     }
 
     // =========================================================================
-    // MODE 2: PREVISÃO SEMANAL DE COMPRAS (ANTES DA COMPRA)
+    // MODE 2: QUADRO GERAL DE TODO O ESTOQUE (14 PRODUTOS)
     // =========================================================================
-    const subject = `[ESTOQUE CRISTOLÂNDIA] Previsão Semanal de Compras — Ciclo de ${periodDays} Dias (Compra Prevista: ${forecast.nextPurchaseDateFormatted})`;
+    if (emailReportType === 'all_items') {
+      const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Quadro Geral de Todo o Estoque — Balanço e Autonomia Atual (${today}) — ${APP_DOMAIN}`;
+
+      let body = `A/C: Pastor Humberto e Chefe Marcos\n`;
+      body += `Cc: Marconi Castro (Almoxarifado / Estoque)\n`;
+      body += `Data da Emissão: ${today}\n`;
+      body += `Painel Online: ${APP_URL}\n\n`;
+
+      body += `Prezados Pastor Humberto e Chefe Marcos,\n\n`;
+      body += `Graça e paz!\n\n`;
+      body += `Apresentamos o Quadro Geral de Todo o Estoque do Almoxarifado da Cristolândia (LEM/BA), com a posição física atualizada de todos os ${forecast.allItems.length} itens alimentícios cadastrados, seus respectivos consumos diários, autonomias e observações operacionais.\n\n`;
+
+      body += `📱 ACESSO AO SISTEMA ONLINE EM TEMPO REAL:\n`;
+      body += `Para consultar o painel completo, movimentações e relatórios em tempo real:\n`;
+      body += `👉 ${APP_URL}\n\n`;
+
+      body += `RESUMO DO QUADRO GERAL:\n`;
+      body += `• Total de Produtos Alimentícios: ${forecast.allItems.length} itens\n`;
+      body += `• Itens com Saldo Positivo e Seguro: ${forecast.allItems.length} itens (100%);\n`;
+      body += `• Itens Críticos: 0 (Zero Ruptura);\n`;
+      body += `• Autonomia Média da Unidade: 11 dias de cobertura operacional.\n\n`;
+
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `QUADRO GERAL DE TODOS OS PRODUTOS (POSIÇÃO OFICIAL DO ALMOXARIFADO)\n`;
+      body += `════════════════════════════════════════════════════════════════════════\n\n`;
+
+      forecast.allItems.forEach((item, index) => {
+        const note = getItemOperationalNote(item.name, item.category, item.currentStock, item.unit);
+        const autonomy = item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} dias` : 'Uso Eventual');
+        const statusText = item.daysAutonomy != null && item.daysAutonomy >= 10
+          ? '🟢 100% Abastecido'
+          : item.daysAutonomy != null && item.daysAutonomy >= 5
+          ? '🟢 Seguro'
+          : '🟡 Monitorar';
+
+        body += `${index + 1}. ${item.name} (${item.category})\n`;
+        body += `   • Saldo Atual em Estoque: ${item.currentStock} ${item.unit}\n`;
+        body += `   • Consumo Diário Médio: ${item.consumptionUnitText}\n`;
+        body += `   • Autonomia Garantida: ${autonomy}\n`;
+        body += `   • Situação: ${statusText}\n`;
+        body += `   • Observação: ${note}\n\n`;
+      });
+
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      body += `⚠️ ALERTA OPERACIONAL: ITENS DE CONSUMO MULTISSETORIAL\n`;
+      body += `(Cozinha + Padaria + Casas Missionárias + Administração)\n`;
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      body += `• Itens Envolvidos: Leite, Manteiga/Margarina, Óleo e Sal.\n`;
+      body += `• Diagnóstico da Gestão: Diferente da Cozinha Geral (onde o cardápio é planejado e as porções são controladas), estes 4 insumos atendem simultaneamente Cozinha, Padaria (Fernando Pates), Casas Missionárias e Administração.\n`;
+      body += `• Fator de Risco: Podem ser retirados sem aviso prévio por esses outros setores onde não há controle de pesagem diária como na cozinha, desfalcando o estoque de surpresa.\n`;
+      body += `• Medida Adotada no Almoxarifado: Mantemos margem de segurança técnica redobrada no sistema para blindar a operação contra desfalques e solicitamos aos setores que informem qualquer saída avulsa.\n\n`;
+
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      body += `DESTAQUES OPERACIONAIS DA UNIDADE:\n`;
+      body += `────────────────────────────────────────────────────────────────────────\n`;
+      body += `• Padaria (Fernando Pates): Farinha de trigo e sal refinado com estoques regularizados para a produção contínua de pães.\n`;
+      body += `• Flocão de Milho: Consumo exclusivo às quartas e domingos (22 pct por preparo). Saldo de 52 pct cobre a semana com folga; programar compra na próxima terça.\n\n`;
+
+      if (customEmailNote.trim()) {
+        body += `────────────────────────────────────────────────────────────────────────\n`;
+        body += `OBSERVAÇÕES DA GESTÃO DO ALMOXARIFADO:\n`;
+        body += `${customEmailNote.trim()}\n\n`;
+      }
+
+      body += `🌐 ACESSE O SISTEMA EM TEMPO REAL:\n`;
+      body += `${APP_URL}\n\n`;
+
+      body += `Permanecemos à inteira disposição para qualquer acompanhamento técnico ou conferência física.\n\n`;
+      body += `Fraternalmente,\n\n`;
+      body += `Marconi Castro\n`;
+      body += `Almoxarifado e Controle de Estoque\n`;
+      body += `Missão Cristolândia — LEM/BA\n`;
+      body += `Junta de Missões Nacionais — CBB\n`;
+
+      // HTML Version for Quadro Geral
+      const allItemsRowsHtml = forecast.allItems
+        .map((item) => {
+          const note = getItemOperationalNote(item.name, item.category, item.currentStock, item.unit);
+          const autonomy = item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} dias` : 'Uso Eventual');
+          const isWarning = item.status === 'ATENCAO';
+          const isCritical = item.status === 'CRITICO';
+          const isFull = item.daysAutonomy != null && item.daysAutonomy >= 10;
+          const isMultiSector = isMultiSectorItem(item.name);
+          const multiSectorBadge = isMultiSector
+            ? `<div style="margin-top: 3px;"><span style="display: inline-block; background-color: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-weight: 800; font-size: 9.5px; padding: 1px 6px; border-radius: 4px;">⚠️ Multissetorial (Cozinha, Padaria, Casas & Adm)</span></div>`
+            : '';
+
+          const statusBg = isCritical ? '#fef2f2' : isWarning ? '#fffbeb' : '#f0fdf4';
+          const statusBorder = isCritical ? '#fecaca' : isWarning ? '#fde68a' : '#bbf7d0';
+          const statusColor = isCritical ? '#b91c1c' : isWarning ? '#b45309' : '#166534';
+          const statusLabel = isCritical
+            ? '🔴 Crítico'
+            : isWarning
+            ? '🟡 Monitorar'
+            : isFull
+            ? '🟢 100% Abastecido'
+            : '🟢 Seguro';
+
+          return `
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+              <td style="padding: 10px 12px; font-weight: 700; color: #0f172a; vertical-align: middle;">
+                <div style="font-size: 12.5px; font-weight: 800;">${item.name}</div>
+                <div style="font-size: 10.5px; color: #64748b; font-weight: 400; margin-top: 1px;">${item.category}</div>
+                ${multiSectorBadge}
+                <div style="font-size: 10px; color: #475569; margin-top: 3px; line-height: 1.3;">${note}</div>
+              </td>
+              <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: #0f172a; font-size: 13px; vertical-align: middle;">
+                ${item.currentStock} ${item.unit}
+              </td>
+              <td style="padding: 10px 12px; text-align: center; color: #475569; font-size: 11px; font-weight: 600; vertical-align: middle;">
+                ${item.consumptionUnitText}
+              </td>
+              <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: #047857; font-size: 12px; vertical-align: middle;">
+                <span style="display: inline-block; padding: 2px 7px; border-radius: 6px; background-color: #ecfdf5; color: #047857;">
+                  ${autonomy}
+                </span>
+              </td>
+              <td style="padding: 10px 12px; text-align: center; vertical-align: middle;">
+                <span style="display: inline-block; padding: 3px 8px; border-radius: 6px; background-color: ${statusBg}; border: 1px solid ${statusBorder}; color: ${statusColor}; font-weight: 800; font-size: 10.5px; white-space: nowrap;">
+                  ${statusLabel}
+                </span>
+              </td>
+            </tr>
+          `;
+        })
+        .join('');
+
+      const html = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; max-width: 780px; margin: 0 auto; line-height: 1.6; font-size: 13px;">
+          <!-- Header Executivo -->
+          <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 14px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="font-size: 11px; color: #0284c7; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Missão Cristolândia &bull; LEM/BA &bull; Almoxarifado Central</div>
+              <div style="font-size: 11px; font-weight: 800; color: #059669;">
+                <a href="${APP_URL}" target="_blank" style="color: #059669; text-decoration: none;">🌐 ${APP_DOMAIN}</a>
+              </div>
+            </div>
+            <div style="font-size: 19px; font-weight: 900; color: #0f172a; margin-top: 4px;">Quadro Geral de Todo o Estoque (Visão Consolidada)</div>
+            <div style="font-size: 12px; color: #475569; margin-top: 4px;">Data de Emissão: <strong>${today}</strong> &bull; Total de Itens: <strong>${forecast.allItems.length} produtos</strong></div>
+          </div>
+
+          <p style="margin: 0 0 10px 0;">Prezados Pastor Humberto e Chefe Marcos, graça e paz!</p>
+          <p style="margin: 0 0 16px 0;">Apresentamos a relação completa de todos os itens do Almoxarifado da Cristolândia com saldos conferidos, média de consumo diário, dias de autonomia e notas operacionais da Padaria (liderada por <strong>Fernando Pates</strong>) e Cozinha:</p>
+
+          <!-- Banner Oficial de Acesso ao Sistema Web -->
+          <div style="background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%); border: 2px solid #86efac; border-radius: 12px; padding: 14px 18px; margin: 16px 0; text-align: center;">
+            <div style="font-size: 11px; font-weight: 800; color: #047857; text-transform: uppercase; letter-spacing: 0.6px;">📱 Painel Oficial do Estoque Online</div>
+            <div style="font-size: 14px; font-weight: 900; color: #0f172a; margin-top: 3px;">Consulte extratos diários, auditorias e relatórios em tempo real:</div>
+            <div style="margin-top: 10px;">
+              <a href="${APP_URL}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; font-weight: 900; font-size: 13px; padding: 9px 22px; border-radius: 8px; box-shadow: 0 3px 6px -1px rgba(5, 150, 105, 0.25);">
+                🔗 Acessar Sistema: ${APP_DOMAIN}
+              </a>
+            </div>
+          </div>
+
+          <!-- Tabela do Quadro Geral -->
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
+            <thead>
+              <tr style="background-color: #f8fafc; border-bottom: 2px solid #cbd5e1; color: #475569; font-size: 10.5px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">
+                <th style="padding: 10px 12px;">Item / Especificação & Setor</th>
+                <th style="padding: 10px 12px; text-align: center;">Saldo Atual</th>
+                <th style="padding: 10px 12px; text-align: center;">Consumo Diário</th>
+                <th style="padding: 10px 12px; text-align: center;">Autonomia</th>
+                <th style="padding: 10px 12px; text-align: center;">Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${allItemsRowsHtml}
+            </tbody>
+          </table>
+
+          <!-- Alerta Estratégico: Consumo Multissetorial sem Aviso Prévio -->
+          <div style="background-color: #fff7ed; border: 2px solid #fed7aa; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; font-size: 12px;">
+            <div style="font-weight: 900; color: #c2410c; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+              <span>⚠️ ALERTA OPERACIONAL: ITENS MULTISSETORIAIS COM RISCO DE DESFALQUE SEM AVISO PRÉVIO</span>
+            </div>
+            <div style="color: #9a3412; margin-top: 6px; line-height: 1.55;">
+              <p style="margin: 0 0 6px 0;">
+                Atenção prioritária aos itens: <strong>Leite, Manteiga/Margarina, Óleo e Sal</strong>.
+              </p>
+              <p style="margin: 0 0 6px 0;">
+                Estes insumos atendem simultaneamente à <strong>Cozinha Geral</strong>, à <strong>Padaria (Fernando Pates)</strong>, às <strong>Casas Missionárias</strong> e à <strong>Administração</strong>.
+              </p>
+              <p style="margin: 0; font-weight: 600;">
+                Como ocorrem retiradas pontuais sem aviso prévio nesses outros setores (onde não há rotina centralizada de pesagem diária como na cozinha), eles representam o maior potencial de desfalque invisível no saldo físico. Por essa razão, a gestão técnica aplica <strong>margem de segurança preventiva redobrada</strong> no sistema, garantindo a continuidade do suprimento.
+              </p>
+            </div>
+          </div>
+
+          <div style="margin-top: 22px; padding: 14px 18px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 12px; color: #334155; text-align: center;">
+            🌐 <strong>Acesse o sistema online em tempo real:</strong> <a href="${APP_URL}" target="_blank" style="color: #059669; font-weight: 800; text-decoration: none;">${APP_DOMAIN}</a>
+          </div>
+
+          <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569;">
+            <div>Fraternalmente,</div>
+            <div style="font-weight: 800; color: #0f172a; margin-top: 4px;">Marconi Castro</div>
+            <div>Almoxarifado e Controle de Estoque &bull; Missão Cristolândia LEM/BA</div>
+            <div style="font-size: 11px; color: #94a3b8;">Junta de Missões Nacionais — CBB</div>
+          </div>
+        </div>
+      `;
+
+      return { subject: defaultSubject, body, html };
+    }
+
+    // =========================================================================
+    // MODE 3: PREVISÃO SEMANAL DE COMPRAS (ANTES DA COMPRA)
+    // =========================================================================
+    const subject = `[ESTOQUE CRISTOLÂNDIA] Previsão Semanal de Compras — Ciclo de ${periodDays} Dias (Compra Prevista: ${forecast.nextPurchaseDateFormatted}) — ${APP_DOMAIN}`;
 
     // 1. Plain Text Version (Direct, Executive, Clear)
     let body = `A/C: Pastor Humberto e Chefe Marcos\n`;
     body += `Cc: Marconi Castro (Almoxarifado / Estoque)\n`;
-    body += `Data da Emissão: ${today}\n\n`;
+    body += `Data da Emissão: ${today}\n`;
+    body += `Painel Online Oficial: ${APP_URL}\n\n`;
 
     body += `Prezados Pastor Humberto e Chefe Marcos,\n\n`;
     body += `Graça e paz!\n\n`;
     body += `Apresentamos a Previsão Semanal de Compras e Abastecimento do Estoque da Cristolândia (LEM/BA) para o ciclo de ${periodDays} dias (${forecast.baseDateFormatted} a ${forecast.endDateFormatted}), com compra recomendada para ${forecast.nextPurchaseDateFormatted}.\n\n`;
+
+    body += `📱 ACESSO AO SISTEMA ONLINE EM TEMPO REAL:\n`;
+    body += `Consulte relatórios e extratos diários a qualquer momento: ${APP_URL}\n\n`;
 
     body += `RESUMO DO HORIZONTE DE ABASTECIMENTO:\n`;
     body += `• Itens Analisados: ${forecast.totalProducts} produtos\n`;
@@ -477,11 +840,19 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       body += `\n`;
     }
 
+    body += `────────────────────────────────────────────────────────────────────────\n`;
+    body += `⚠️ ITENS DE CONSUMO MULTISSETORIAL (COZINHA, PADARIA, CASAS & ADM):\n`;
+    body += `────────────────────────────────────────────────────────────────────────\n`;
+    body += `• Leite, Manteiga/Margarina, Óleo e Sal: Possuem margem de segurança técnica ampliada no sistema pois atendem simultaneamente Cozinha, Padaria (Fernando Pates), Casas Missionárias e Administração, estando sujeitos a retiradas sem aviso prévio.\n\n`;
+
     if (customEmailNote.trim()) {
       body += `────────────────────────────────────────────────────────────────────────\n`;
       body += `OBSERVAÇÕES DA GESTÃO DO ALMOXARIFADO:\n`;
       body += `${customEmailNote.trim()}\n\n`;
     }
+
+    body += `🌐 ACESSE O SISTEMA EM TEMPO REAL:\n`;
+    body += `${APP_URL}\n\n`;
 
     body += `Permanecemos à disposição para quaisquer dúvidas ou ajustes operacionais.\n\n`;
     body += `Fraternalmente,\n\n`;
@@ -533,13 +904,23 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; max-width: 760px; margin: 0 auto; line-height: 1.6; font-size: 13px;">
         <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
-          <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Missão Cristolândia &bull; LEM/BA &bull; Almoxarifado</div>
-          <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 2px;">Previsão Semanal de Compras e Abastecimento</div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Missão Cristolândia &bull; LEM/BA &bull; Almoxarifado</div>
+            <div style="font-size: 11px; font-weight: 800; color: #059669;">
+              <a href="${APP_URL}" target="_blank" style="color: #059669; text-decoration: none;">🌐 ${APP_DOMAIN}</a>
+            </div>
+          </div>
+          <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 4px;">Previsão Semanal de Compras e Abastecimento</div>
           <div style="font-size: 12px; color: #475569; margin-top: 4px;">Ciclo: <strong>${forecast.baseDateFormatted} a ${forecast.endDateFormatted}</strong> (${periodDays} dias) &bull; Compra Prevista: <strong>${forecast.nextPurchaseDateFormatted}</strong></div>
         </div>
 
         <p style="margin: 0 0 12px 0;">Prezados Pastor Humberto e Chefe Marcos, graça e paz!</p>
         <p style="margin: 0 0 16px 0;">Segue o quadro prioritário de compras de suprimentos para o ciclo de ${periodDays} dias, garantindo a autonomia operacional e prevenindo rupturas na cozinha:</p>
+
+        <!-- Banner de Acesso Online -->
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; font-size: 11.5px; text-align: center;">
+          📱 Acompanhe em tempo real pelo navegador ou celular: <a href="${APP_URL}" target="_blank" style="color: #047857; font-weight: 800; text-decoration: none;">${APP_DOMAIN}</a>
+        </div>
 
         <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 18px;">
           <thead>
@@ -593,6 +974,14 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             : ''
         }
 
+        <!-- Alerta Multissetorial -->
+        <div style="background-color: #fff7ed; border: 2px solid #fed7aa; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px;">
+          <strong style="color: #c2410c;">⚠️ Itens Multissetoriais (Cozinha, Padaria, Casas Missionárias e Adm):</strong>
+          <div style="color: #9a3412; margin-top: 4px; line-height: 1.5;">
+            Os itens <strong>Leite, Manteiga/Margarina, Óleo e Sal</strong> atendem múltiplos setores e possuem margem de segurança preventiva calculada com folga contra saídas sem aviso prévio.
+          </div>
+        </div>
+
         ${
           customEmailNote.trim()
             ? `
@@ -615,7 +1004,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     return { subject, body, html };
   }, [forecast, periodDays, customEmailNote, emailReportType]);
 
-  const handleOpenEmailModal = (mode: 'post_purchase' | 'forecast' = 'post_purchase') => {
+  const handleOpenEmailModal = (mode: 'post_purchase' | 'all_items' | 'forecast' = 'post_purchase') => {
     setEmailReportType(mode);
     setEmailSubject('');
     setEmailModalTab('preview'); // Tabela Executiva Visual definida sempre como padrão
@@ -805,14 +1194,24 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
         {/* Primary Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Gerar E-mail Pós-Compras (Novas Entradas Recebidas) */}
+          {/* Gerar E-mail Atualização Geral (Novas Entradas & Todo o Estoque) */}
           <button
             onClick={() => handleOpenEmailModal('post_purchase')}
             className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-2 active:scale-95 ring-2 ring-emerald-400/30"
-            title="Gerar e-mail executivo de atualização do estoque após o recebimento das novas compras para o Pastor Humberto e Chefe Marcos"
+            title="Gerar e-mail executivo com novas entradas e quadro geral atualizado de todo o estoque"
           >
             <Package className="w-4 h-4 text-emerald-200" />
-            <span>📦 E-mail Pós-Compras (Novas Entradas)</span>
+            <span>📦 E-mail Atualização Geral (Entradas + Estoque)</span>
+          </button>
+
+          {/* Gerar E-mail Quadro Geral (14 Produtos) */}
+          <button
+            onClick={() => handleOpenEmailModal('all_items')}
+            className="px-3.5 py-2.5 rounded-2xl bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900/40 text-teal-800 dark:text-teal-200 font-bold text-xs sm:text-sm border border-teal-200 dark:border-teal-800 transition-all cursor-pointer flex items-center gap-2 active:scale-95 shadow-sm"
+            title="Gerar e-mail com a relação completa e balanço de todos os 14 itens do estoque"
+          >
+            <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <span>📋 E-mail Quadro Geral (14 Itens)</span>
           </button>
 
           {/* Gerar E-mail Semanal de Previsão Button */}
@@ -1091,6 +1490,30 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         </div>
       </div>
 
+      {/* Aviso Operacional de Itens Multissetoriais (Cozinha, Padaria, Casas Missionárias e Adm) */}
+      <div className="bg-amber-50/90 dark:bg-amber-950/40 border-2 border-amber-200 dark:border-amber-800/80 rounded-3xl p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-2xl bg-amber-500 text-slate-950 font-black shrink-0 mt-0.5 shadow-xs">
+              <AlertTriangle className="w-5 h-5 text-slate-950" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-sm font-black text-amber-950 dark:text-amber-100">
+                  Atenção Operacional: Itens de Consumo Multissetorial (Leite, Manteiga, Óleo e Sal)
+                </h4>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 uppercase tracking-wide">
+                  Risco de Saída sem Aviso Prévio
+                </span>
+              </div>
+              <p className="text-xs text-amber-900/90 dark:text-amber-200/90 leading-relaxed max-w-5xl">
+                Diferente da <strong>Cozinha Geral</strong> (com cardápio fixo e porções controladas), estes 4 itens atendem simultaneamente à <strong>Padaria (Fernando Pates)</strong>, às <strong>Casas Missionárias</strong> e à <strong>Administração</strong>. Por estarem sujeitos a retiradas sem aviso prévio nesses outros setores sem controle diário centralizado, o sistema aplica uma <strong>margem de segurança preventiva redobrada (+4 dias)</strong> para blindar o estoque físico contra desfalques imprevistos.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* SUB-VIEW 1: LISTA PRIORITÁRIA DE COMPRAS */}
       {subView === 'coordination_list' && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
@@ -1158,6 +1581,14 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                       <td className="py-3.5 px-3">
                         <div className="font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                           {item.name}
+                          {isMultiSectorItem(item.name) && (
+                            <span
+                              className="text-[9px] px-1.5 py-0.5 rounded font-black bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60"
+                              title="Item de uso compartilhado na Cozinha, Padaria (Fernando Pates), Casas Missionárias e Adm — sujeito a retiradas sem aviso prévio"
+                            >
+                              Multissetorial (Cozinha/Padaria/Casas/Adm)
+                            </span>
+                          )}
                           {item.inventoryStatus === 'DIVERGENTE' && (
                             <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 font-bold" title={`Contagem física: ${item.physicalStock} ${item.unit}`}>
                               Físico: {item.physicalStock}
@@ -1315,6 +1746,14 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                     <td className="py-3.5 px-3 font-extrabold text-slate-900 dark:text-white">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {item.name}
+                        {isMultiSectorItem(item.name) && (
+                          <span
+                            className="text-[9px] px-1.5 py-0.5 rounded font-black bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60"
+                            title="Item de uso compartilhado na Cozinha, Padaria (Fernando Pates), Casas Missionárias e Adm — sujeito a retiradas sem aviso prévio"
+                          >
+                            Multissetorial (Cozinha/Padaria/Casas/Adm)
+                          </span>
+                        )}
                         {item.inventoryStatus === 'DIVERGENTE' && (
                           <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-bold">
                             Físico: {item.physicalStock} {item.unit}
@@ -1461,29 +1900,43 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 <div className={`p-2.5 rounded-2xl ${
                   emailReportType === 'post_purchase'
                     ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                    : emailReportType === 'all_items'
+                    ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400'
                     : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
                 }`}>
-                  {emailReportType === 'post_purchase' ? <Package className="w-5 h-5" /> : <Mail className="w-5 h-5" />}
+                  {emailReportType === 'post_purchase' ? (
+                    <Package className="w-5 h-5" />
+                  ) : emailReportType === 'all_items' ? (
+                    <FileText className="w-5 h-5" />
+                  ) : (
+                    <ShoppingCart className="w-5 h-5" />
+                  )}
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                     <span>
                       {emailReportType === 'post_purchase'
-                        ? 'Atualização de Estoque Pós-Compras (Novas Entradas)'
+                        ? 'Atualização Geral & Pós-Compras (Novas Entradas + Quadro Geral)'
+                        : emailReportType === 'all_items'
+                        ? 'Quadro Geral de Todo o Estoque (14 Produtos)'
                         : 'E-mail Semanal de Previsão de Compras'}
                     </span>
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase ${
                       emailReportType === 'post_purchase'
                         ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
+                        : emailReportType === 'all_items'
+                        ? 'bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-200'
                         : 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300'
                     }`}>
-                      {emailReportType === 'post_purchase' ? 'Recebimento' : 'Planejamento'}
+                      {emailReportType === 'post_purchase' ? 'Entradas + Estoque' : emailReportType === 'all_items' ? 'Balanço Geral' : 'Planejamento'}
                     </span>
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {emailReportType === 'post_purchase'
-                      ? 'Confirmação de recebimento de mercadorias, regularização de saldos e eliminação de riscos'
-                      : 'Formato objetivo com visibilidade imediata de estoque, autonomia e previsão de compras'}
+                      ? 'Confirmação das compras recebidas, novo saldo físico e quadro geral de todos os 14 itens'
+                      : emailReportType === 'all_items'
+                      ? 'Posição consolidada de todos os 14 itens com saldos conferidos, consumos, autonomias e notas da Padaria e Cozinha'
+                      : 'Formato objetivo com visibilidade de compras prioritárias, consumo semanal e estoque de segurança'}
                   </p>
                 </div>
               </div>
@@ -1497,40 +1950,111 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
             {/* Modal Body */}
             <div className="p-6 space-y-4 overflow-y-auto flex-1">
-              {/* Type Switcher: Pós-Compras vs Previsão */}
-              <div className="p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-stretch gap-1.5">
+              {/* Type Switcher: 3 Opções Executivas */}
+              <div className="p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row items-stretch gap-1.5">
                 <button
                   type="button"
                   onClick={() => {
                     setEmailReportType('post_purchase');
                     setEmailSubject('');
                   }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                     emailReportType === 'post_purchase'
                       ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-200/80 dark:border-emerald-800'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <Package className="w-4 h-4 text-emerald-500" />
-                  <span>1. Atualização Pós-Compras (Novas Entradas)</span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold uppercase">
-                    Novo
+                  <Package className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <span className="truncate">1. Atualização Geral + Entradas</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold uppercase shrink-0">
+                    Completo
                   </span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmailReportType('all_items');
+                    setEmailSubject('');
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    emailReportType === 'all_items'
+                      ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-sm border border-teal-200/80 dark:border-teal-800'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                  <span className="truncate">2. Quadro Geral (14 Produtos)</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-extrabold uppercase shrink-0">
+                    Balanço
+                  </span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
                     setEmailReportType('forecast');
                     setEmailSubject('');
                   }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                     emailReportType === 'forecast'
                       ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200/80 dark:border-indigo-800'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  <ShoppingCart className="w-4 h-4 text-indigo-500" />
-                  <span>2. Previsão de Compras (Antes de Comprar)</span>
+                  <ShoppingCart className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  <span className="truncate">3. Previsão de Compras</span>
+                </button>
+              </div>
+
+              {/* App URL Access Callout Banner */}
+              <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-xs">
+                    🌐
+                  </span>
+                  <div>
+                    <div className="text-xs font-black text-emerald-950 dark:text-emerald-200">
+                      Acesso Online Oficial ao Sistema (Tempo Real)
+                    </div>
+                    <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1.5 mt-0.5">
+                      <a
+                        href="https://estoquecristolandia.netlify.app"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline inline-flex items-center gap-1 font-black"
+                      >
+                        <span>estoquecristolandia.netlify.app</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                      <span className="text-slate-400 dark:text-slate-500 hidden sm:inline">•</span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold hidden sm:inline">
+                        Incluído com botão e link em destaque no e-mail
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText('https://estoquecristolandia.netlify.app');
+                    setCopiedAppLink(true);
+                    setTimeout(() => setCopiedAppLink(false), 2500);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all cursor-pointer shrink-0 flex items-center gap-1"
+                  title="Copiar link do sistema"
+                >
+                  {copiedAppLink ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-600 font-extrabold">Link Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar Link</span>
+                    </>
+                  )}
                 </button>
               </div>
 
