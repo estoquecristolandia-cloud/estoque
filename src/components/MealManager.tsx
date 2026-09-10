@@ -43,6 +43,7 @@ interface MealManagerProps {
   missionaries: Missionary[];
   userRole?: UserRole;
   currentUserDisplayName?: string;
+  currentUserEmail?: string;
   onSaveMealRecord: (record: Omit<DailyMealRecord, 'id' | 'totalMeals' | 'createdAt'> & { id?: string; createdAt?: string }) => void;
   onDeleteMealRecord: (id: string) => void;
 }
@@ -52,10 +53,16 @@ export const MealManager: React.FC<MealManagerProps> = ({
   missionaries,
   userRole = 'admin',
   currentUserDisplayName = 'Marconi Castro (Gestor do Estoque)',
+  currentUserEmail = '',
   onSaveMealRecord,
   onDeleteMealRecord,
 }) => {
   const isAdmin = userRole === 'admin';
+  const canManageEmails = Boolean(
+    currentUserEmail &&
+    (currentUserEmail.trim().toLowerCase() === 'estoquecristolandia@gmail.com' ||
+     currentUserEmail.trim().toLowerCase() === 'admin@app.local')
+  );
   const todayStr = getTodayDateString();
   const [activeMealTab, setActiveMealTab] = useState<'daily' | 'monthly'>('daily');
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
@@ -615,15 +622,17 @@ E-mail: estoquecristolandia@gmail.com`;
               <span className="hidden sm:inline">Imprimir</span>
             </button>
 
-            {/* Botão Enviar por E-mail ao Chefe Marcos */}
-            <button
-              onClick={() => setShowEmailModal(true)}
-              className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-2xl shadow-md shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
-              title="Enviar dados por e-mail para o Chefe Marcus Vinicius"
-            >
-              <Mail className="w-4 h-4 text-blue-200" />
-              <span>Enviar p/ Chefe Marcos</span>
-            </button>
+            {/* Botão Enviar por E-mail ao Chefe Marcos (Exclusivo estoquecristolandia@gmail.com) */}
+            {canManageEmails && (
+              <button
+                onClick={() => setShowEmailModal(true)}
+                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-2xl shadow-md shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
+                title="Enviar dados por e-mail para o Chefe Marcus Vinicius"
+              >
+                <Mail className="w-4 h-4 text-blue-200" />
+                <span>Enviar p/ Chefe Marcos</span>
+              </button>
+            )}
 
             {/* Total Hoje */}
             <div className="bg-slate-800/80 border border-slate-700/80 px-4 py-2 rounded-2xl flex items-center gap-3">
@@ -1393,14 +1402,17 @@ E-mail: estoquecristolandia@gmail.com`;
 
               {/* Botões de Exportar, Imprimir e E-mail */}
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <button
-                  onClick={() => setShowEmailModal(true)}
-                  className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
-                  title="Enviar relatório por e-mail para o Chefe Marcos"
-                >
-                  <Mail className="w-4 h-4 text-blue-200" />
-                  <span>Enviar p/ Chefe Marcos</span>
-                </button>
+                {/* Botão Enviar por E-mail ao Chefe Marcos (Exclusivo estoquecristolandia@gmail.com) */}
+                {canManageEmails && (
+                  <button
+                    onClick={() => setShowEmailModal(true)}
+                    className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
+                    title="Enviar relatório por e-mail para o Chefe Marcos"
+                  >
+                    <Mail className="w-4 h-4 text-blue-200" />
+                    <span>Enviar p/ Chefe Marcos</span>
+                  </button>
+                )}
 
                 <button
                   onClick={handleDownloadMonthlyPDF}
@@ -1689,8 +1701,8 @@ E-mail: estoquecristolandia@gmail.com`;
         </div>
       )}
 
-      {/* MODAL DE ENVIO DE E-MAIL AO CHEFE MARCOS */}
-      {showEmailModal && (
+      {/* MODAL DE ENVIO DE E-MAIL AO CHEFE MARCOS (Exclusivo estoquecristolandia@gmail.com) */}
+      {canManageEmails && showEmailModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8">
             {/* Header do Modal */}

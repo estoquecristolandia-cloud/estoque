@@ -37,6 +37,7 @@ interface ReportsViewProps {
   inventoryAudits?: any[];
   userRole?: UserRole;
   userName?: string;
+  userEmail?: string;
 }
 
 interface ProductInSector {
@@ -62,7 +63,7 @@ interface SectorDetails {
   responsibles: Record<string, ResponsibleInSector>;
 }
 
-export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, inventoryAudits = [], userRole, userName }) => {
+export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, inventoryAudits = [], userRole, userName, userEmail }) => {
   const [activeReportTab, setActiveReportTab] = useState<'daily_ledger' | 'product' | 'sector' | 'person' | 'shopping' | 'audit'>('daily_ledger');
   const [bufferDays, setBufferDays] = useState<number>(30); // Target buffer days e.g. 15 or 30 days
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<string>('todos');
@@ -840,6 +841,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
           inventoryAudits={inventoryAudits}
           userRole={userRole}
           userName={userName}
+          currentUserEmail={userEmail}
         />
       )}
 

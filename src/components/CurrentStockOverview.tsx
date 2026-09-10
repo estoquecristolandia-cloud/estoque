@@ -28,6 +28,7 @@ interface CurrentStockOverviewProps {
   movements?: StockMovement[];
   inventoryAudits?: InventoryAudit[];
   userRole?: UserRole;
+  userEmail?: string;
   onOpenEntry: (product: Product) => void;
   onOpenExit: (product: Product) => void;
   onOpenTimeline: (productId: string) => void;
@@ -41,6 +42,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
   movements = [],
   inventoryAudits = [],
   userRole = 'admin',
+  userEmail = '',
   onOpenEntry,
   onOpenExit,
   onOpenTimeline,
@@ -48,6 +50,11 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
   onOpenReconciliationPreview,
   onForceSyncPhysicalStock,
 }) => {
+  const canManageEmails = Boolean(
+    userEmail &&
+    (userEmail.trim().toLowerCase() === 'estoquecristolandia@gmail.com' ||
+     userEmail.trim().toLowerCase() === 'admin@app.local')
+  );
   const isAdmin = userRole === 'admin';
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -163,14 +170,16 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
             </button>
           )}
 
-          <button
-            onClick={() => setIsNewsletterOpen(true)}
-            className="px-3.5 py-1.5 rounded-2xl text-xs font-black bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 shadow-md shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ml-auto"
-            title="Gerar e-mail executivo / newsletter profissional com a tabela detalhada de saldos físicos"
-          >
-            <Mail className="w-3.5 h-3.5" />
-            <span>✉️ Gerar Newsletter / E-mail</span>
-          </button>
+          {canManageEmails && (
+            <button
+              onClick={() => setIsNewsletterOpen(true)}
+              className="px-3.5 py-1.5 rounded-2xl text-xs font-black bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 shadow-md shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ml-auto"
+              title="Gerar e-mail executivo / newsletter profissional com a tabela detalhada de saldos físicos"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span>✉️ Gerar Newsletter / E-mail</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -408,14 +417,16 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
         </table>
       </div>
 
-      {/* Stock Newsletter Modal */}
-      <StockNewsletterModal
-        isOpen={isNewsletterOpen}
-        onClose={() => setIsNewsletterOpen(false)}
-        products={products}
-        movements={movements}
-        inventoryAudits={inventoryAudits}
-      />
+      {/* Stock Newsletter Modal (Restrito a estoquecristolandia@gmail.com) */}
+      {canManageEmails && (
+        <StockNewsletterModal
+          isOpen={isNewsletterOpen}
+          onClose={() => setIsNewsletterOpen(false)}
+          products={products}
+          movements={movements}
+          inventoryAudits={inventoryAudits}
+        />
+      )}
     </div>
   );
 };

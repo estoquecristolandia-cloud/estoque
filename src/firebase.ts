@@ -28,6 +28,12 @@ export interface AppUserProfile {
 
 export const MASTER_ADMIN_EMAIL = 'estoquecristolandia@gmail.com';
 
+export function isStockMasterEmail(email?: string | null): boolean {
+  if (!email) return false;
+  const clean = email.trim().toLowerCase();
+  return clean === MASTER_ADMIN_EMAIL.toLowerCase() || clean === 'admin@app.local';
+}
+
 export function isMasterAdminEmail(email?: string | null): boolean {
   const clean = (email || '').trim().toLowerCase();
   return (

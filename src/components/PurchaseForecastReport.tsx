@@ -45,6 +45,7 @@ interface PurchaseForecastReportProps {
   inventoryAudits?: InventoryAudit[];
   userRole?: UserRole;
   userName?: string;
+  currentUserEmail?: string;
 }
 
 const CATEGORIES: Category[] = [
@@ -77,7 +78,15 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   inventoryAudits = [],
   userRole = 'admin',
   userName = 'Marconi Castro (Gestor do Estoque)',
+  currentUserEmail = '',
 }) => {
+  // Apenas o usuário oficial de gestão (estoquecristolandia@gmail.com) tem permissão de visualizar e disparar os blocos de e-mail
+  const canManageEmails = Boolean(
+    currentUserEmail &&
+    (currentUserEmail.trim().toLowerCase() === 'estoquecristolandia@gmail.com' ||
+     currentUserEmail.trim().toLowerCase() === 'admin@app.local')
+  );
+
   // Horizon planning period: 8 (default), 14, 21, 30 days
   const [periodDays, setPeriodDays] = useState<ForecastPeriodDays>(8);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -1194,35 +1203,40 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
         {/* Primary Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Gerar E-mail Atualização Geral (Novas Entradas & Todo o Estoque) */}
-          <button
-            onClick={() => handleOpenEmailModal('post_purchase')}
-            className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-2 active:scale-95 ring-2 ring-emerald-400/30"
-            title="Gerar e-mail executivo com novas entradas e quadro geral atualizado de todo o estoque"
-          >
-            <Package className="w-4 h-4 text-emerald-200" />
-            <span>📦 E-mail Atualização Geral (Entradas + Estoque)</span>
-          </button>
+          {/* Blocos de E-mail exclusivos do gestor oficial (estoquecristolandia@gmail.com) */}
+          {canManageEmails && (
+            <>
+              {/* Gerar E-mail Atualização Geral (Novas Entradas & Todo o Estoque) */}
+              <button
+                onClick={() => handleOpenEmailModal('post_purchase')}
+                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-2 active:scale-95 ring-2 ring-emerald-400/30"
+                title="Gerar e-mail executivo com novas entradas e quadro geral atualizado de todo o estoque"
+              >
+                <Package className="w-4 h-4 text-emerald-200" />
+                <span>📦 E-mail Atualização Geral (Entradas + Estoque)</span>
+              </button>
 
-          {/* Gerar E-mail Quadro Geral (14 Produtos) */}
-          <button
-            onClick={() => handleOpenEmailModal('all_items')}
-            className="px-3.5 py-2.5 rounded-2xl bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900/40 text-teal-800 dark:text-teal-200 font-bold text-xs sm:text-sm border border-teal-200 dark:border-teal-800 transition-all cursor-pointer flex items-center gap-2 active:scale-95 shadow-sm"
-            title="Gerar e-mail com a relação completa e balanço de todos os 14 itens do estoque"
-          >
-            <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            <span>📋 E-mail Quadro Geral (14 Itens)</span>
-          </button>
+              {/* Gerar E-mail Quadro Geral (14 Produtos) */}
+              <button
+                onClick={() => handleOpenEmailModal('all_items')}
+                className="px-3.5 py-2.5 rounded-2xl bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900/40 text-teal-800 dark:text-teal-200 font-bold text-xs sm:text-sm border border-teal-200 dark:border-teal-800 transition-all cursor-pointer flex items-center gap-2 active:scale-95 shadow-sm"
+                title="Gerar e-mail com a relação completa e balanço de todos os 14 itens do estoque"
+              >
+                <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <span>📋 E-mail Quadro Geral (14 Itens)</span>
+              </button>
 
-          {/* Gerar E-mail Semanal de Previsão Button */}
-          <button
-            onClick={() => handleOpenEmailModal('forecast')}
-            className="px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm border border-slate-200 dark:border-slate-700 transition-all cursor-pointer flex items-center gap-2 active:scale-95"
-            title="Gerar e-mail com a Tabela Executiva Visual de Previsão de Compras"
-          >
-            <Mail className="w-4 h-4 text-indigo-500" />
-            <span>✉️ Previsão de Compras</span>
-          </button>
+              {/* Gerar E-mail Semanal de Previsão Button */}
+              <button
+                onClick={() => handleOpenEmailModal('forecast')}
+                className="px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm border border-slate-200 dark:border-slate-700 transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+                title="Gerar e-mail com a Tabela Executiva Visual de Previsão de Compras"
+              >
+                <Mail className="w-4 h-4 text-indigo-500" />
+                <span>✉️ Previsão de Compras</span>
+              </button>
+            </>
+          )}
 
           {/* Gerar PDF */}
           <button
@@ -1890,8 +1904,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         </span>
       </div>
 
-      {/* EMAIL GENERATION MODAL */}
-      {isEmailModalOpen && (
+      {/* EMAIL GENERATION MODAL (Restrito a estoquecristolandia@gmail.com) */}
+      {canManageEmails && isEmailModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
             {/* Modal Header */}

@@ -288,6 +288,7 @@ export default function App() {
               movements={movements}
               inventoryAudits={inventoryAudits}
               userRole={currentUser.role}
+              userEmail={currentUser.email}
               onOpenEntry={(p) => handleOpenEntryModal(p)}
               onOpenExit={(p) => handleOpenExitModal(p)}
               onOpenTimeline={handleOpenTimelineById}
@@ -315,7 +316,17 @@ export default function App() {
           {activeTab === 'products' && <ProductManager products={products} onOpenTimeline={handleOpenTimeline} onOpenEntry={handleOpenEntryModal} onOpenExit={handleOpenExitModal} onSaveProduct={handleSaveProduct} onAddProduct={handleAddProduct} userRole={currentUser.role} onOpenReconciliationPreview={() => setIsReconciliationPreviewOpen(true)} />}
           {activeTab === 'entries' && <div className="space-y-6"><div className="flex items-center justify-between bg-white border border-slate-200 rounded-3xl p-6 shadow-sm"><div><h2 className="text-lg font-bold text-slate-900">Entradas no Estoque (Compras e Doações)</h2><p className="text-xs text-slate-500">Rastreio de todos os mantimentos recebidos na Cristolândia</p></div>{currentUser.role === 'admin' && <button onClick={() => handleOpenEntryModal(null)} className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer">+ Nova Entrada</button>}</div><MovementsHistory movements={movements.filter((m) => m.type === 'entrada')} products={products} userRole={currentUser.role} onOpenProductTimeline={handleOpenTimelineById} onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)} onOpenExitForDate={(d) => handleOpenExitModal(null, d)} onUpdateMovement={handleUpdateMovement} onDeleteMovement={handleDeleteMovement} /></div>}
           {activeTab === 'exits' && <div className="space-y-6"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm"><div><h2 className="text-lg font-bold text-slate-900">Saídas do Estoque por Setor</h2><p className="text-xs text-slate-500">Entrega de mantimentos para a Cozinha, Casa Masculina, Casa Feminina e Eventos</p></div><div className="flex items-center gap-2"><button onClick={() => setIsKitModalOpen(true)} className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer flex items-center gap-2"><Utensils className="w-4 h-4" /><span>{currentUser.role === 'admin' ? '+ Kit Cozinha Diário' : 'Visualizar Kit Cozinha'}</span></button>{currentUser.role === 'admin' && <button onClick={() => handleOpenExitModal(null)} className="px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer">Nova Saída</button>}</div></div><MovementsHistory movements={movements.filter((m) => m.type === 'saida')} products={products} userRole={currentUser.role} onOpenProductTimeline={handleOpenTimelineById} onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)} onOpenExitForDate={(d) => handleOpenExitModal(null, d)} onUpdateMovement={handleUpdateMovement} onDeleteMovement={handleDeleteMovement} /></div>}
-          {activeTab === 'meals' && <MealManager meals={meals} missionaries={missionaries} userRole={currentUser.role} currentUserDisplayName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'} onSaveMealRecord={handleSaveMealRecord} onDeleteMealRecord={handleDeleteMealRecord} />}
+          {activeTab === 'meals' && (
+            <MealManager
+              meals={meals}
+              missionaries={missionaries}
+              userRole={currentUser.role}
+              currentUserDisplayName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'}
+              currentUserEmail={currentUser.email}
+              onSaveMealRecord={handleSaveMealRecord}
+              onDeleteMealRecord={handleDeleteMealRecord}
+            />
+          )}
           {activeTab === 'reports' && (
             currentUser.role === 'admin' ? (
               <ReportsView
@@ -324,6 +335,7 @@ export default function App() {
                 inventoryAudits={inventoryAudits}
                 userRole={currentUser.role}
                 userName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'}
+                userEmail={currentUser.email}
               />
             ) : (
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm space-y-4">
