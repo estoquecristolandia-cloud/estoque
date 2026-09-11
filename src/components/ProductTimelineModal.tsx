@@ -83,7 +83,7 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
                 <>
                   <span className="text-xs text-slate-400 block">Consumo por Preparo</span>
                   <span className="text-xl font-bold text-amber-400 mt-1 block">
-                    22 <span className="text-xs font-normal text-slate-400">pacotes/preparo</span>
+                    20 <span className="text-xs font-normal text-slate-400">pacotes/preparo</span>
                   </span>
                   <span className="text-[10px] text-amber-400/80 block mt-0.5">Somente Quartas e Domingos</span>
                 </>

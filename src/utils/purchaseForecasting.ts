@@ -245,7 +245,7 @@ export function calculatePurchaseForecast(
 
     if (normId.includes('flocao') || normName.includes('flocão')) {
       usageRule = 'wed_sun';
-      usageRuleDescription = 'Somente Quartas e Domingos (22 pc/preparo)';
+      usageRuleDescription = 'Somente Quartas e Domingos (20 pc/preparo)';
       occurrencesInPeriod = wedSunOccurrences;
     } else if (normId.includes('macarrao') || normName.includes('macarrão')) {
       usageRule = 'wed_sun';
@@ -293,18 +293,18 @@ export function calculatePurchaseForecast(
       }
     } else if (usageRule === 'wed_sun') {
       // Specific days (Wednesday & Sunday)
-      // For Flocão: strictly 22 pacotes per preparation day (used only on Wed & Sun, NOT daily)
+      // For Flocão: strictly 20 pacotes per preparation day (used only on Wed & Sun, NOT daily)
       // For Macarrão: ~10 pacotes per preparation day
       const isFlocao = normId.includes('flocao') || normName.includes('flocão');
-      const consumptionPerMeal = isFlocao ? 22 : 10;
+      const consumptionPerMeal = isFlocao ? 20 : 10;
       dailyAvgConsumption = Number(((consumptionPerMeal * 2) / 7).toFixed(2));
       consumptionUnitText = isFlocao
-        ? `22 pacotes/preparo (Qua/Dom - não é diário)`
+        ? `20 pacotes/preparo (Qua/Dom - não é diário)`
         : `${consumptionPerMeal} ${product.unit}/preparo (Qua/Dom)`;
 
       projectedConsumption = occurrencesInPeriod * consumptionPerMeal;
       
-      // Safety Stock for weekly items: 1 preparation buffer (e.g. 22 pc for Flocão = ~3.5 days safety buffer)
+      // Safety Stock for weekly items: 1 preparation buffer (e.g. 20 pc for Flocão = ~3.5 days safety buffer)
       safetyStock = consumptionPerMeal;
 
       // Autonomy calculation based on real preparation rate

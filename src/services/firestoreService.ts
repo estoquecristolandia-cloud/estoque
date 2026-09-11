@@ -53,9 +53,11 @@ export function subscribeToProducts(onData: (products: Product[]) => void, onErr
         const normId = (prod.id || '').toLowerCase();
         const normName = (prod.name || '').toLowerCase();
         if (normId.includes('flocao') || normName.includes('flocão')) {
-          if (!prod.usageFrequency || prod.usageFrequency.includes('15') || !prod.usageFrequency.includes('22')) {
-            prod.usageFrequency = 'Somente Quartas e Domingos (22 pacotes/preparo)';
-            prod.dailyAvgConsumption = 6.29;
+          if (!prod.usageFrequency || prod.usageFrequency.includes('15') || prod.usageFrequency.includes('22') || !prod.usageFrequency.includes('20')) {
+            prod.usageFrequency = 'Somente Quartas e Domingos (20 pacotes/preparo)';
+            prod.dailyAvgConsumption = 5.71;
+            prod.minStock = 40;
+            prod.idealStock = 80;
           }
         }
         return prod;

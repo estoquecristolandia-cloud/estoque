@@ -145,7 +145,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         return 'Item multissetorial (Cozinha, Padaria de Fernando Pates e Casas Missionárias). Sujeito a retiradas sem aviso prévio; exige acompanhamento preventivo constante.';
       }
       if (norm.includes('flocão') || norm.includes('flocao')) {
-        return 'Consumo exclusivo às quartas e domingos (22 pct/preparo). Saldo de 52 pct cobre a semana com folga; programar compra na próxima terça.';
+        return 'Consumo exclusivo às quartas e domingos (20 pct/preparo). Saldo de 52 pct cobre a semana com folga; programar compra na próxima terça.';
       }
       if (norm.includes('arroz')) {
         return 'Saldo recomposto para 165 kg. Atende o ciclo com reserva de segurança (45 kg) preservada.';
@@ -208,12 +208,12 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Atualização Geral do Estoque & Pós-Compras (${today}) — Painel: ${APP_DOMAIN}`;
 
       // 1. Plain Text Version for Post-Purchase Update
-      let body = `A/C: Pastor Humberto e Chefe Marcos\n`;
+      let body = `A/C: Pastor Huberto, Missª. Débora (Coordenação) e Chefe Marcos\n`;
       body += `Cc: Marconi Castro (Almoxarifado / Estoque)\n`;
       body += `Data da Emissão: ${today}\n`;
       body += `Painel Online Oficial: ${APP_URL}\n\n`;
 
-      body += `Prezados Pastor Humberto e Chefe Marcos,\n\n`;
+      body += `Prezados Pastor Huberto, Missª. Débora e Chefe Marcos,\n\n`;
       body += `Graça e paz!\n\n`;
       body += `Comunicamos a conclusão do recebimento das novas compras, conferência física e regularização geral do Almoxarifado da Cristolândia (LEM/BA).\n\n`;
       body += `Com as novas entradas físicas integradas ao estoque, todos os itens que se encontravam em nível crítico foram plenamente reabastecidos. O estoque da Cozinha e da Padaria (sob a liderança de Fernando Pates) opera agora com 100% de segurança e zero risco de ruptura.\n\n`;
@@ -284,7 +284,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       body += `DESTAQUES OPERACIONAIS DA UNIDADE:\n`;
       body += `────────────────────────────────────────────────────────────────────────\n`;
       body += `• Padaria (Fernando Pates) & Cozinha: Com a entrada de +8 kg de Sal Refinado e suprimento de Farinha de Trigo, a confecção diária de pães e as refeições têm abastecimento total assegurado.\n`;
-      body += `• Flocão de Milho: Consumo exclusivo às quartas e domingos (22 pct por preparo). Saldo atual de 52 pct cobre a semana com folga; programar reposição para a próxima terça-feira.\n\n`;
+      body += `• Flocão de Milho: Consumo exclusivo às quartas e domingos (20 pct por preparo). Saldo atual de 52 pct cobre a semana com folga; programar reposição para a próxima terça-feira.\n\n`;
 
       if (customEmailNote.trim()) {
         body += `────────────────────────────────────────────────────────────────────────\n`;
@@ -412,7 +412,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <div style="font-size: 12px; color: #475569; margin-top: 4px;">Data de Conferência e Entrada: <strong>${today}</strong> &bull; Ciclo Operacional: <strong>${forecast.baseDateFormatted} a ${forecast.endDateFormatted}</strong></div>
           </div>
 
-          <p style="margin: 0 0 10px 0;">Prezados Pastor Humberto e Chefe Marcos, graça e paz!</p>
+          <p style="margin: 0 0 10px 0;">Prezados Pastor Huberto, Missª. Débora e Chefe Marcos, graça e paz!</p>
           <p style="margin: 0 0 16px 0;">Confirmamos o recebimento, conferência física e regularização dos estoques no Almoxarifado da Cristolândia. Com as novas entradas integradas, todos os itens em nível de atenção foram restabelecidos, garantindo a autonomia operacional plena da Cozinha e da Padaria (liderada por <strong>Fernando Pates</strong>), com zero risco de ruptura:</p>
 
           <!-- Banner Oficial de Acesso ao Sistema Web -->
@@ -520,7 +520,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <strong style="color: #b45309;">⚠️ Destaques da Operação (Padaria & Cozinha):</strong>
             <div style="color: #92400e; margin-top: 5px; line-height: 1.5;">
               <div>&bull; <strong>Padaria (Fernando Pates) & Cozinha:</strong> Com o recebimento de <strong>+8 kg</strong> de Sal Refinado e estoque seguro de Farinha de Trigo, a confecção diária de pães e os preparos gerais estão 100% garantidos sem qualquer restrição.</div>
-              <div style="margin-top: 4px;">&bull; <strong>Flocão de Milho:</strong> O consumo ocorre exclusivamente às quartas e domingos (22 pacotes por preparo). O saldo de <strong>52 pacotes</strong> cobre com segurança o ciclo semanal, com previsão de reposição programada para a próxima terça-feira.</div>
+              <div style="margin-top: 4px;">&bull; <strong>Flocão de Milho:</strong> O consumo ocorre exclusivamente às quartas e domingos (20 pacotes por preparo). O saldo de <strong>52 pacotes</strong> cobre com segurança o ciclo semanal, com previsão de reposição programada para a próxima terça-feira.</div>
             </div>
           </div>
 
@@ -557,14 +557,14 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     if (emailReportType === 'all_items') {
       const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Quadro Geral de Todo o Estoque — Balanço e Autonomia Atual (${today}) — ${APP_DOMAIN}`;
 
-      let body = `A/C: Pastor Humberto e Chefe Marcos\n`;
+      let body = `A/C: Pastor Huberto, Missª. Débora (Coordenação) e Chefe Marcos\n`;
       body += `Cc: Marconi Castro (Almoxarifado / Estoque)\n`;
       body += `Data da Emissão: ${today}\n`;
       body += `Painel Online: ${APP_URL}\n\n`;
 
-      body += `Prezados Pastor Humberto e Chefe Marcos,\n\n`;
+      body += `Prezados Pastor Huberto, Missª. Débora e Chefe Marcos,\n\n`;
       body += `Graça e paz!\n\n`;
-      body += `Apresentamos o Quadro Geral de Todo o Estoque do Almoxarifado da Cristolândia (LEM/BA), com a posição física atualizada de todos os ${forecast.allItems.length} itens alimentícios cadastrados, seus respectivos consumos diários, autonomias e observações operacionais.\n\n`;
+      body += `Apresentamos o Quadro Geral de Previsão de Estoque do Almoxarifado da Cristolândia (LEM/BA), com a posição física atualizada de todos os ${forecast.allItems.length} itens alimentícios cadastrados, as novas entradas recebidas que recomposeram os saldos, seus respectivos consumos diários, autonomias e observações operacionais.\n\n`;
 
       body += `📱 ACESSO AO SISTEMA ONLINE EM TEMPO REAL:\n`;
       body += `Para consultar o painel completo, movimentações e relatórios em tempo real:\n`;
@@ -610,7 +610,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       body += `DESTAQUES OPERACIONAIS DA UNIDADE:\n`;
       body += `────────────────────────────────────────────────────────────────────────\n`;
       body += `• Padaria (Fernando Pates): Farinha de trigo e sal refinado com estoques regularizados para a produção contínua de pães.\n`;
-      body += `• Flocão de Milho: Consumo exclusivo às quartas e domingos (22 pct por preparo). Saldo de 52 pct cobre a semana com folga; programar compra na próxima terça.\n\n`;
+      body += `• Flocão de Milho: Consumo exclusivo às quartas e domingos (20 pct por preparo). Saldo de 52 pct cobre a semana com folga; programar compra na próxima terça.\n\n`;
 
       if (customEmailNote.trim()) {
         body += `────────────────────────────────────────────────────────────────────────\n`;
@@ -695,7 +695,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <div style="font-size: 12px; color: #475569; margin-top: 4px;">Data de Emissão: <strong>${today}</strong> &bull; Total de Itens: <strong>${forecast.allItems.length} produtos</strong></div>
           </div>
 
-          <p style="margin: 0 0 10px 0;">Prezados Pastor Humberto e Chefe Marcos, graça e paz!</p>
+          <p style="margin: 0 0 10px 0;">Prezados Pastor Huberto, Missª. Débora e Chefe Marcos, graça e paz!</p>
           <p style="margin: 0 0 16px 0;">Apresentamos a relação completa de todos os itens do Almoxarifado da Cristolândia com saldos conferidos, média de consumo diário, dias de autonomia e notas operacionais da Padaria (liderada por <strong>Fernando Pates</strong>) e Cozinha:</p>
 
           <!-- Banner Oficial de Acesso ao Sistema Web -->

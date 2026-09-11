@@ -33,7 +33,7 @@ export function getStoredMissionaries(): Missionary[] {
   }
 }
 export function saveMissionaries(missionaries: Missionary[]): void { try { localStorage.setItem(MISSIONARIES_KEY, JSON.stringify(missionaries)); } catch (err) { console.error('Error saving missionaries:', err); } }
-export function getStoredProducts(): Product[] { try { const data = localStorage.getItem(PRODUCTS_KEY); if (!data) return INITIAL_PRODUCTS; const parsed = JSON.parse(data) as Product[]; if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_PRODUCTS; return parsed.map((p) => { const normId = (p.id || '').toLowerCase(); const normName = (p.name || '').toLowerCase(); if (normId.includes('flocao') || normName.includes('flocão')) { return { ...p, usageFrequency: 'Somente Quartas e Domingos (22 pacotes/preparo)', dailyAvgConsumption: 6.29, minStock: Math.max(p.minStock || 0, 44) }; } return p; }); } catch { return INITIAL_PRODUCTS; } }
+export function getStoredProducts(): Product[] { try { const data = localStorage.getItem(PRODUCTS_KEY); if (!data) return INITIAL_PRODUCTS; const parsed = JSON.parse(data) as Product[]; if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_PRODUCTS; return parsed.map((p) => { const normId = (p.id || '').toLowerCase(); const normName = (p.name || '').toLowerCase(); if (normId.includes('flocao') || normName.includes('flocão')) { return { ...p, usageFrequency: 'Somente Quartas e Domingos (20 pacotes/preparo)', dailyAvgConsumption: 5.71, minStock: Math.max(p.minStock || 0, 40), idealStock: Math.max(p.idealStock || 0, 80) }; } return p; }); } catch { return INITIAL_PRODUCTS; } }
 export function saveProducts(products: Product[]): void { try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products)); } catch (err) { console.error('Error saving products:', err); } }
 export function getStoredMovements(): StockMovement[] {
   try {
@@ -116,10 +116,10 @@ export function getProductAlertDays(product: Product): number { return product.a
 export function calculateDaysRemaining(product: Product): number {
   const normId = (product.id || '').toLowerCase();
   const normName = (product.name || '').toLowerCase();
-  // Flocão de Milho: uso exclusivo às quartas e domingos, 22 pacotes em cada dia de preparo (44 pc/semana)
+  // Flocão de Milho: uso exclusivo às quartas e domingos, 20 pacotes em cada dia de preparo (40 pc/semana)
   if (normId.includes('flocao') || normName.includes('flocão')) {
-    const weeklyRate = 22 * 2; // 44 pacotes por semana
-    const dailyRate = weeklyRate / 7; // ~6.29 pacotes/dia equivalente
+    const weeklyRate = 20 * 2; // 40 pacotes por semana
+    const dailyRate = weeklyRate / 7; // ~5.71 pacotes/dia equivalente
     return Math.round((product.currentStock / dailyRate) * 10) / 10;
   }
   if (!product.dailyAvgConsumption || product.dailyAvgConsumption <= 0) return 999;
@@ -129,8 +129,8 @@ export function getProductAutonomyLabel(product: Product): string {
   const normId = (product.id || '').toLowerCase();
   const normName = (product.name || '').toLowerCase();
   if (normId.includes('flocao') || normName.includes('flocão')) {
-    const preparos = Math.floor(product.currentStock / 22);
-    const sobra = product.currentStock % 22;
+    const preparos = Math.floor(product.currentStock / 20);
+    const sobra = product.currentStock % 20;
     const days = calculateDaysRemaining(product);
     if (product.currentStock <= 0) return '0 preparos (Esgotado)';
     return `${preparos} preparo${preparos === 1 ? '' : 's'} (Qua/Dom)${sobra > 0 ? ` +${sobra}pc` : ''} ~${Math.round(days)}d`;

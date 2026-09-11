@@ -28,9 +28,9 @@ export function getDetailedStockNote(p: Product): string | null {
     return `Garante cerca de ${refeicoes} refeições grandes (quartas/domingos)`;
   }
   if (nameLower.includes('flocão') || nameLower.includes('flocao')) {
-    const preparos = Math.floor(p.currentStock / 22);
-    const sobra = p.currentStock % 22;
-    return `Garante ${preparos} preparos (22 pc/preparo às quartas e domingos)${sobra > 0 ? ` + ${sobra} pc de sobra` : ''}`;
+    const preparos = Math.floor(p.currentStock / 20);
+    const sobra = p.currentStock % 20;
+    return `Garante ${preparos} preparos (20 pc/preparo às quartas e domingos)${sobra > 0 ? ` + ${sobra} pc de sobra` : ''}`;
   }
   if (nameLower.includes('suco') && p.unit === 'pacote') {
     return `Total de ${p.currentStock * 250}g em pó para suco`;
@@ -82,8 +82,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scanNotification, setScanNotification] = useState<string | null>(null);
 
-  // View Mode: 'grid' cards vs 'table' executive table
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  // View Mode: 'grid' cards vs 'table' executive table (default to 'table' as requested)
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
   // Modal State for New/Edit Product
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -620,7 +620,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                       <td className="p-3.5 text-slate-700 dark:text-slate-300">
                         {p.id === 'prod-flocao' || p.name.toLowerCase().includes('flocão') || p.name.toLowerCase().includes('flocao') ? (
                           <>
-                            <div className="font-bold text-amber-600 dark:text-amber-400">22 pacotes / preparo</div>
+                            <div className="font-bold text-amber-600 dark:text-amber-400">20 pacotes / preparo</div>
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
                               Somente Quartas e Domingos (não diário)
                             </div>
