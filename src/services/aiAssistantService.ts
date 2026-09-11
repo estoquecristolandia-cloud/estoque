@@ -65,6 +65,30 @@ export async function askGeminiAiAssistant(
           email: currentUser?.email || 'anônimo',
           role: currentUser?.role || 'viewer',
         },
+        inventorySnapshot: {
+          totalProducts: products.length,
+          products: products.map((p) => ({
+            name: p.name,
+            currentStock: p.currentStock,
+            minStock: p.minStock,
+            unit: p.unit,
+            dailyAvgConsumption: p.dailyAvgConsumption,
+            location: p.location,
+            status: p.currentStock < p.minStock ? 'critico' : p.currentStock <= p.minStock * 1.3 ? 'alerta' : 'normal',
+          })),
+          recentMovementsCount: movements.length,
+          recentMovementsSample: movements.slice(0, 30).map((m) => ({
+            date: m.date,
+            time: m.time,
+            type: m.type,
+            productName: m.productName,
+            quantity: m.quantity,
+            unit: m.unit,
+            sector: m.sector,
+            responsible: m.retrievedBy || m.receivedBy || m.responsible || m.deliveredBy,
+          })),
+          mealsCount: meals.length,
+        },
       }),
     });
 

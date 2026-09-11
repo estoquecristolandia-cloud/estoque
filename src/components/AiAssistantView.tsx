@@ -58,15 +58,15 @@ interface AiAssistantViewProps {
 }
 
 const QUICK_SUGGESTIONS = [
-  { label: '🥛 Leite do Renê (7 dias)', query: 'Quanto de leite o missionário Renê retirou nos últimos 7 dias?' },
-  { label: '📦 Estoque atual de Arroz', query: 'Qual o estoque atual de arroz branco e quanto tempo vai durar?' },
-  { label: '👨‍🍳 Consumo da Cozinha (15 dias)', query: 'Quanto a cozinha consumiu nos últimos 15 dias?' },
+  { label: '📋 Situação Geral do Estoque', query: 'Como está a situação geral do nosso estoque hoje?' },
+  { label: '🚚 Entradas e Compras Recentes', query: 'Quais foram as últimas entradas e compras recebidas no almoxarifado?' },
+  { label: '🌽 Flocão de Milho (Cuscuz)', query: 'Qual o estoque e autonomia do flocão de milho para os preparos de quarta e domingo?' },
+  { label: '🥖 Padaria (Fernando Pates)', query: 'Como está o consumo e estoque de insumos da padaria do Fernando Pates?' },
+  { label: '⚖️ Arroz, Feijão e Macarrão', query: 'Quanto temos em estoque de arroz, feijão e macarrão?' },
   { label: '⚠️ Abaixo do Mínimo', query: 'Quais produtos estão abaixo do estoque mínimo e precisam ser comprados?' },
   { label: '🍽️ Refeições desta semana', query: 'Quantas refeições foram servidas esta semana e qual a média diária?' },
-  { label: '📊 Consumo dos últimos 7 dias', query: 'Quais foram as saídas dos últimos 7 dias?' },
-  { label: '⏳ Autonomia de Arroz e Feijão', query: 'Quantos dias de estoque de arroz e feijão ainda temos?' },
-  { label: '⚖️ Desde o Marco Zero', query: 'Quanto consumimos de mantimentos desde o Marco Zero oficial?' },
-  { label: '🛒 O que comprar primeiro?', query: 'Quais produtos estão em situação crítica de compra?' },
+  { label: '👨‍🍳 Consumo da Cozinha (15 dias)', query: 'Quanto a cozinha consumiu nos últimos 15 dias?' },
+  { label: '🥛 Leite do Renê (7 dias)', query: 'Quanto de leite o missionário Renê retirou nos últimos 7 dias?' },
   { label: '👤 Retiradas do Pr. Marconi', query: 'Quais produtos o Pr. Marconi retirou este mês?' },
 ];
 

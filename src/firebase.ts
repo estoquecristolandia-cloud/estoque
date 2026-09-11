@@ -38,11 +38,7 @@ export function isMasterAdminEmail(email?: string | null): boolean {
   const clean = (email || '').trim().toLowerCase();
   return (
     clean === MASTER_ADMIN_EMAIL.toLowerCase() ||
-    clean === 'admin@app.local' ||
-    clean === 'marconi@app.local' ||
-    clean === 'marconi.cristolandia@gmail.com' ||
-    clean.startsWith('admin@') ||
-    clean.startsWith('marconi@')
+    clean === 'admin@app.local'
   );
 }
 

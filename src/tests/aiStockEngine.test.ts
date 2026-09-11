@@ -304,5 +304,82 @@ export function runAllAiEngineTests(): { passed: number; failed: number; results
   const prodFoundSpecial = findMentionedProduct('qual o estoque de açucar pacote 5kg?', productsWithSpecialChars);
   assert(prodFoundSpecial?.id === 'prod-special-1', 'Reconhecimento de produto com parênteses no nome sem quebra de regex');
 
+  // Teste 10: Quadro Geral de Estoque ("Como está a situação geral do nosso estoque hoje?")
+  const resGeral = executeDeterministicStockQuery(
+    'Como está a situação geral do nosso estoque hoje?',
+    mockProducts,
+    mockMovements,
+    mockMeals,
+    mockDailyKit,
+    mockMissionaries
+  );
+  assert(resGeral.intent === 'stock_overview', 'Intenção de quadro geral de estoque reconhecida');
+  assert(resGeral.summary.includes('3 produtos') || resGeral.summary.includes('cadastrados'), 'Resumo geral do estoque detalha produtos cadastrados');
+
+  // Teste 11: Múltiplos Produtos ("Quanto temos de arroz e feijão?")
+  const resMulti = executeDeterministicStockQuery(
+    'Quanto temos de arroz e feijão?',
+    mockProducts,
+    mockMovements,
+    mockMeals,
+    mockDailyKit,
+    mockMissionaries
+  );
+  assert(resMulti.intent === 'multi_product_status', 'Intenção de múltiplos produtos identificada');
+  assert(resMulti.metrics.length === 2, 'Geração de métricas para arroz e feijão');
+
+  // Teste 12: Entradas e Compras Recebidas
+  const mockMovementsWithEntry: StockMovement[] = [
+    ...mockMovements,
+    {
+      id: 'entry-1',
+      productId: 'prod-2',
+      productName: 'Arroz Branco Tipo 1',
+      unit: 'kg',
+      type: 'entrada',
+      quantity: 100,
+      date: '2026-08-28',
+      time: '14:00',
+      supplierOrDonor: 'Atacadão',
+      receivedBy: 'Marconi Castro',
+      createdAt: '2026-08-28T14:00:00Z',
+    },
+  ];
+  const resEntradas = executeDeterministicStockQuery(
+    'Quais foram as entradas e compras recebidas?',
+    mockProducts,
+    mockMovementsWithEntry,
+    mockMeals,
+    mockDailyKit,
+    mockMissionaries
+  );
+  assert(resEntradas.intent === 'entries_summary', 'Intenção de extrato de entradas');
+  assert(resEntradas.calculationBase.totalQuantity === 100, 'Volume total recebido na entrada (100kg)');
+
+  // Teste 13: Regra Operacional do Flocão (20 pacotes por preparo)
+  const productsWithFlocao: Product[] = [
+    ...mockProducts,
+    {
+      id: 'prod-flocao',
+      name: 'Flocão de Milho (Cuscuz)',
+      category: 'Grãos e Cereais',
+      unit: 'pacote',
+      currentStock: 52,
+      minStock: 20,
+      dailyAvgConsumption: 5.71,
+      location: 'Despensa 1',
+      lastUpdated: '2026-08-28T10:00:00Z',
+    },
+  ];
+  const resFlocao = executeDeterministicStockQuery(
+    'Quanto tempo vai durar o estoque de flocão de milho?',
+    productsWithFlocao,
+    mockMovements,
+    mockMeals,
+    mockDailyKit,
+    mockMissionaries
+  );
+  assert(resFlocao.summary.includes('2 preparos semanais completos') || resFlocao.summary.includes('20 pc'), 'Cálculo de autonomia do flocão com a regra de 20 pacotes por preparo');
+
   return { passed, failed, results };
 }

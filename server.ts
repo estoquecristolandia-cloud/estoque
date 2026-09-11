@@ -7,7 +7,7 @@ import { GoogleGenAI } from '@google/genai';
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -39,7 +39,7 @@ app.get('/api/health', (_req, res) => {
 // Endpoint seguro de consulta do Assistente IA
 app.post('/api/ai/ask', async (req, res) => {
   try {
-    const { prompt, deterministicResult, user } = req.body;
+    const { prompt, deterministicResult, user, inventorySnapshot } = req.body;
 
     if (!prompt || !deterministicResult) {
       return res.status(400).json({ error: 'Prompt e resultado determinístico são obrigatórios.' });
@@ -60,26 +60,37 @@ app.post('/api/ai/ask', async (req, res) => {
       });
     }
 
-    const systemInstruction = `Você é o Assistente Inteligente do Estoque Cristolândia — Centro de Formação e Assistência Social (Luís Eduardo Magalhães / BA).
-Sua missão é explicar e resumir consultas de estoque, movimentações, consumo por missionário/setor e refeições servidas em linguagem natural com tom profissional, acolhedor e transparente.
+    const systemInstruction = `Você é o Assistente Especialista de Inteligência Operacional do Almoxarifado da Cristolândia — Centro de Formação e Assistência Social (Luís Eduardo Magalhães / BA).
+Sua missão é fornecer respostas precisas, claras, executivas e sem NENHUMA ambiguidade para a liderança (Pr. Huberto, Missª. Débora), a equipe de cozinha (Chefe Marcos) e gestão do estoque (Marconi Castro).
 
-REGRAS CRÍTICAS E OBRIGATÓRIAS:
-1. NUNCA invente movimentações, números, pessoas, datas ou quantidades.
-2. Trabalhe ESTRITAMENTE sobre os dados calculados determinísticamente fornecidos no contexto.
-3. Se os dados forem 0 ou vazios, informe com total clareza que nenhuma movimentação foi encontrada no período.
-4. Mantenha os valores numéricos exatamente iguais aos calculados pelo sistema.
-5. Se for perguntado sobre consumo de uma pessoa (ex: Renê) ou setor (ex: Cozinha), cite claramente o período e o total auditado.
-6. A contagem de refeições mede pessoas atendidas, não é baixa física de ingredientes.
-7. O Marco Zero Oficial foi em 21/08/2026 às 17:30.
+DIRETRIZES FUNDAMENTAIS PARA ELIMINAR CONFUSÕES:
+1. DISTINÇÃO CLARA ENTRE "ESTOQUE ATUAL" E "SAÍDAS HISTÓRICAS":
+   - Se a pergunta do usuário for sobre SALDO, ESTOQUE ATUAL, "COMO ESTÁ O ESTOQUE", "O QUE TEMOS", "QUANTOS DIAS VAI DURAR" ou a situação dos produtos:
+     NUNCA diga que o estoque é zero só porque não houve saídas no período! Consulte sempre o 'deterministicResult' e o 'inventorySnapshot' para informar o saldo físico real atualizado.
+   - Só informe histórico de saídas/consumo quando o usuário perguntar explicitamente por "saídas", "consumo", "retiradas", "o que gastou" ou o que uma pessoa/setor retirou.
+   - Quando perguntado sobre "entradas", "compras" ou "doações", foque nos insumos recebidos no almoxarifado.
 
-Formate sua resposta em formato JSON válido contendo:
+2. FIDELIDADE MATEMÁTICA ABSOLUTA:
+   - NUNCA invente números, pessoas ou produtos. Mantenha os valores numéricos, saldos e cálculos exatamente iguais aos apurados determinísticamente.
+   - O almoxarifado monitora 14 produtos de sustentação alimentar.
+
+3. PARÂMETROS OPERACIONAIS ALINHADOS DA UNIDADE:
+   - Flocão de Milho (Cuscuz): Preparo fixo e padronizado às quartas-feiras e aos domingos, utilizando rigorosamente 20 pacotes por preparo (= 40 pacotes/semana ou 5,71 pacotes/dia).
+   - Padaria: Produção diária conduzida por Fernando Pates (consome Farinha de Trigo, Margarina e Sal Refinado).
+   - Cozinha Geral: Liderada pelo Chefe Marcos (Marcus Vinicius), responsável pelas 4 refeições diárias dos acolhidos.
+   - Itens de Demanda Multissetorial: Leite Integral, Margarina/Manteiga, Óleo de Soja e Sal Refinado são compartilhados entre Cozinha, Padaria e Casas Missionárias.
+   - Refeições Servidas: Medem o atendimento social e pratos servidos a pessoas; NÃO representam baixa de ingredientes quilo a quilo.
+   - Marco Zero Oficial de Estoque: 21/08/2026 às 17:30.
+
+4. FORMATO DE SAÍDA OBRIGATÓRIO (JSON):
+Retorne SEMPRE um JSON válido estritamente com esta estrutura:
 {
-  "summary": "Resumo claro e direto em 1 ou 2 parágrafos com números em destaque",
-  "detailedAnalysis": "Explicação completa e estruturada em Markdown (pode incluir tabelas e tópicos)",
-  "insights": ["Lista de 2 a 3 conclusões úteis sobre consumo, reposição ou tendências"],
-  "suggestedFollowUps": ["2 perguntas relevantes que o usuário pode fazer a seguir"],
+  "summary": "Resumo executivo claro, afirmativo e objetivo em 1 ou 2 parágrafos, destacando números essenciais em negrito",
+  "detailedAnalysis": "Análise estruturada em Markdown de alto nível (com subtítulos '###', tabelas alinhadas e marcadores claros)",
+  "insights": ["2 a 3 conclusões práticas ou recomendações operacionais diretas"],
+  "suggestedFollowUps": ["2 perguntas inteligentes de continuação"],
   "confidence": "high" | "medium" | "low",
-  "confidenceReason": "Justificativa da confiança baseada na quantidade de dados auditados"
+  "confidenceReason": "Justificativa direta baseada na base de dados auditada"
 }`;
 
     const contextPayload = {
@@ -87,10 +98,11 @@ Formate sua resposta em formato JSON válido contendo:
       requester: user?.displayName || 'Equipe Cristolândia',
       currentSystemDate: new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Bahia' }),
       deterministicCalculation: deterministicResult,
+      inventorySnapshot: inventorySnapshot || null,
     };
 
     const generatePromise = ai.models.generateContent({
-      model: 'gemini-3.7-flash',
+      model: 'gemini-3.8-flash',
       contents: [
         {
           role: 'user',
@@ -104,12 +116,12 @@ Formate sua resposta em formato JSON válido contendo:
       config: {
         systemInstruction,
         responseMimeType: 'application/json',
-        temperature: 0.2,
+        temperature: 0.1,
       },
     });
 
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Timeout de resposta do Gemini')), 8000)
+      setTimeout(() => reject(new Error('Timeout de resposta do Gemini')), 15000)
     );
 
     const response: any = await Promise.race([generatePromise, timeoutPromise]);
@@ -119,8 +131,11 @@ Formate sua resposta em formato JSON válido contendo:
     try {
       parsedData = JSON.parse(responseText);
     } catch {
-      // Se não vier em JSON puro, sanitizar
-      const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+      // Se não vier em JSON puro, sanitizar blocos markdown
+      const cleanJson = responseText
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
       parsedData = JSON.parse(cleanJson);
     }
 
@@ -143,14 +158,14 @@ Formate sua resposta em formato JSON válido contendo:
     });
   } catch (err: any) {
     console.error('Erro na chamada do Gemini:', err?.message || err);
-    // Retornar fallback sem erro 500 para não quebrar a experiência do usuário
+    // Retornar fallback determinístico sem erro 500 para garantir resposta consistente
     return res.json({
-      summary: req.body?.deterministicResult?.summary || 'Não foi possível completar a consulta.',
+      summary: req.body?.deterministicResult?.summary || 'Não foi possível completar a consulta no momento.',
       detailedAnalysis: req.body?.deterministicResult?.detailedAnalysis || '',
       insights: req.body?.deterministicResult?.insights || [],
       suggestedFollowUps: req.body?.deterministicResult?.suggestedFollowUps || [],
-      confidence: 'medium',
-      confidenceReason: 'Executado com segurança via motor local de auditoria.',
+      confidence: req.body?.deterministicResult?.confidence || 'medium',
+      confidenceReason: 'Executado com segurança e exatidão via motor local de auditoria.',
       mode: 'deterministic_fallback',
     });
   }
@@ -175,7 +190,7 @@ app.post('/api/ai/transcribe-audio', async (req, res) => {
     const cleanMimeType = (mimeType || 'audio/webm').split(';')[0].trim();
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
+      model: 'gemini-3.8-flash',
       contents: [
         {
           role: 'user',
@@ -220,6 +235,10 @@ REGRAS:
 });
 
 async function startServer() {
+  // Servir assets estáticos da pasta public (manifest.json, sw.js, ícones PWA)
+  const publicPath = path.join(process.cwd(), 'public');
+  app.use(express.static(publicPath));
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true, host: '0.0.0.0', port: PORT },

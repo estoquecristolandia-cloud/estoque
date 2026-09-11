@@ -3,7 +3,8 @@ import { Product, Category, Unit } from '../types';
 import { UserRole } from '../firebase';
 import { calculateDaysRemaining, getProductStockStatus, formatDaysRemainingText, getProductAlertDays, getProductAutonomyLabel } from '../utils/storage';
 import { BarcodeScannerModal } from './BarcodeScannerModal';
-import { Search, Plus, Edit2, History, Package, AlertTriangle, MapPin, Sparkles, X, Check, Lock, Camera, Barcode, Scan, CheckCircle2, BellRing, Calendar, LayoutGrid, Table } from 'lucide-react';
+import { ShelfLabelsModal } from './ShelfLabelsModal';
+import { Search, Plus, Edit2, History, Package, AlertTriangle, MapPin, Sparkles, X, Check, Lock, Camera, Barcode, Scan, CheckCircle2, BellRing, Calendar, LayoutGrid, Table, Printer } from 'lucide-react';
 
 export function getDetailedStockNote(p: Product): string | null {
   const nameLower = p.name.toLowerCase();
@@ -84,6 +85,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
   // View Mode: 'grid' cards vs 'table' executive table (default to 'table' as requested)
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+
+  // Shelf Labels Modal State
+  const [isShelfLabelsModalOpen, setIsShelfLabelsModalOpen] = useState(false);
+  const [selectedLabelProductId, setSelectedLabelProductId] = useState<string | undefined>(undefined);
 
   // Modal State for New/Edit Product
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -286,6 +291,18 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
             }`}
           >
             🟡 Reposição ({products.filter((p) => getProductStockStatus(p) === 'warning').length})
+          </button>
+
+          <button
+            onClick={() => {
+              setSelectedLabelProductId(undefined);
+              setIsShelfLabelsModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shadow-sm cursor-pointer border border-slate-700 transition-all whitespace-nowrap"
+            title="Gerar e imprimir etiquetas de prateleira e paletes com código de barras em folha A4"
+          >
+            <Barcode className="w-4 h-4 text-blue-400" />
+            <span>Etiquetas de Prateleira</span>
           </button>
 
           {isAdmin ? (
@@ -523,6 +540,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                       </button>
                     </>
                   )}
+                  <button
+                    onClick={() => {
+                      setSelectedLabelProductId(p.id);
+                      setIsShelfLabelsModalOpen(true);
+                    }}
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer"
+                    title="Imprimir Etiqueta deste alimento"
+                  >
+                    <Barcode className="w-3.5 h-3.5 text-blue-500" />
+                  </button>
                   {isAdmin && (
                     <button
                       onClick={() => openEditProductModal(p)}
@@ -552,6 +579,18 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => {
+                  setSelectedLabelProductId(undefined);
+                  setIsShelfLabelsModalOpen(true);
+                }}
+                className="px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                title="Gerar e imprimir etiquetas de prateleira e paletes em folha A4"
+              >
+                <Printer className="w-3.5 h-3.5 text-blue-400" />
+                <span>Imprimir Etiquetas</span>
+              </button>
+
               {onOpenReconciliationPreview && (
                 <button
                   onClick={onOpenReconciliationPreview}
@@ -664,6 +703,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                             title="Linha do Tempo"
                           >
                             <History className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedLabelProductId(p.id);
+                              setIsShelfLabelsModalOpen(true);
+                            }}
+                            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                            title="Imprimir Etiqueta deste alimento"
+                          >
+                            <Barcode className="w-3.5 h-3.5 text-blue-500" />
                           </button>
                           {canRegisterMovements && (
                             <>
@@ -919,6 +968,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Shelf & Pallet Labels Modal */}
+      <ShelfLabelsModal
+        isOpen={isShelfLabelsModalOpen}
+        onClose={() => {
+          setIsShelfLabelsModalOpen(false);
+          setSelectedLabelProductId(undefined);
+        }}
+        products={products}
+        initialSelectedProductId={selectedLabelProductId}
+      />
     </div>
   );
 };
