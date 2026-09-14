@@ -167,8 +167,25 @@ export function parseDateRangeFromQuery(query: string, referenceDate: Date = new
     return { startDate: todayStr, endDate: todayStr, label: `Hoje (${formatDateBR(todayStr)})` };
   }
 
-  // Marco Zero
-  if (norm.includes('marco zero') || norm.includes('desde o inicio') || norm.includes('marco 0') || norm.includes('historico completo')) {
+  // Marco Zero / Histórico completo / Todo o período
+  if (
+    norm.includes('marco zero') ||
+    norm.includes('desde o inicio') ||
+    norm.includes('marco 0') ||
+    norm.includes('historico completo') ||
+    norm.includes('todo o periodo') ||
+    norm.includes('desde sempre') ||
+    norm.includes('no total') ||
+    norm.includes('total geral') ||
+    norm.includes('desde o comeco') ||
+    norm.includes('desde que comecou') ||
+    norm.includes('historico todo') ||
+    norm.includes('todo o historico') ||
+    norm.includes('todos os lancamentos') ||
+    norm.includes('todas as movimentacoes') ||
+    norm.includes('todas as saidas') ||
+    norm.includes('todas as entradas')
+  ) {
     return { startDate: MARCO_ZERO_DATE_STR, endDate: todayStr, label: `Desde o Marco Zero (21/08/2026 até ${formatDateBR(todayStr)})` };
   }
 
@@ -184,8 +201,55 @@ export function parseDateRangeFromQuery(query: string, referenceDate: Date = new
     }
   }
 
-  // Últimos N dias (ex: últimos 5 dias, últimos 10 dias, etc.)
-  const nDaysMatch = norm.match(/ultimos?\s+(\d+)\s+dias?/);
+  // Trimestre / Semestre / Ano
+  if (norm.includes('trimestre') || norm.includes('ultimo trimestre') || norm.includes('neste trimestre')) {
+    const start = new Date(referenceDate);
+    start.setMonth(start.getMonth() - 3);
+    const sStr = getLocalDateStr(start);
+    return { startDate: sStr, endDate: todayStr, label: `Último trimestre (${formatDateBR(sStr)} a ${formatDateBR(todayStr)})` };
+  }
+
+  if (norm.includes('semestre') || norm.includes('ultimo semestre') || norm.includes('neste semestre')) {
+    const start = new Date(referenceDate);
+    start.setMonth(start.getMonth() - 6);
+    const sStr = getLocalDateStr(start);
+    return { startDate: sStr, endDate: todayStr, label: `Último semestre (${formatDateBR(sStr)} a ${formatDateBR(todayStr)})` };
+  }
+
+  if (norm.includes('ultimo ano') || norm.includes('1 ano') || norm.includes('um ano') || norm.includes('ultimos 12 meses') || norm.includes('neste ano')) {
+    const start = new Date(referenceDate);
+    start.setFullYear(start.getFullYear() - 1);
+    const sStr = getLocalDateStr(start);
+    return { startDate: sStr, endDate: todayStr, label: `Último ano (${formatDateBR(sStr)} a ${formatDateBR(todayStr)})` };
+  }
+
+  // Últimos N meses (ex: "últimos 3 meses", "últimos três meses", "últimos 2 meses", "6 meses")
+  const nMonthsMatch = norm.match(/(?:ultimos?|ultimas?|nos\s+ultimos?|nos\s+ultimas?|em|de)?\s*(\d+)\s+mes(?:es)?/);
+  if (nMonthsMatch) {
+    const months = parseInt(nMonthsMatch[1], 10);
+    if (months > 0) {
+      const start = new Date(referenceDate);
+      start.setMonth(start.getMonth() - months);
+      const sStr = getLocalDateStr(start);
+      return { startDate: sStr, endDate: todayStr, label: `Últimos ${months} meses (${formatDateBR(sStr)} a ${formatDateBR(todayStr)})` };
+    }
+  }
+
+  // Últimas N semanas (ex: "últimas 2 semanas", "últimas 3 semanas", "duas semanas")
+  const nWeeksMatch = norm.match(/(?:ultimos?|ultimas?|nos\s+ultimos?|nos\s+ultimas?|em|de)?\s*(\d+)\s+semanas?/);
+  if (nWeeksMatch) {
+    const weeks = parseInt(nWeeksMatch[1], 10);
+    if (weeks > 0) {
+      const days = weeks * 7;
+      const start = new Date(referenceDate);
+      start.setDate(start.getDate() - (days - 1));
+      const sStr = getLocalDateStr(start);
+      return { startDate: sStr, endDate: todayStr, label: `Últimas ${weeks} semanas (${formatDateBR(sStr)} a ${formatDateBR(todayStr)})` };
+    }
+  }
+
+  // Últimos N dias (ex: últimos 5 dias, últimos 10 dias, últimos 90 dias, etc.)
+  const nDaysMatch = norm.match(/(?:ultimos?|ultimas?|nos\s+ultimos?|nos\s+ultimas?|em|de)?\s*(\d+)\s+dias?/);
   if (nDaysMatch) {
     const days = parseInt(nDaysMatch[1], 10);
     if (days > 0) {

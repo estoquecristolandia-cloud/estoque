@@ -263,6 +263,12 @@ export function runAllAiEngineTests(): { passed: number; failed: number; results
   const rangeSpokenDate = parseDateRangeFromQuery('Mostre as saídas do dia vinte e cinco de agosto de dois mil e vinte e seis.', new Date('2026-08-28T12:00:00'));
   assert(rangeSpokenDate.startDate === '2026-08-25' && rangeSpokenDate.endDate === '2026-08-25', 'Conversão de voz: "dia vinte e cinco de agosto de dois mil e vinte e seis"');
 
+  const rangeSpoken3Months = parseDateRangeFromQuery('me diga qntos leite o rene consumiu nos ultimos tres meses..', new Date('2026-09-13T12:00:00'));
+  assert(rangeSpoken3Months.startDate === '2026-06-13' && rangeSpoken3Months.endDate === '2026-09-13', 'Conversão de período: "últimos três meses" (3 meses)');
+
+  const rangeSpoken2Weeks = parseDateRangeFromQuery('saídas das ultimas duas semanas', new Date('2026-09-13T12:00:00'));
+  assert(rangeSpoken2Weeks.startDate === '2026-08-31' && rangeSpoken2Weeks.endDate === '2026-09-13', 'Conversão de período: "últimas duas semanas" (14 dias)');
+
   // Teste 9: Robustez contra caracteres especiais em nomes de produtos "(pacote)", "[1L]", etc.
   const productsWithSpecialChars: Product[] = [
     ...mockProducts,
