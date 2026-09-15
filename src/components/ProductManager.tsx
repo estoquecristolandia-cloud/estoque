@@ -1,39 +1,73 @@
-import React, { useState } from 'react';
-import { Product, Category, Unit } from '../types';
-import { UserRole } from '../firebase';
-import { calculateDaysRemaining, getProductStockStatus, formatDaysRemainingText, getProductAlertDays, getProductAutonomyLabel } from '../utils/storage';
-import { BarcodeScannerModal } from './BarcodeScannerModal';
-import { ShelfLabelsModal } from './ShelfLabelsModal';
-import { Search, Plus, Edit2, History, Package, AlertTriangle, MapPin, Sparkles, X, Check, Lock, Camera, Barcode, Scan, CheckCircle2, BellRing, Calendar, LayoutGrid, Table, Printer } from 'lucide-react';
+import React, { useState } from "react";
+import { Product, Category, Unit } from "../types";
+import { UserRole } from "../firebase";
+import {
+  calculateDaysRemaining,
+  getProductStockStatus,
+  formatDaysRemainingText,
+  getProductAlertDays,
+  getProductAutonomyLabel,
+} from "../utils/storage";
+import { BarcodeScannerModal } from "./BarcodeScannerModal";
+import { ShelfLabelsModal } from "./ShelfLabelsModal";
+import {
+  Search,
+  Plus,
+  Edit2,
+  History,
+  Package,
+  AlertTriangle,
+  MapPin,
+  Sparkles,
+  X,
+  Check,
+  Lock,
+  Camera,
+  Barcode,
+  Scan,
+  CheckCircle2,
+  BellRing,
+  Calendar,
+  LayoutGrid,
+  Table,
+  Printer,
+} from "lucide-react";
 
 export function getDetailedStockNote(p: Product): string | null {
   const nameLower = p.name.toLowerCase();
 
-  if (nameLower.includes('alho') && p.unit === 'pacote') {
+  if (nameLower.includes("alho") && p.unit === "pacote") {
     return `Contém ${p.currentStock * 10} cabeças de alho na dispensa`;
   }
-  if ((nameLower.includes('café') || nameLower.includes('cafe')) && p.unit === 'pacote') {
+  if (
+    (nameLower.includes("café") || nameLower.includes("cafe")) &&
+    p.unit === "pacote"
+  ) {
     const totalKg = (p.currentStock * 0.25).toFixed(2);
     return `Equivale a ${totalKg} kg de pó de café`;
   }
-  if (nameLower.includes('arroz') && p.unit === 'kg' && p.currentStock > 0) {
+  if (nameLower.includes("arroz") && p.unit === "kg" && p.currentStock > 0) {
     const sacos = (p.currentStock / 50).toFixed(1);
     return `Aproximadamente ${sacos} sacos de 50kg no depósito`;
   }
-  if ((nameLower.includes('feijão') || nameLower.includes('feijao')) && p.unit === 'kg' && p.currentStock > 0) {
+  if (
+    (nameLower.includes("feijão") || nameLower.includes("feijao")) &&
+    p.unit === "kg" &&
+    p.currentStock > 0
+  ) {
     const sacos = (p.currentStock / 50).toFixed(1);
     return `Aproximadamente ${sacos} sacos de 50kg no depósito`;
   }
-  if (nameLower.includes('macarrão') || nameLower.includes('macarrao')) {
+  if (nameLower.includes("macarrão") || nameLower.includes("macarrao")) {
     const refeicoes = Math.floor(p.currentStock / 10);
     return `Garante cerca de ${refeicoes} refeições grandes (quartas/domingos)`;
   }
-  if (nameLower.includes('flocão') || nameLower.includes('flocao')) {
+  if (nameLower.includes("flocão") || nameLower.includes("flocao")) {
     const preparos = Math.floor(p.currentStock / 20);
     const sobra = p.currentStock % 20;
-    return `Garante ${preparos} preparos (20 pc/preparo às quartas e domingos)${sobra > 0 ? ` + ${sobra} pc de sobra` : ''}`;
+    return `Garante ${preparos} preparos (20 pc/preparo às quartas e domingos)${sobra > 0 ? ` + ${sobra} pc de sobra` : ""}`;
   }
-  if (nameLower.includes('suco') && p.unit === 'pacote') {
+  if (nameLower.includes("suco") && p.unit === "pacote") {
     return `Total de ${p.currentStock * 250}g em pó para suco`;
   }
   return null;
@@ -45,22 +79,30 @@ interface ProductManagerProps {
   onOpenEntry: (product: Product) => void;
   onOpenExit: (product: Product) => void;
   onSaveProduct: (product: Product) => void;
-  onAddProduct: (product: Omit<Product, 'id' | 'lastUpdated'>) => void;
+  onAddProduct: (product: Omit<Product, "id" | "lastUpdated">) => void;
   userRole?: UserRole;
   onOpenReconciliationPreview?: () => void;
 }
 
 const CATEGORIES: Category[] = [
-  'Grãos e Cereais',
-  'Óleos e Condimentos',
-  'Matinais e Bebidas',
-  'Proteínas e Carnes',
-  'Laticínios e Massas',
-  'Higiene e Limpeza',
-  'Outros',
+  "Grãos e Cereais",
+  "Óleos e Condimentos",
+  "Matinais e Bebidas",
+  "Proteínas e Carnes",
+  "Laticínios e Massas",
+  "Higiene e Limpeza",
+  "Outros",
 ];
 
-const UNITS: Unit[] = ['kg', 'litro', 'pacote', 'caixa', 'unidade', 'lata', 'g'];
+const UNITS: Unit[] = [
+  "kg",
+  "litro",
+  "pacote",
+  "caixa",
+  "unidade",
+  "lata",
+  "g",
+];
 
 export const ProductManager: React.FC<ProductManagerProps> = ({
   products,
@@ -69,42 +111,46 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   onOpenExit,
   onSaveProduct,
   onAddProduct,
-  userRole = 'admin',
+  userRole = "admin",
   onOpenReconciliationPreview,
 }) => {
   // Only admin (Marconi Castro) can edit/add/delete products or register entries/exits
-  const isAdmin = userRole === 'admin';
-  const canRegisterMovements = userRole === 'admin';
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'warning' | 'normal'>('all');
+  const isAdmin = userRole === "admin";
+  const canRegisterMovements = userRole === "admin";
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "critical" | "warning" | "normal"
+  >("all");
 
   // Scanner Modal State
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scanNotification, setScanNotification] = useState<string | null>(null);
 
   // View Mode: 'grid' cards vs 'table' executive table (default to 'table' as requested)
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
 
   // Shelf Labels Modal State
   const [isShelfLabelsModalOpen, setIsShelfLabelsModalOpen] = useState(false);
-  const [selectedLabelProductId, setSelectedLabelProductId] = useState<string | undefined>(undefined);
+  const [selectedLabelProductId, setSelectedLabelProductId] = useState<
+    string | undefined
+  >(undefined);
 
   // Modal State for New/Edit Product
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProd, setEditingProd] = useState<Product | null>(null);
 
   // Form Fields
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState<Category>('Grãos e Cereais');
-  const [unit, setUnit] = useState<Unit>('kg');
-  const [currentStock, setCurrentStock] = useState<string>('0');
-  const [minStock, setMinStock] = useState<string>('10');
-  const [dailyAvgConsumption, setDailyAvgConsumption] = useState<string>('1');
-  const [alertDays, setAlertDays] = useState<string>('3');
-  const [usageFrequency, setUsageFrequency] = useState<string>('Diário');
-  const [location, setLocation] = useState<string>('Depósito Principal');
-  const [barcode, setBarcode] = useState<string>('');
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState<Category>("Grãos e Cereais");
+  const [unit, setUnit] = useState<Unit>("kg");
+  const [currentStock, setCurrentStock] = useState<string>("0");
+  const [minStock, setMinStock] = useState<string>("10");
+  const [dailyAvgConsumption, setDailyAvgConsumption] = useState<string>("1");
+  const [alertDays, setAlertDays] = useState<string>("3");
+  const [usageFrequency, setUsageFrequency] = useState<string>("Diário");
+  const [location, setLocation] = useState<string>("Depósito Principal");
+  const [barcode, setBarcode] = useState<string>("");
 
   const handleDailyConsumptionChange = (val: string) => {
     setDailyAvgConsumption(val);
@@ -124,17 +170,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
     }
   };
 
-  const openNewProductModal = (initialBarcode = '') => {
+  const openNewProductModal = (initialBarcode = "") => {
     setEditingProd(null);
-    setName('');
-    setCategory('Grãos e Cereais');
-    setUnit('kg');
-    setCurrentStock('0');
-    setDailyAvgConsumption('1');
-    setAlertDays('3');
-    setMinStock('3');
-    setUsageFrequency('Diário');
-    setLocation('Depósito Principal');
+    setName("");
+    setCategory("Grãos e Cereais");
+    setUnit("kg");
+    setCurrentStock("0");
+    setDailyAvgConsumption("1");
+    setAlertDays("3");
+    setMinStock("3");
+    setUsageFrequency("Diário");
+    setLocation("Depósito Principal");
     setBarcode(initialBarcode);
     setIsModalOpen(true);
   };
@@ -149,9 +195,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
     setDailyAvgConsumption(p.dailyAvgConsumption.toString());
     const daysAlert = getProductAlertDays(p);
     setAlertDays(daysAlert.toString());
-    setUsageFrequency(p.usageFrequency || 'Diário');
+    setUsageFrequency(p.usageFrequency || "Diário");
     setLocation(p.location);
-    setBarcode(p.barcode || '');
+    setBarcode(p.barcode || "");
     setIsModalOpen(true);
   };
 
@@ -163,11 +209,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       setTimeout(() => setScanNotification(null), 5000);
     } else {
       if (isAdmin) {
-        setScanNotification(`Código ${code} lido. Preencha os dados para cadastrar este novo item.`);
+        setScanNotification(
+          `Código ${code} lido. Preencha os dados para cadastrar este novo item.`,
+        );
         openNewProductModal(code);
         setTimeout(() => setScanNotification(null), 6000);
       } else {
-        setScanNotification(`Código ${code} lido, porém o produto não foi encontrado. Apenas o gestor Marconi Castro pode cadastrar novos itens.`);
+        setScanNotification(
+          `Código ${code} lido, porém o produto não foi encontrado. Apenas o gestor Marconi Castro pode cadastrar novos itens.`,
+        );
         setTimeout(() => setScanNotification(null), 6000);
       }
     }
@@ -181,12 +231,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       name: name.trim(),
       category,
       unit,
-      currentStock: editingProd ? editingProd.currentStock : parseFloat(currentStock) || 0,
+      currentStock: editingProd
+        ? editingProd.currentStock
+        : parseFloat(currentStock) || 0,
       minStock: parseFloat(minStock) || 0,
       dailyAvgConsumption: parseFloat(dailyAvgConsumption) || 0,
       alertDays: parseFloat(alertDays) || 3,
       usageFrequency: usageFrequency.trim() || undefined,
-      location: location.trim() || 'Depósito Principal',
+      location: location.trim() || "Depósito Principal",
       barcode: barcode.trim() || undefined,
     };
 
@@ -211,10 +263,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       p.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (p.barcode && p.barcode.toLowerCase().includes(searchTerm.toLowerCase()));
 
-    const matchesCat = selectedCategory === 'all' || p.category === selectedCategory;
+    const matchesCat =
+      selectedCategory === "all" || p.category === selectedCategory;
 
     const status = getProductStockStatus(p);
-    const matchesStatus = statusFilter === 'all' || status === statusFilter;
+    const matchesStatus = statusFilter === "all" || status === statusFilter;
 
     return matchesSearch && matchesCat && matchesStatus;
   });
@@ -228,7 +281,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
             <CheckCircle2 className="w-5 h-5 shrink-0 text-slate-950" />
             <span>{scanNotification}</span>
           </div>
-          <button onClick={() => setScanNotification(null)} className="p-1 hover:bg-amber-600 rounded-lg">
+          <button
+            onClick={() => setScanNotification(null)}
+            className="p-1 hover:bg-amber-600 rounded-lg"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -261,36 +317,46 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
           </button>
 
           <button
-            onClick={() => setStatusFilter('all')}
+            onClick={() => setStatusFilter("all")}
             className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer whitespace-nowrap transition-all ${
-              statusFilter === 'all'
-                ? 'bg-slate-950 text-white dark:bg-blue-600 shadow-sm'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              statusFilter === "all"
+                ? "bg-slate-950 text-white dark:bg-blue-600 shadow-sm"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
             }`}
           >
             Todos ({products.length})
           </button>
 
           <button
-            onClick={() => setStatusFilter('critical')}
+            onClick={() => setStatusFilter("critical")}
             className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer whitespace-nowrap transition-all ${
-              statusFilter === 'critical'
-                ? 'bg-rose-600 text-white shadow-sm'
-                : 'bg-slate-100 dark:bg-slate-800 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40'
+              statusFilter === "critical"
+                ? "bg-rose-600 text-white shadow-sm"
+                : "bg-slate-100 dark:bg-slate-800 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
             }`}
           >
-            🚨 Críticos ({products.filter((p) => getProductStockStatus(p) === 'critical').length})
+            🚨 Críticos (
+            {
+              products.filter((p) => getProductStockStatus(p) === "critical")
+                .length
+            }
+            )
           </button>
 
           <button
-            onClick={() => setStatusFilter('warning')}
+            onClick={() => setStatusFilter("warning")}
             className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer whitespace-nowrap transition-all ${
-              statusFilter === 'warning'
-                ? 'bg-amber-600 text-white shadow-sm'
-                : 'bg-slate-100 dark:bg-slate-800 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40'
+              statusFilter === "warning"
+                ? "bg-amber-600 text-white shadow-sm"
+                : "bg-slate-100 dark:bg-slate-800 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40"
             }`}
           >
-            🟡 Reposição ({products.filter((p) => getProductStockStatus(p) === 'warning').length})
+            🟡 Reposição (
+            {
+              products.filter((p) => getProductStockStatus(p) === "warning")
+                .length
+            }
+            )
           </button>
 
           <button
@@ -326,11 +392,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-none">
           <button
-            onClick={() => setSelectedCategory('all')}
+            onClick={() => setSelectedCategory("all")}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-              selectedCategory === 'all'
-                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+              selectedCategory === "all"
+                ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100"
             }`}
           >
             Todas Categorias
@@ -341,8 +407,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
               onClick={() => setSelectedCategory(cat)}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                 selectedCategory === cat
-                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100"
               }`}
             >
               {cat}
@@ -353,22 +419,22 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
         {/* View Switcher: Cards vs Executive Table */}
         <div className="flex items-center bg-slate-200 dark:bg-slate-800 p-1 rounded-xl shrink-0 self-start sm:self-auto">
           <button
-            onClick={() => setViewMode('grid')}
+            onClick={() => setViewMode("grid")}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              viewMode === 'grid'
-                ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              viewMode === "grid"
+                ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
             <span>Cards</span>
           </button>
           <button
-            onClick={() => setViewMode('table')}
+            onClick={() => setViewMode("table")}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              viewMode === 'table'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              viewMode === "table"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
             title="Tabela de conferência rápida para chefia e reuniões"
           >
@@ -378,7 +444,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
         </div>
       </div>
 
-      {viewMode === 'grid' ? (
+      {viewMode === "grid" ? (
         /* Product Cards Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProducts.map((p) => {
@@ -387,22 +453,24 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
             const alertDaysNum = getProductAlertDays(p);
             const detailedNote = getDetailedStockNote(p);
 
-            let borderClass = 'border-slate-200 dark:border-slate-800';
+            let borderClass = "border-slate-200 dark:border-slate-800";
             let statusBadge = (
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                 🟢 Normal ({days}d)
               </span>
             );
 
-            if (status === 'critical') {
-              borderClass = 'border-rose-300 dark:border-rose-800 bg-rose-50/20 dark:bg-rose-950/10';
+            if (status === "critical") {
+              borderClass =
+                "border-rose-300 dark:border-rose-800 bg-rose-50/20 dark:bg-rose-950/10";
               statusBadge = (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1">
                   <AlertTriangle className="w-3 h-3" /> 🔴 Crítico ({days}d)
                 </span>
               );
-            } else if (status === 'warning') {
-              borderClass = 'border-amber-300 dark:border-amber-800 bg-amber-50/20 dark:bg-amber-950/10';
+            } else if (status === "warning") {
+              borderClass =
+                "border-amber-300 dark:border-amber-800 bg-amber-50/20 dark:bg-amber-950/10";
               statusBadge = (
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
                   🟡 Repor em breve ({days}d)
@@ -463,7 +531,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                           <span className="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight">
                             {p.currentStock}
                           </span>
-                          <span className="text-xs font-bold text-slate-300 uppercase">{p.unit}s</span>
+                          <span className="text-xs font-bold text-slate-300 uppercase">
+                            {p.unit}s
+                          </span>
                         </div>
                         {detailedNote && (
                           <span className="text-[10px] text-amber-300 font-semibold block mt-1 leading-tight">
@@ -480,24 +550,33 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                         <div className="flex items-baseline gap-1">
                           <span
                             className={`text-2xl sm:text-3xl font-black tracking-tight ${
-                              days > 10 ? 'text-emerald-400' : days > 3 ? 'text-amber-400' : 'text-rose-400'
+                              days > 10
+                                ? "text-emerald-400"
+                                : days > 3
+                                  ? "text-amber-400"
+                                  : "text-rose-400"
                             }`}
                           >
                             {days}
                           </span>
                           <span className="text-xs font-bold text-slate-300">
-                            {days === 1 ? 'dia de uso' : 'dias de uso'}
+                            {days === 1 ? "dia de uso" : "dias de uso"}
                           </span>
                         </div>
                         <span className="text-[10px] text-slate-400 block mt-1 font-medium">
-                          Consumo: <strong>{p.dailyAvgConsumption} {p.unit}/dia</strong>
+                          Consumo:{" "}
+                          <strong>
+                            {p.dailyAvgConsumption} {p.unit}/dia
+                          </strong>
                         </span>
                       </div>
                     </div>
 
                     {/* Linha de Regra de Alerta/Mínimo */}
                     <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
-                      <span className="text-slate-400 font-medium">Reserva Mínima (Aviso):</span>
+                      <span className="text-slate-400 font-medium">
+                        Reserva Mínima (Aviso):
+                      </span>
                       <span className="font-extrabold text-amber-300">
                         {p.minStock} {p.unit} ({alertDaysNum}d de reserva)
                       </span>
@@ -512,59 +591,59 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
                 {/* Action buttons */}
                 <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
-                <button
-                  onClick={() => onOpenTimeline(p)}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-300 text-xs font-bold border border-blue-200 dark:border-blue-800/50 transition-colors cursor-pointer"
-                  title="Ver todo o histórico de compras, doações e saídas"
-                >
-                  <History className="w-3.5 h-3.5" />
-                  <span>Linha do Tempo</span>
-                </button>
-
-                <div className="flex items-center gap-1">
-                  {canRegisterMovements && (
-                    <>
-                      <button
-                        onClick={() => onOpenEntry(p)}
-                        className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-200 dark:border-emerald-800/50 cursor-pointer"
-                        title="Registrar Entrada (Compra/Doação)"
-                      >
-                        + Entrada
-                      </button>
-                      <button
-                        onClick={() => onOpenExit(p)}
-                        className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 text-amber-600 dark:text-amber-400 font-bold text-xs border border-amber-200 dark:border-amber-800/50 cursor-pointer"
-                        title="Registrar Saída por Setor"
-                      >
-                        - Saída
-                      </button>
-                    </>
-                  )}
                   <button
-                    onClick={() => {
-                      setSelectedLabelProductId(p.id);
-                      setIsShelfLabelsModalOpen(true);
-                    }}
-                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer"
-                    title="Imprimir Etiqueta deste alimento"
+                    onClick={() => onOpenTimeline(p)}
+                    className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900 text-blue-600 dark:text-blue-300 text-xs font-bold border border-blue-200 dark:border-blue-800/50 transition-colors cursor-pointer"
+                    title="Ver todo o histórico de compras, doações e saídas"
                   >
-                    <Barcode className="w-3.5 h-3.5 text-blue-500" />
+                    <History className="w-3.5 h-3.5" />
+                    <span>Linha do Tempo</span>
                   </button>
-                  {isAdmin && (
+
+                  <div className="flex items-center gap-1">
+                    {canRegisterMovements && (
+                      <>
+                        <button
+                          onClick={() => onOpenEntry(p)}
+                          className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-200 dark:border-emerald-800/50 cursor-pointer"
+                          title="Registrar Entrada (Compra/Doação)"
+                        >
+                          + Entrada
+                        </button>
+                        <button
+                          onClick={() => onOpenExit(p)}
+                          className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 text-amber-600 dark:text-amber-400 font-bold text-xs border border-amber-200 dark:border-amber-800/50 cursor-pointer"
+                          title="Registrar Saída por Setor"
+                        >
+                          - Saída
+                        </button>
+                      </>
+                    )}
                     <button
-                      onClick={() => openEditProductModal(p)}
-                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 cursor-pointer"
-                      title="Editar produto"
+                      onClick={() => {
+                        setSelectedLabelProductId(p.id);
+                        setIsShelfLabelsModalOpen(true);
+                      }}
+                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer"
+                      title="Imprimir Etiqueta deste alimento"
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
+                      <Barcode className="w-3.5 h-3.5 text-blue-500" />
                     </button>
-                  )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => openEditProductModal(p)}
+                        className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 cursor-pointer"
+                        title="Editar produto"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
       ) : (
         /* Executive Table View (Para Direção / Reunião de Estoque) */
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
@@ -575,7 +654,8 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 <span>Tabela Executiva de Conferência de Estoque Real</span>
               </h3>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Visão consolidada do saldo físico atual e autonomia projetada para tomadas de decisão.
+                Visão consolidada do saldo físico atual e autonomia projetada
+                para tomadas de decisão.
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -612,7 +692,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
               <thead>
                 <tr className="bg-slate-100 dark:bg-slate-800/80 text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
                   <th className="p-3.5">Produto</th>
-                  <th className="p-3.5 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300">Estoque Real Atual</th>
+                  <th className="p-3.5 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300">
+                    Estoque Real Atual
+                  </th>
                   <th className="p-3.5">Consumo & Frequência</th>
                   <th className="p-3.5">Autonomia Estimada</th>
                   <th className="p-3.5">Ponto de Alerta</th>
@@ -627,12 +709,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                   const detailedNote = getDetailedStockNote(p);
 
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <tr
+                      key={p.id}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                    >
                       <td className="p-3.5 font-bold text-slate-900 dark:text-white">
                         <div className="flex flex-col">
                           <span className="text-sm font-black">{p.name}</span>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] text-slate-400 uppercase">{p.category}</span>
+                            <span className="text-[10px] text-slate-400 uppercase">
+                              {p.category}
+                            </span>
                             {p.barcode && (
                               <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">
                                 EAN: {p.barcode}
@@ -647,7 +734,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                           <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
                             {p.currentStock}
                           </span>
-                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">{p.unit}s</span>
+                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
+                            {p.unit}s
+                          </span>
                         </div>
                         {detailedNote && (
                           <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium block mt-0.5">
@@ -657,38 +746,50 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                       </td>
 
                       <td className="p-3.5 text-slate-700 dark:text-slate-300">
-                        {p.id === 'prod-flocao' || p.name.toLowerCase().includes('flocão') || p.name.toLowerCase().includes('flocao') ? (
+                        {p.id === "prod-flocao" ||
+                        p.name.toLowerCase().includes("flocão") ||
+                        p.name.toLowerCase().includes("flocao") ? (
                           <>
-                            <div className="font-bold text-amber-600 dark:text-amber-400">20 pacotes / preparo</div>
+                            <div className="font-bold text-amber-600 dark:text-amber-400">
+                              20 pacotes / preparo
+                            </div>
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
                               Somente Quartas e Domingos (não diário)
                             </div>
                           </>
                         ) : (
                           <>
-                            <div className="font-bold">{p.dailyAvgConsumption} {p.unit}/dia</div>
+                            <div className="font-bold">
+                              {p.dailyAvgConsumption} {p.unit}/dia
+                            </div>
                             <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
-                              {p.usageFrequency || 'Uso Diário'}
+                              {p.usageFrequency || "Uso Diário"}
                             </div>
                           </>
                         )}
                       </td>
 
                       <td className="p-3.5 font-bold">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black ${
-                          days > 10
-                            ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
-                            : days > 3
-                            ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300'
-                            : 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300'
-                        }`}>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black ${
+                            days > 10
+                              ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
+                              : days > 3
+                                ? "bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300"
+                                : "bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300"
+                          }`}
+                        >
                           {getProductAutonomyLabel(p)}
                         </span>
                       </td>
 
                       <td className="p-3.5 text-slate-600 dark:text-slate-400">
-                        <span className="text-xs font-semibold">{p.minStock} {p.unit}</span>
-                        <span className="text-[10px] text-slate-400 block">({alertDaysNum}d de reserva)</span>
+                        <span className="text-xs font-semibold">
+                          {p.minStock} {p.unit}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block">
+                          ({alertDaysNum}d de reserva)
+                        </span>
                       </td>
 
                       <td className="p-3.5 text-slate-500 dark:text-slate-400 text-xs truncate max-w-[140px]">
@@ -755,8 +856,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       {filteredProducts.length === 0 && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center text-slate-500">
           <Package className="w-12 h-12 mx-auto text-slate-400 mb-3" />
-          <p className="font-bold text-slate-700 dark:text-slate-300">Nenhum produto encontrado</p>
-          <p className="text-xs text-slate-400 mt-1">Tente ajustar o termo da busca ou bipar um novo código.</p>
+          <p className="font-bold text-slate-700 dark:text-slate-300">
+            Nenhum produto encontrado
+          </p>
+          <p className="text-xs text-slate-400 mt-1">
+            Tente ajustar o termo da busca ou bipar um novo código.
+          </p>
         </div>
       )}
 
@@ -774,7 +879,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
           <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-slate-800">
               <h3 className="text-lg font-bold text-white">
-                {editingProd ? 'Editar Produto' : 'Cadastrar Novo Produto'}
+                {editingProd ? "Editar Produto" : "Cadastrar Novo Produto"}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -786,7 +891,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
             <form onSubmit={handleFormSubmit} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Nome do Alimento / Item</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Nome do Alimento / Item
+                </label>
                 <input
                   type="text"
                   placeholder="Ex: Arroz Tipo 1 ou Leite Integral"
@@ -823,7 +930,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Categoria</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Categoria
+                  </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as Category)}
@@ -838,7 +947,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Unidade</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Unidade
+                  </label>
                   <select
                     value={unit}
                     onChange={(e) => setUnit(e.target.value as Unit)}
@@ -871,24 +982,29 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                     onChange={(e) => setCurrentStock(e.target.value)}
                     className={`w-full border rounded-xl px-3 py-2 text-sm font-bold ${
                       editingProd
-                        ? 'bg-slate-800/60 border-slate-700 text-emerald-400 cursor-not-allowed opacity-90'
-                        : 'bg-slate-800 border-slate-700 text-white focus:outline-none focus:border-emerald-500'
+                        ? "bg-slate-800/60 border-slate-700 text-emerald-400 cursor-not-allowed opacity-90"
+                        : "bg-slate-800 border-slate-700 text-white focus:outline-none focus:border-emerald-500"
                     }`}
                   />
                   {editingProd && (
                     <span className="text-[10px] text-slate-400 block mt-1">
-                      Para alterar o saldo físico, faça uma Entrada, Saída ou Ajuste de Inventário.
+                      Para alterar o saldo físico, faça uma Entrada, Saída ou
+                      Ajuste de Inventário.
                     </span>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-amber-400 mb-1">Consumo Diário ({unit}/dia)</label>
+                  <label className="block text-xs font-semibold text-amber-400 mb-1">
+                    Consumo Diário ({unit}/dia)
+                  </label>
                   <input
                     type="number"
                     step="any"
                     value={dailyAvgConsumption}
-                    onChange={(e) => handleDailyConsumptionChange(e.target.value)}
+                    onChange={(e) =>
+                      handleDailyConsumptionChange(e.target.value)
+                    }
                     className="w-full bg-slate-800 border border-amber-500/40 rounded-xl px-3 py-2 text-sm text-amber-400 font-bold focus:outline-none focus:border-amber-500"
                   />
                 </div>
@@ -908,11 +1024,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                     onChange={(e) => handleAlertDaysChange(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-sm text-white font-bold focus:outline-none focus:border-rose-400"
                   />
-                  <span className="text-[10px] text-slate-400 block mt-1">Gera alerta se durar menos que N dias</span>
+                  <span className="text-[10px] text-slate-400 block mt-1">
+                    Gera alerta se durar menos que N dias
+                  </span>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Estoque Mínimo ({unit})</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Estoque Mínimo ({unit})
+                  </label>
                   <input
                     type="number"
                     step="any"
@@ -920,13 +1040,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                     onChange={(e) => setMinStock(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white font-bold"
                   />
-                  <span className="text-[10px] text-slate-400 block mt-1">= Consumo ({dailyAvgConsumption}) × {alertDays} dias</span>
+                  <span className="text-[10px] text-slate-400 block mt-1">
+                    = Consumo ({dailyAvgConsumption}) × {alertDays} dias
+                  </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Frequência / Padrão de Uso</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Frequência / Padrão de Uso
+                  </label>
                   <input
                     type="text"
                     placeholder="Ex: Diário, Quartas e Domingos..."
@@ -937,7 +1061,9 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Local de Armazenamento</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Local de Armazenamento
+                  </label>
                   <input
                     type="text"
                     placeholder="Ex: Depósito Principal"
@@ -982,4 +1108,3 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
     </div>
   );
 };
-

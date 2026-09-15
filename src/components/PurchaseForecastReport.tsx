@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from 'react';
-import { Product, StockMovement, Category, InventoryAudit } from '../types';
-import { UserRole } from '../firebase';
+import React, { useState, useMemo } from "react";
+import { Product, StockMovement, Category, InventoryAudit } from "../types";
+import { UserRole } from "../firebase";
 import {
   calculatePurchaseForecast,
   ForecastItem,
   ForecastPeriodDays,
   PurchaseForecastResult,
-} from '../utils/purchaseForecasting';
-import { generatePurchaseForecastPDF } from '../utils/pdfExport';
+} from "../utils/purchaseForecasting";
+import { generatePurchaseForecastPDF } from "../utils/pdfExport";
 import {
   ShoppingCart,
   FileDown,
@@ -37,7 +37,7 @@ import {
   DollarSign,
   AlertCircle,
   Eye,
-} from 'lucide-react';
+} from "lucide-react";
 
 interface PurchaseForecastReportProps {
   products: Product[];
@@ -49,26 +49,26 @@ interface PurchaseForecastReportProps {
 }
 
 const CATEGORIES: Category[] = [
-  'Grãos e Cereais',
-  'Óleos e Condimentos',
-  'Matinais e Bebidas',
-  'Proteínas e Carnes',
-  'Laticínios e Massas',
-  'Hortifrúti e Temperos',
-  'Higiene e Limpeza',
-  'Outros',
+  "Grãos e Cereais",
+  "Óleos e Condimentos",
+  "Matinais e Bebidas",
+  "Proteínas e Carnes",
+  "Laticínios e Massas",
+  "Hortifrúti e Temperos",
+  "Higiene e Limpeza",
+  "Outros",
 ];
 
 // Helper to identify multi-sector items with decentralized unnotified usage (Cozinha, Padaria, Casas Missionárias e Adm)
 export const isMultiSectorItem = (name: string): boolean => {
   const norm = name.toLowerCase();
   return (
-    norm.includes('sal') ||
-    norm.includes('leite') ||
-    norm.includes('óleo') ||
-    norm.includes('oleo') ||
-    norm.includes('manteiga') ||
-    norm.includes('margarina')
+    norm.includes("sal") ||
+    norm.includes("leite") ||
+    norm.includes("óleo") ||
+    norm.includes("oleo") ||
+    norm.includes("manteiga") ||
+    norm.includes("margarina")
   );
 };
 
@@ -76,24 +76,29 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   products,
   movements,
   inventoryAudits = [],
-  userRole = 'admin',
-  userName = 'Marconi Castro (Gestor do Estoque)',
-  currentUserEmail = '',
+  userRole = "admin",
+  userName = "Marconi Castro (Gestor do Estoque)",
+  currentUserEmail = "",
 }) => {
   // Apenas o usuário oficial de gestão (estoquecristolandia@gmail.com) tem permissão de visualizar e disparar os blocos de e-mail
   const canManageEmails = Boolean(
     currentUserEmail &&
-    (currentUserEmail.trim().toLowerCase() === 'estoquecristolandia@gmail.com' ||
-     currentUserEmail.trim().toLowerCase() === 'admin@app.local')
+    (currentUserEmail.trim().toLowerCase() ===
+      "estoquecristolandia@gmail.com" ||
+      currentUserEmail.trim().toLowerCase() === "admin@app.local"),
   );
 
   // Horizon planning period: 8 (default), 14, 21, 30 days
   const [periodDays, setPeriodDays] = useState<ForecastPeriodDays>(8);
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'critical_only' | 'warning_only' | 'normal_only' | 'buy_only'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "critical_only" | "warning_only" | "normal_only" | "buy_only"
+  >("all");
   const [onlyNeedsPurchase, setOnlyNeedsPurchase] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [subView, setSubView] = useState<'coordination_list' | 'full_table'>('coordination_list');
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [subView, setSubView] = useState<"coordination_list" | "full_table">(
+    "coordination_list",
+  );
 
   // Copy feedback states
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
@@ -102,79 +107,103 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
   // Email modal state
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  const [emailReportType, setEmailReportType] = useState<'post_purchase' | 'all_items' | 'forecast'>('post_purchase');
+  const [emailReportType, setEmailReportType] = useState<
+    "post_purchase" | "all_items" | "forecast"
+  >("post_purchase");
   const [emailRecipients, setEmailRecipients] = useState(
-    'humbertohpp.59@gmail.com, chefmarcusviniciuses@gmail.com'
+    "humbertohpp.59@gmail.com, chefmarcusviniciuses@gmail.com",
   );
-  const [emailSubject, setEmailSubject] = useState('');
+  const [emailSubject, setEmailSubject] = useState("");
   const [emailCopied, setEmailCopied] = useState(false);
   const [emailCopiedHtml, setEmailCopiedHtml] = useState(false);
   const [copiedAppLink, setCopiedAppLink] = useState(false);
-  const [emailModalTab, setEmailModalTab] = useState<'preview' | 'plain'>('preview');
-  const [customEmailNote, setCustomEmailNote] = useState('');
+  const [emailModalTab, setEmailModalTab] = useState<"preview" | "plain">(
+    "preview",
+  );
+  const [customEmailNote, setCustomEmailNote] = useState("");
 
   // Pure read-only computation of forecast data
   const forecast = useMemo(() => {
-    return calculatePurchaseForecast(products, movements, periodDays, inventoryAudits, {
-      category: categoryFilter,
-      statusFilter,
-      searchTerm,
-      onlyNeedsPurchase,
-    });
-  }, [products, movements, periodDays, inventoryAudits, categoryFilter, statusFilter, searchTerm, onlyNeedsPurchase]);
+    return calculatePurchaseForecast(
+      products,
+      movements,
+      periodDays,
+      inventoryAudits,
+      {
+        category: categoryFilter,
+        statusFilter,
+        searchTerm,
+        onlyNeedsPurchase,
+      },
+    );
+  }, [
+    products,
+    movements,
+    periodDays,
+    inventoryAudits,
+    categoryFilter,
+    statusFilter,
+    searchTerm,
+    onlyNeedsPurchase,
+  ]);
 
   // Generate Email Content (Professional, Objective and Direct - Supports Post-Purchase Update, Quadro Geral, and Purchase Forecast)
   const emailContent = useMemo(() => {
-    const today = new Date().toLocaleDateString('pt-BR');
-    const APP_URL = 'https://estoquecristolandia.netlify.app';
-    const APP_DOMAIN = 'estoquecristolandia.netlify.app';
+    const today = new Date().toLocaleDateString("pt-BR");
+    const APP_URL = "https://estoquecristolandia.netlify.app";
+    const APP_DOMAIN = "estoquecristolandia.netlify.app";
 
     // Helper for operational notes per item
-    const getItemOperationalNote = (name: string, category: string, currentStock: number, unit: string) => {
+    const getItemOperationalNote = (
+      name: string,
+      category: string,
+      currentStock: number,
+      unit: string,
+    ) => {
       const norm = name.toLowerCase();
-      if (norm.includes('sal refinado') || norm === 'sal') {
-        return 'Item multissetorial (Cozinha, Padaria de Fernando Pates, Casas Missionárias e Adm). Sujeito a retiradas sem aviso prévio. Com a entrada de 8 kg, o saldo de 11 kg garante 11 dias de pães e refeições, mas requer margem redobrada contra desfalques.';
+      if (norm.includes("sal refinado") || norm === "sal") {
+        return "Item multissetorial (Cozinha, Padaria de Fernando Pates, Casas Missionárias e Adm). Sujeito a retiradas sem aviso prévio. Com a entrada de 8 kg, o saldo de 11 kg garante 11 dias de pães e refeições, mas requer margem redobrada contra desfalques.";
       }
-      if (norm.includes('leite')) {
-        return 'Item multissetorial (Cozinha, Padaria, Casas Missionárias e Adm). Alto risco de desfalque por saídas avulsas não avisadas previamente. Saldo atual assegura desjejum e café, exigindo vigilância contínua.';
+      if (norm.includes("leite")) {
+        return "Item multissetorial (Cozinha, Padaria, Casas Missionárias e Adm). Alto risco de desfalque por saídas avulsas não avisadas previamente. Saldo atual assegura desjejum e café, exigindo vigilância contínua.";
       }
-      if (norm.includes('óleo') || norm.includes('oleo')) {
-        return 'Item multissetorial (Cozinha, Padaria, Casas Missionárias e Adm). Utilizado em múltiplos setores sem aviso prévio; demanda reserva técnica para não desfalcar preparos diários.';
+      if (norm.includes("óleo") || norm.includes("oleo")) {
+        return "Item multissetorial (Cozinha, Padaria, Casas Missionárias e Adm). Utilizado em múltiplos setores sem aviso prévio; demanda reserva técnica para não desfalcar preparos diários.";
       }
-      if (norm.includes('manteiga') || norm.includes('margarina')) {
-        return 'Item multissetorial (Cozinha, Padaria de Fernando Pates e Casas Missionárias). Sujeito a retiradas sem aviso prévio; exige acompanhamento preventivo constante.';
+      if (norm.includes("manteiga") || norm.includes("margarina")) {
+        return "Item multissetorial (Cozinha, Padaria de Fernando Pates e Casas Missionárias). Sujeito a retiradas sem aviso prévio; exige acompanhamento preventivo constante.";
       }
-      if (norm.includes('flocão') || norm.includes('flocao')) {
-        return 'Consumo exclusivo às quartas e domingos (20 pct/preparo). Saldo de 52 pct cobre a semana com folga; programar compra na próxima terça.';
+      if (norm.includes("flocão") || norm.includes("flocao")) {
+        return "Consumo exclusivo às quartas e domingos (20 pct/preparo). Saldo de 52 pct cobre a semana com folga; programar compra na próxima terça.";
       }
-      if (norm.includes('arroz')) {
-        return 'Saldo recomposto para 165 kg. Atende o ciclo com reserva de segurança (45 kg) preservada.';
+      if (norm.includes("arroz")) {
+        return "Saldo recomposto para 165 kg. Atende o ciclo com reserva de segurança (45 kg) preservada.";
       }
-      if (norm.includes('feijão') || norm.includes('feijao')) {
-        return 'Saldo recomposto para 88 kg com 11 dias de autonomia plena e 24 kg de reserva mantida.';
+      if (norm.includes("feijão") || norm.includes("feijao")) {
+        return "Saldo recomposto para 88 kg com 11 dias de autonomia plena e 24 kg de reserva mantida.";
       }
-      if (norm.includes('suco')) {
-        return 'Saldo de 22 pacotes garante as bebidas das refeições principais.';
+      if (norm.includes("suco")) {
+        return "Saldo de 22 pacotes garante as bebidas das refeições principais.";
       }
-      if (norm.includes('farinha de trigo')) {
-        return 'Atende a produção de pães e broas da Padaria (Fernando Pates) e preparos da Cozinha.';
+      if (norm.includes("farinha de trigo")) {
+        return "Atende a produção de pães e broas da Padaria (Fernando Pates) e preparos da Cozinha.";
       }
-      if (norm.includes('frango')) {
-        return 'Proteína principal com estoque seguro para as refeições da semana.';
+      if (norm.includes("frango")) {
+        return "Proteína principal com estoque seguro para as refeições da semana.";
       }
-      if (norm.includes('carne')) {
-        return 'Proteína complementar devidamente armazenada no congelador.';
+      if (norm.includes("carne")) {
+        return "Proteína complementar devidamente armazenada no congelador.";
       }
-      if (norm.includes('açúcar') || norm.includes('acucar')) {
-        return 'Estoque seguro para bebidas, café e confeitaria da Padaria.';
+      if (norm.includes("açúcar") || norm.includes("acucar")) {
+        return "Estoque seguro para bebidas, café e confeitaria da Padaria.";
       }
-      if (norm.includes('macarrão') || norm.includes('macarrao')) {
-        return 'Estoque seguro para os cardápios de massas da semana.';
+      if (norm.includes("macarrão") || norm.includes("macarrao")) {
+        return "Estoque seguro para os cardápios de massas da semana.";
       }
-      if (norm.includes('alho')) {
-        return 'Tempero essencial para preparos diários.';
+      if (norm.includes("alho")) {
+        return "Tempero essencial para preparos diários.";
       }
-      return 'Estoque conferido e devidamente armazenado no Almoxarifado.';
+      return "Estoque conferido e devidamente armazenado no Almoxarifado.";
     };
 
     // Calculate replenished items from the forecast purchase list
@@ -182,10 +211,23 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       const prevStock = item.currentStock;
       const qtyAdded = item.suggestedPurchaseQty;
       const newStock = Math.round((prevStock + qtyAdded) * 100) / 100;
-      const dailyAvg = item.dailyAvgConsumption && item.dailyAvgConsumption > 0 ? item.dailyAvgConsumption : null;
-      const newAutonomyDays = dailyAvg ? Math.round((newStock / dailyAvg) * 10) / 10 : null;
-      const newAutonomyText = newAutonomyDays !== null ? `${newAutonomyDays.toFixed(1)} dias` : 'Uso Eventual';
-      const itemNote = getItemOperationalNote(item.name, item.category, newStock, item.unit);
+      const dailyAvg =
+        item.dailyAvgConsumption && item.dailyAvgConsumption > 0
+          ? item.dailyAvgConsumption
+          : null;
+      const newAutonomyDays = dailyAvg
+        ? Math.round((newStock / dailyAvg) * 10) / 10
+        : null;
+      const newAutonomyText =
+        newAutonomyDays !== null
+          ? `${newAutonomyDays.toFixed(1)} dias`
+          : "Uso Eventual";
+      const itemNote = getItemOperationalNote(
+        item.name,
+        item.category,
+        newStock,
+        item.unit,
+      );
 
       return {
         ...item,
@@ -199,12 +241,15 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       };
     });
 
-    const totalUnitsAdded = replenishedItems.reduce((acc, i) => acc + i.qtyAdded, 0);
+    const totalUnitsAdded = replenishedItems.reduce(
+      (acc, i) => acc + i.qtyAdded,
+      0,
+    );
 
     // =========================================================================
     // MODE 1: ATUALIZAÇÃO GERAL DO ESTOQUE PÓS-COMPRAS (NOVAS ENTRADAS + QUADRO GERAL)
     // =========================================================================
-    if (emailReportType === 'post_purchase') {
+    if (emailReportType === "post_purchase") {
       const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Atualização Geral do Estoque & Pós-Compras (${today}) — Painel: ${APP_DOMAIN}`;
 
       // 1. Plain Text Version for Post-Purchase Update
@@ -251,13 +296,23 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       body += `════════════════════════════════════════════════════════════════════════\n\n`;
 
       forecast.allItems.forEach((item, index) => {
-        const note = getItemOperationalNote(item.name, item.category, item.currentStock, item.unit);
-        const autonomy = item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} dias` : 'Uso Eventual');
-        const statusText = item.daysAutonomy != null && item.daysAutonomy >= 10
-          ? '🟢 100% Abastecido'
-          : item.daysAutonomy != null && item.daysAutonomy >= 5
-          ? '🟢 Seguro'
-          : '🟡 Monitorar';
+        const note = getItemOperationalNote(
+          item.name,
+          item.category,
+          item.currentStock,
+          item.unit,
+        );
+        const autonomy =
+          item.autonomyText ||
+          (item.daysAutonomy != null
+            ? `${Number(item.daysAutonomy).toFixed(1)} dias`
+            : "Uso Eventual");
+        const statusText =
+          item.daysAutonomy != null && item.daysAutonomy >= 10
+            ? "🟢 100% Abastecido"
+            : item.daysAutonomy != null && item.daysAutonomy >= 5
+              ? "🟢 Seguro"
+              : "🟡 Monitorar";
 
         body += `${index + 1}. ${item.name} (${item.category})\n`;
         body += `   • Saldo Atual Conferido: ${item.currentStock} ${item.unit}\n`;
@@ -313,7 +368,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 ${
                   item.itemNote
                     ? `<div style="font-size: 10.5px; color: #92400e; font-weight: 600; margin-top: 4px; background-color: #fef3c7; border: 1px solid #fde68a; padding: 3px 8px; border-radius: 6px; line-height: 1.4;">⚠️ ${item.itemNote}</div>`
-                    : ''
+                    : ""
                 }
               </td>
               <td style="padding: 12px 14px; text-align: center; font-weight: 700; color: #64748b; font-size: 12px; vertical-align: middle;">
@@ -343,31 +398,52 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             </tr>
           `;
         })
-        .join('');
+        .join("");
 
       // All items table for full inventory overview
       const allItemsRowsHtml = forecast.allItems
         .map((item) => {
-          const note = getItemOperationalNote(item.name, item.category, item.currentStock, item.unit);
-          const autonomy = item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} dias` : 'Uso Eventual');
-          const isWarning = item.status === 'ATENCAO';
-          const isCritical = item.status === 'CRITICO';
+          const note = getItemOperationalNote(
+            item.name,
+            item.category,
+            item.currentStock,
+            item.unit,
+          );
+          const autonomy =
+            item.autonomyText ||
+            (item.daysAutonomy != null
+              ? `${Number(item.daysAutonomy).toFixed(1)} dias`
+              : "Uso Eventual");
+          const isWarning = item.status === "ATENCAO";
+          const isCritical = item.status === "CRITICO";
           const isFull = item.daysAutonomy != null && item.daysAutonomy >= 10;
           const isMultiSector = isMultiSectorItem(item.name);
           const multiSectorBadge = isMultiSector
             ? `<div style="margin-top: 3px;"><span style="display: inline-block; background-color: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-weight: 800; font-size: 9.5px; padding: 1px 6px; border-radius: 4px;">⚠️ Multissetorial (Cozinha, Padaria, Casas & Adm)</span></div>`
-            : '';
+            : "";
 
-          const statusBg = isCritical ? '#fef2f2' : isWarning ? '#fffbeb' : '#f0fdf4';
-          const statusBorder = isCritical ? '#fecaca' : isWarning ? '#fde68a' : '#bbf7d0';
-          const statusColor = isCritical ? '#b91c1c' : isWarning ? '#b45309' : '#166534';
-          const statusLabel = isCritical
-            ? '🔴 Crítico'
+          const statusBg = isCritical
+            ? "#fef2f2"
             : isWarning
-            ? '🟡 Monitorar'
-            : isFull
-            ? '🟢 100% Abastecido'
-            : '🟢 Seguro';
+              ? "#fffbeb"
+              : "#f0fdf4";
+          const statusBorder = isCritical
+            ? "#fecaca"
+            : isWarning
+              ? "#fde68a"
+              : "#bbf7d0";
+          const statusColor = isCritical
+            ? "#b91c1c"
+            : isWarning
+              ? "#b45309"
+              : "#166534";
+          const statusLabel = isCritical
+            ? "🔴 Crítico"
+            : isWarning
+              ? "🟡 Monitorar"
+              : isFull
+                ? "🟢 100% Abastecido"
+                : "🟢 Seguro";
 
           return `
             <tr style="border-bottom: 1px solid #e2e8f0;">
@@ -396,7 +472,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             </tr>
           `;
         })
-        .join('');
+        .join("");
 
       const html = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; max-width: 780px; margin: 0 auto; line-height: 1.6; font-size: 13px;">
@@ -531,7 +607,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               <strong>Observação da Gestão do Almoxarifado:</strong> ${customEmailNote.trim()}
             </div>
           `
-              : ''
+              : ""
           }
 
           <!-- Segundo Link de Acesso e Assinatura Formal -->
@@ -554,7 +630,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     // =========================================================================
     // MODE 2: QUADRO GERAL DE TODO O ESTOQUE (14 PRODUTOS)
     // =========================================================================
-    if (emailReportType === 'all_items') {
+    if (emailReportType === "all_items") {
       const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Quadro Geral de Todo o Estoque — Balanço e Autonomia Atual (${today}) — ${APP_DOMAIN}`;
 
       let body = `A/C: Pastor Huberto, Missª. Débora (Coordenação) e Chefe Marcos\n`;
@@ -581,13 +657,23 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       body += `════════════════════════════════════════════════════════════════════════\n\n`;
 
       forecast.allItems.forEach((item, index) => {
-        const note = getItemOperationalNote(item.name, item.category, item.currentStock, item.unit);
-        const autonomy = item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} dias` : 'Uso Eventual');
-        const statusText = item.daysAutonomy != null && item.daysAutonomy >= 10
-          ? '🟢 100% Abastecido'
-          : item.daysAutonomy != null && item.daysAutonomy >= 5
-          ? '🟢 Seguro'
-          : '🟡 Monitorar';
+        const note = getItemOperationalNote(
+          item.name,
+          item.category,
+          item.currentStock,
+          item.unit,
+        );
+        const autonomy =
+          item.autonomyText ||
+          (item.daysAutonomy != null
+            ? `${Number(item.daysAutonomy).toFixed(1)} dias`
+            : "Uso Eventual");
+        const statusText =
+          item.daysAutonomy != null && item.daysAutonomy >= 10
+            ? "🟢 100% Abastecido"
+            : item.daysAutonomy != null && item.daysAutonomy >= 5
+              ? "🟢 Seguro"
+              : "🟡 Monitorar";
 
         body += `${index + 1}. ${item.name} (${item.category})\n`;
         body += `   • Saldo Atual em Estoque: ${item.currentStock} ${item.unit}\n`;
@@ -631,26 +717,47 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       // HTML Version for Quadro Geral
       const allItemsRowsHtml = forecast.allItems
         .map((item) => {
-          const note = getItemOperationalNote(item.name, item.category, item.currentStock, item.unit);
-          const autonomy = item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} dias` : 'Uso Eventual');
-          const isWarning = item.status === 'ATENCAO';
-          const isCritical = item.status === 'CRITICO';
+          const note = getItemOperationalNote(
+            item.name,
+            item.category,
+            item.currentStock,
+            item.unit,
+          );
+          const autonomy =
+            item.autonomyText ||
+            (item.daysAutonomy != null
+              ? `${Number(item.daysAutonomy).toFixed(1)} dias`
+              : "Uso Eventual");
+          const isWarning = item.status === "ATENCAO";
+          const isCritical = item.status === "CRITICO";
           const isFull = item.daysAutonomy != null && item.daysAutonomy >= 10;
           const isMultiSector = isMultiSectorItem(item.name);
           const multiSectorBadge = isMultiSector
             ? `<div style="margin-top: 3px;"><span style="display: inline-block; background-color: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-weight: 800; font-size: 9.5px; padding: 1px 6px; border-radius: 4px;">⚠️ Multissetorial (Cozinha, Padaria, Casas & Adm)</span></div>`
-            : '';
+            : "";
 
-          const statusBg = isCritical ? '#fef2f2' : isWarning ? '#fffbeb' : '#f0fdf4';
-          const statusBorder = isCritical ? '#fecaca' : isWarning ? '#fde68a' : '#bbf7d0';
-          const statusColor = isCritical ? '#b91c1c' : isWarning ? '#b45309' : '#166534';
-          const statusLabel = isCritical
-            ? '🔴 Crítico'
+          const statusBg = isCritical
+            ? "#fef2f2"
             : isWarning
-            ? '🟡 Monitorar'
-            : isFull
-            ? '🟢 100% Abastecido'
-            : '🟢 Seguro';
+              ? "#fffbeb"
+              : "#f0fdf4";
+          const statusBorder = isCritical
+            ? "#fecaca"
+            : isWarning
+              ? "#fde68a"
+              : "#bbf7d0";
+          const statusColor = isCritical
+            ? "#b91c1c"
+            : isWarning
+              ? "#b45309"
+              : "#166534";
+          const statusLabel = isCritical
+            ? "🔴 Crítico"
+            : isWarning
+              ? "🟡 Monitorar"
+              : isFull
+                ? "🟢 100% Abastecido"
+                : "🟢 Seguro";
 
           return `
             <tr style="border-bottom: 1px solid #e2e8f0;">
@@ -679,7 +786,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             </tr>
           `;
         })
-        .join('');
+        .join("");
 
       const html = `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; max-width: 780px; margin: 0 auto; line-height: 1.6; font-size: 13px;">
@@ -790,11 +897,11 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       body += `✅ Não há produtos necessitando de compra no momento. O estoque atual atende com total segurança a demanda prevista para os próximos ${periodDays} dias.\n\n`;
     } else {
       forecast.purchasesList.forEach((item, index) => {
-        const isCritical = item.status === 'CRITICO';
-        const statusBadge = isCritical ? '🔴 CRÍTICO' : '🟡 ATENÇÃO';
+        const isCritical = item.status === "CRITICO";
+        const statusBadge = isCritical ? "🔴 CRÍTICO" : "🟡 ATENÇÃO";
         const detailStatus = isCritical
-          ? 'Risco iminente de ruptura antes do fim do ciclo'
-          : 'Abaixo do estoque de segurança (3 dias)';
+          ? "Risco iminente de ruptura antes do fim do ciclo"
+          : "Abaixo do estoque de segurança (3 dias)";
 
         body += `${index + 1}. ${item.name} (${item.category})\n`;
         body += `   • Estoque Atual: ${item.currentStock} ${item.unit}\n`;
@@ -810,7 +917,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     }
 
     // Itens em Atenção com Estoque Suficiente para esta semana (Programar para próxima compra)
-    const nextCycleAlerts = forecast.warningItems.filter((i) => i.suggestedPurchaseQty === 0);
+    const nextCycleAlerts = forecast.warningItems.filter(
+      (i) => i.suggestedPurchaseQty === 0,
+    );
     if (nextCycleAlerts.length > 0) {
       body += `────────────────────────────────────────────────────────────────────────\n`;
       body += `ITENS EM ATENÇÃO (ATENDEM ESTA SEMANA — PROGRAMAR PRÓXIMA TERÇA):\n`;
@@ -823,20 +932,22 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
     // Itens de alto consumo com estoque seguro (sem compra)
     const stapleNames = [
-      'Arroz Branco',
-      'Feijão Carioca',
-      'Óleo de Soja',
-      'Frango Resfriado',
-      'Frango Inteiro',
-      'Carne Bovina',
-      'Farinha de Trigo',
-      'Açúcar Cristal',
-      'Leite Integral',
+      "Arroz Branco",
+      "Feijão Carioca",
+      "Óleo de Soja",
+      "Frango Resfriado",
+      "Frango Inteiro",
+      "Carne Bovina",
+      "Farinha de Trigo",
+      "Açúcar Cristal",
+      "Leite Integral",
     ];
     const safeStaples = forecast.allItems.filter(
       (item) =>
         item.suggestedPurchaseQty === 0 &&
-        stapleNames.some((sn) => item.name.toLowerCase().includes(sn.toLowerCase()))
+        stapleNames.some((sn) =>
+          item.name.toLowerCase().includes(sn.toLowerCase()),
+        ),
     );
 
     if (safeStaples.length > 0) {
@@ -873,23 +984,23 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     // 2. Rich HTML Table Version for Gmail / Outlook
     const purchasesHtmlRows = forecast.purchasesList
       .map((item) => {
-        const isCrit = item.status === 'CRITICO';
-        const statusBg = isCrit ? '#fef2f2' : '#fffbeb';
-        const statusColor = isCrit ? '#b91c1c' : '#b45309';
-        const statusBorder = isCrit ? '#fecaca' : '#fde68a';
-        const statusText = isCrit ? '🔴 Crítico' : '🟡 Atenção';
+        const isCrit = item.status === "CRITICO";
+        const statusBg = isCrit ? "#fef2f2" : "#fffbeb";
+        const statusColor = isCrit ? "#b91c1c" : "#b45309";
+        const statusBorder = isCrit ? "#fecaca" : "#fde68a";
+        const statusText = isCrit ? "🔴 Crítico" : "🟡 Atenção";
 
         return `
           <tr style="border-bottom: 1px solid #e2e8f0;">
             <td style="padding: 10px 12px; font-weight: 700; color: #0f172a;">
               <div>${item.name}</div>
               <div style="font-size: 11px; color: #64748b; font-weight: 400;">${item.category}</div>
-              ${item.customNote ? `<div style="font-size: 10px; color: #b45309; font-weight: 600; margin-top: 3px; background-color: #fef3c7; padding: 2px 6px; border-radius: 4px; display: inline-block;">⚠️ ${item.customNote}</div>` : ''}
+              ${item.customNote ? `<div style="font-size: 10px; color: #b45309; font-weight: 600; margin-top: 3px; background-color: #fef3c7; padding: 2px 6px; border-radius: 4px; display: inline-block;">⚠️ ${item.customNote}</div>` : ""}
             </td>
             <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: #334155;">
               ${item.currentStock} ${item.unit}
             </td>
-            <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: ${isCrit ? '#dc2626' : '#d97706'};">
+            <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: ${isCrit ? "#dc2626" : "#d97706"};">
               ${item.autonomyText}
             </td>
             <td style="padding: 10px 12px; text-align: center; color: #475569;">
@@ -908,7 +1019,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
           </tr>
         `;
       })
-      .join('');
+      .join("");
 
     const html = `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; max-width: 760px; margin: 0 auto; line-height: 1.6; font-size: 13px;">
@@ -961,13 +1072,13 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                   <br/>
                   <span style="color: #b45309; font-weight: 700;">➔ Orientação: Não comprar amanhã (suficiente). Programar compra para a próxima terça-feira (+${item.nextCyclePurchaseQty} ${item.unit}).</span>
                 </div>
-              `
+              `,
                 )
-                .join('')}
+                .join("")}
             </div>
           </div>
         `
-            : ''
+            : ""
         }
 
         ${
@@ -976,11 +1087,11 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
           <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px;">
             <strong style="color: #166534;">Itens de Alto Consumo com Estoque Seguro (Sem compra necessária):</strong>
             <div style="color: #15803d; margin-top: 4px;">
-              ${safeStaples.map((s) => `${s.name}: <strong>${s.currentStock} ${s.unit}</strong> (${s.autonomyText})`).join(' &bull; ')}
+              ${safeStaples.map((s) => `${s.name}: <strong>${s.currentStock} ${s.unit}</strong> (${s.autonomyText})`).join(" &bull; ")}
             </div>
           </div>
         `
-            : ''
+            : ""
         }
 
         <!-- Alerta Multissetorial -->
@@ -998,7 +1109,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <strong>Observação da Gestão:</strong> ${customEmailNote.trim()}
           </div>
         `
-            : ''
+            : ""
         }
 
         <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569;">
@@ -1013,10 +1124,12 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     return { subject, body, html };
   }, [forecast, periodDays, customEmailNote, emailReportType]);
 
-  const handleOpenEmailModal = (mode: 'post_purchase' | 'all_items' | 'forecast' = 'post_purchase') => {
+  const handleOpenEmailModal = (
+    mode: "post_purchase" | "all_items" | "forecast" = "post_purchase",
+  ) => {
     setEmailReportType(mode);
-    setEmailSubject('');
-    setEmailModalTab('preview'); // Tabela Executiva Visual definida sempre como padrão
+    setEmailSubject("");
+    setEmailModalTab("preview"); // Tabela Executiva Visual definida sempre como padrão
     setIsEmailModalOpen(true);
   };
 
@@ -1028,11 +1141,11 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
   const handleCopyEmailHtml = async () => {
     try {
-      const blobHtml = new Blob([emailContent.html], { type: 'text/html' });
-      const blobText = new Blob([emailContent.body], { type: 'text/plain' });
+      const blobHtml = new Blob([emailContent.html], { type: "text/html" });
+      const blobText = new Blob([emailContent.body], { type: "text/plain" });
       const clipboardItem = new ClipboardItem({
-        'text/html': blobHtml,
-        'text/plain': blobText,
+        "text/html": blobHtml,
+        "text/plain": blobText,
       });
       await navigator.clipboard.write([clipboardItem]);
       setEmailCopiedHtml(true);
@@ -1049,7 +1162,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     const su = encodeURIComponent(emailSubject || emailContent.subject);
     const body = encodeURIComponent(emailContent.body);
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${su}&body=${body}`;
-    window.open(gmailUrl, '_blank');
+    window.open(gmailUrl, "_blank");
   };
 
   const handleSendViaMailto = () => {
@@ -1062,14 +1175,21 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   const handleGeneratePDF = () => {
     setIsGeneratingPdf(true);
     try {
-      generatePurchaseForecastPDF(products, movements, periodDays, inventoryAudits, userName, {
-        category: categoryFilter,
-        statusFilter,
-        searchTerm,
-        onlyNeedsPurchase,
-      });
+      generatePurchaseForecastPDF(
+        products,
+        movements,
+        periodDays,
+        inventoryAudits,
+        userName,
+        {
+          category: categoryFilter,
+          statusFilter,
+          searchTerm,
+          onlyNeedsPurchase,
+        },
+      );
     } catch (err) {
-      console.error('Error generating Purchase Forecast PDF:', err);
+      console.error("Error generating Purchase Forecast PDF:", err);
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -1084,18 +1204,18 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
   const handleExportCSV = () => {
     const headers = [
-      'Item',
-      'Categoria',
-      'Estoque Atual',
-      'Unidade',
-      'Consumo Médio',
-      'Autonomia (dias)',
-      'Consumo Previsto',
-      'Saldo Projetado',
-      'Estoque Segurança (3d)',
-      'Sugestão de Compra',
-      'Custo Estimado (R$)',
-      'Status',
+      "Item",
+      "Categoria",
+      "Estoque Atual",
+      "Unidade",
+      "Consumo Médio",
+      "Autonomia (dias)",
+      "Consumo Previsto",
+      "Saldo Projetado",
+      "Estoque Segurança (3d)",
+      "Sugestão de Compra",
+      "Custo Estimado (R$)",
+      "Status",
     ];
 
     const rows = forecast.filteredItems.map((item) => [
@@ -1104,7 +1224,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       item.currentStock,
       item.unit,
       item.consumptionUnitText,
-      item.daysAutonomy != null ? Number(item.daysAutonomy).toFixed(1) : 'Indeterminado',
+      item.daysAutonomy != null
+        ? Number(item.daysAutonomy).toFixed(1)
+        : "Indeterminado",
       item.projectedConsumption,
       item.projectedBalance,
       item.safetyStock,
@@ -1113,11 +1235,16 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       item.statusLabel,
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(';'), ...rows.map((e) => e.join(';'))].join('\n');
+    const csvContent =
+      "data:text/csv;charset=utf-8,\uFEFF" +
+      [headers.join(";"), ...rows.map((e) => e.join(";"))].join("\n");
     const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Previsao_Compras_Cristolandia_${periodDays}dias_${new Date().toISOString().split('T')[0]}.csv`);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute(
+      "download",
+      `Previsao_Compras_Cristolandia_${periodDays}dias_${new Date().toISOString().split("T")[0]}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1140,7 +1267,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       msg += `\n`;
     }
 
-    const otherPurchases = forecast.purchasesList.filter((i) => i.status !== 'CRITICO');
+    const otherPurchases = forecast.purchasesList.filter(
+      (i) => i.status !== "CRITICO",
+    );
     if (otherPurchases.length > 0) {
       msg += `🟡 *ITENS EM ATENÇÃO (COMPRA AMANHÃ):*\n`;
       otherPurchases.forEach((item) => {
@@ -1153,7 +1282,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       msg += `\n`;
     }
 
-    const nextCycleAlerts = forecast.warningItems.filter((i) => i.suggestedPurchaseQty === 0);
+    const nextCycleAlerts = forecast.warningItems.filter(
+      (i) => i.suggestedPurchaseQty === 0,
+    );
     if (nextCycleAlerts.length > 0) {
       msg += `⏳ *ITENS MONITORADOS (ATENDEM ESTA SEMANA — COMPRAR NA PRÓXIMA TERÇA):*\n`;
       nextCycleAlerts.forEach((item) => {
@@ -1195,7 +1326,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Cálculo de consumo diário e regras para dias específicos (Qua/Dom), estoque de segurança de 3 dias e saldo projetado.
+                Cálculo de consumo diário e regras para dias específicos
+                (Qua/Dom), estoque de segurança de 3 dias e saldo projetado.
               </p>
             </div>
           </div>
@@ -1208,7 +1340,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <>
               {/* Gerar E-mail Atualização Geral (Novas Entradas & Todo o Estoque) */}
               <button
-                onClick={() => handleOpenEmailModal('post_purchase')}
+                onClick={() => handleOpenEmailModal("post_purchase")}
                 className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-2 active:scale-95 ring-2 ring-emerald-400/30"
                 title="Gerar e-mail executivo com novas entradas e quadro geral atualizado de todo o estoque"
               >
@@ -1218,7 +1350,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
               {/* Gerar E-mail Quadro Geral (14 Produtos) */}
               <button
-                onClick={() => handleOpenEmailModal('all_items')}
+                onClick={() => handleOpenEmailModal("all_items")}
                 className="px-3.5 py-2.5 rounded-2xl bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900/40 text-teal-800 dark:text-teal-200 font-bold text-xs sm:text-sm border border-teal-200 dark:border-teal-800 transition-all cursor-pointer flex items-center gap-2 active:scale-95 shadow-sm"
                 title="Gerar e-mail com a relação completa e balanço de todos os 14 itens do estoque"
               >
@@ -1228,7 +1360,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
               {/* Gerar E-mail Semanal de Previsão Button */}
               <button
-                onClick={() => handleOpenEmailModal('forecast')}
+                onClick={() => handleOpenEmailModal("forecast")}
                 className="px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm border border-slate-200 dark:border-slate-700 transition-all cursor-pointer flex items-center gap-2 active:scale-95"
                 title="Gerar e-mail com a Tabela Executiva Visual de Previsão de Compras"
               >
@@ -1278,7 +1410,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             {copiedWhatsApp ? (
               <>
                 <Check className="w-4 h-4 text-emerald-500" />
-                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">Copiado!</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">
+                  Copiado!
+                </span>
               </>
             ) : (
               <>
@@ -1304,8 +1438,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 onClick={() => setPeriodDays(8)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                   periodDays === 8
-                    ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? "bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 8 dias (Padrão)
@@ -1314,8 +1448,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 onClick={() => setPeriodDays(14)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                   periodDays === 14
-                    ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? "bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 14 dias
@@ -1324,8 +1458,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 onClick={() => setPeriodDays(21)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                   periodDays === 21
-                    ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? "bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 21 dias
@@ -1334,37 +1468,43 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 onClick={() => setPeriodDays(30)}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                   periodDays === 30
-                    ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    ? "bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 30 dias
               </button>
             </div>
             <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 ml-1">
-              Ciclo: <strong>{forecast.baseDateFormatted} a {forecast.endDateFormatted}</strong> | Próxima compra:{' '}
-              <strong className="text-amber-600 dark:text-amber-400">{forecast.nextPurchaseDateFormatted}</strong>
+              Ciclo:{" "}
+              <strong>
+                {forecast.baseDateFormatted} a {forecast.endDateFormatted}
+              </strong>{" "}
+              | Próxima compra:{" "}
+              <strong className="text-amber-600 dark:text-amber-400">
+                {forecast.nextPurchaseDateFormatted}
+              </strong>
             </span>
           </div>
 
           {/* Sub-view switcher: Prioritária vs Visão Geral */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl">
             <button
-              onClick={() => setSubView('coordination_list')}
+              onClick={() => setSubView("coordination_list")}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                subView === 'coordination_list'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm font-black'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                subView === "coordination_list"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm font-black"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               🛒 1. Necessidade de Compras ({forecast.purchasesList.length})
             </button>
             <button
-              onClick={() => setSubView('full_table')}
+              onClick={() => setSubView("full_table")}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                subView === 'full_table'
-                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm font-black'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                subView === "full_table"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm font-black"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               📋 2. Quadro Geral de Estoque ({forecast.totalProducts})
@@ -1387,7 +1527,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               <option value="all">Todos os Status</option>
               <option value="buy_only">🛒 Somente Necessidade de Compra</option>
               <option value="critical_only">🔴 Crítico (Risco de Falta)</option>
-              <option value="warning_only">🟡 Atenção (Abaixo da Margem)</option>
+              <option value="warning_only">
+                🟡 Atenção (Abaixo da Margem)
+              </option>
               <option value="normal_only">🟢 Normal (Estoque Seguro)</option>
             </select>
           </div>
@@ -1467,7 +1609,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <span>Críticos (Risco)</span>
             <Flame className="w-4 h-4 text-rose-500" />
           </div>
-          <div className={`text-2xl font-black ${forecast.criticalCount > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400'}`}>
+          <div
+            className={`text-2xl font-black ${forecast.criticalCount > 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-400"}`}
+          >
             {forecast.criticalCount}
           </div>
           <p className="text-[10px] text-rose-500/80 mt-0.5">
@@ -1481,7 +1625,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <span>Em Atenção</span>
             <AlertTriangle className="w-4 h-4 text-amber-500" />
           </div>
-          <div className={`text-2xl font-black ${forecast.warningCount > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
+          <div
+            className={`text-2xl font-black ${forecast.warningCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-slate-400"}`}
+          >
             {forecast.warningCount}
           </div>
           <p className="text-[10px] text-amber-500/80 mt-0.5">
@@ -1514,14 +1660,25 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-sm font-black text-amber-950 dark:text-amber-100">
-                  Atenção Operacional: Itens de Consumo Multissetorial (Leite, Manteiga, Óleo e Sal)
+                  Atenção Operacional: Itens de Consumo Multissetorial (Leite,
+                  Manteiga, Óleo e Sal)
                 </h4>
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 uppercase tracking-wide">
                   Risco de Saída sem Aviso Prévio
                 </span>
               </div>
               <p className="text-xs text-amber-900/90 dark:text-amber-200/90 leading-relaxed max-w-5xl">
-                Diferente da <strong>Cozinha Geral</strong> (com cardápio fixo e porções controladas), estes 4 itens atendem simultaneamente à <strong>Padaria (Fernando Pates)</strong>, às <strong>Casas Missionárias</strong> e à <strong>Administração</strong>. Por estarem sujeitos a retiradas sem aviso prévio nesses outros setores sem controle diário centralizado, o sistema aplica uma <strong>margem de segurança preventiva redobrada (+4 dias)</strong> para blindar o estoque físico contra desfalques imprevistos.
+                Diferente da <strong>Cozinha Geral</strong> (com cardápio fixo e
+                porções controladas), estes 4 itens atendem simultaneamente à{" "}
+                <strong>Padaria (Fernando Pates)</strong>, às{" "}
+                <strong>Casas Missionárias</strong> e à{" "}
+                <strong>Administração</strong>. Por estarem sujeitos a retiradas
+                sem aviso prévio nesses outros setores sem controle diário
+                centralizado, o sistema aplica uma{" "}
+                <strong>
+                  margem de segurança preventiva redobrada (+4 dias)
+                </strong>{" "}
+                para blindar o estoque físico contra desfalques imprevistos.
               </p>
             </div>
           </div>
@@ -1529,21 +1686,26 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       </div>
 
       {/* SUB-VIEW 1: LISTA PRIORITÁRIA DE COMPRAS */}
-      {subView === 'coordination_list' && (
+      {subView === "coordination_list" && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <ShoppingCart className="w-5 h-5 text-amber-500" />
-                1. Necessidade de Compras — Lista Prioritária ({forecast.purchasesList.length} itens)
+                1. Necessidade de Compras — Lista Prioritária (
+                {forecast.purchasesList.length} itens)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Itens com sugestão de compra no período de {periodDays} dias ordenados por criticidade.
+                Itens com sugestão de compra no período de {periodDays} dias
+                ordenados por criticidade.
               </p>
             </div>
 
             <div className="text-xs text-slate-500 dark:text-slate-400 font-mono bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl">
-              Fórmula: <span className="font-bold text-amber-600 dark:text-amber-400">Compra = Consumo Previsto + Est. Segurança - Estoque Atual</span>
+              Fórmula:{" "}
+              <span className="font-bold text-amber-600 dark:text-amber-400">
+                Compra = Consumo Previsto + Est. Segurança - Estoque Atual
+              </span>
             </div>
           </div>
 
@@ -1554,7 +1716,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 Estoque 100% Suprido para o Ciclo de {periodDays} Dias!
               </h4>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                Todos os produtos analisados possuem saldo suficiente para cobrir o consumo previsto e a margem de segurança de 3 dias.
+                Todos os produtos analisados possuem saldo suficiente para
+                cobrir o consumo previsto e a margem de segurança de 3 dias.
               </p>
             </div>
           ) : (
@@ -1567,7 +1730,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                     <th className="py-3 px-3">Estoque Atual</th>
                     <th className="py-3 px-3">Consumo Médio</th>
                     <th className="py-3 px-3 text-center">Autonomia</th>
-                    <th className="py-3 px-3 text-right">Cons. Previsto ({periodDays}d)</th>
+                    <th className="py-3 px-3 text-right">
+                      Cons. Previsto ({periodDays}d)
+                    </th>
                     <th className="py-3 px-3 text-right">Saldo Projetado</th>
                     <th className="py-3 px-3 text-right">Segurança (3d)</th>
                     <th className="py-3 px-3 text-right">Compra Sugerida</th>
@@ -1575,16 +1740,19 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {forecast.purchasesList.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <tr
+                      key={item.id}
+                      className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                    >
                       {/* Status */}
                       <td className="py-3.5 px-3">
                         <span
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black ${
-                            item.status === 'CRITICO'
-                              ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                              : item.status === 'ATENCAO'
-                              ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                              : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                            item.status === "CRITICO"
+                              ? "bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                              : item.status === "ATENCAO"
+                                ? "bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
                           }`}
                         >
                           {item.statusBadge}
@@ -1603,13 +1771,18 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                               Multissetorial (Cozinha/Padaria/Casas/Adm)
                             </span>
                           )}
-                          {item.inventoryStatus === 'DIVERGENTE' && (
-                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 font-bold" title={`Contagem física: ${item.physicalStock} ${item.unit}`}>
+                          {item.inventoryStatus === "DIVERGENTE" && (
+                            <span
+                              className="text-[9px] px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 font-bold"
+                              title={`Contagem física: ${item.physicalStock} ${item.unit}`}
+                            >
                               Físico: {item.physicalStock}
                             </span>
                           )}
                         </div>
-                        <div className="text-[10px] text-slate-400">{item.category}</div>
+                        <div className="text-[10px] text-slate-400">
+                          {item.category}
+                        </div>
                         {item.customNote && (
                           <div className="mt-1 text-[10px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800/60 rounded-md px-2 py-0.5 leading-snug font-medium max-w-sm">
                             ⚠️ {item.customNote}
@@ -1619,7 +1792,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
                       {/* Estoque Atual */}
                       <td className="py-3.5 px-3">
-                        <span className={`font-black ${item.currentStock <= 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>
+                        <span
+                          className={`font-black ${item.currentStock <= 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-white"}`}
+                        >
                           {item.currentStock} {item.unit}
                         </span>
                       </td>
@@ -1634,13 +1809,17 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                         <span
                           className={`inline-flex items-center px-2 py-0.5 rounded-md font-bold text-xs ${
                             item.daysAutonomy !== null && item.daysAutonomy <= 3
-                              ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
-                              : item.daysAutonomy !== null && item.daysAutonomy <= 7
-                              ? 'bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300'
-                              : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                              ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                              : item.daysAutonomy !== null &&
+                                  item.daysAutonomy <= 7
+                                ? "bg-orange-50 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300"
+                                : "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
                           }`}
                         >
-                          {item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} dias` : 'Eventual')}
+                          {item.autonomyText ||
+                            (item.daysAutonomy != null
+                              ? `${Number(item.daysAutonomy).toFixed(1)} dias`
+                              : "Eventual")}
                         </span>
                       </td>
 
@@ -1651,7 +1830,13 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
                       {/* Saldo Projetado ao Final */}
                       <td className="py-3.5 px-3 text-right font-black">
-                        <span className={item.projectedBalance < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}>
+                        <span
+                          className={
+                            item.projectedBalance < 0
+                              ? "text-rose-600 dark:text-rose-400"
+                              : "text-slate-700 dark:text-slate-300"
+                          }
+                        >
                           {item.projectedBalance} {item.unit}
                         </span>
                       </td>
@@ -1679,10 +1864,17 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <div className="mt-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 space-y-3">
               <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs sm:text-sm">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Itens em Atenção (Estoque Cobre Esta Semana — Compra Programada para a Próxima Terça-Feira)</span>
+                <span>
+                  Itens em Atenção (Estoque Cobre Esta Semana — Compra
+                  Programada para a Próxima Terça-Feira)
+                </span>
               </div>
               <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
-                Os itens abaixo possuem estoque suficiente para atender 100% da demanda desta semana. Portanto, <strong>não precisam ser comprados amanhã</strong>. O saldo projetado terminará abaixo da margem de segurança, e a compra deverá ocorrer na próxima terça-feira.
+                Os itens abaixo possuem estoque suficiente para atender 100% da
+                demanda desta semana. Portanto,{" "}
+                <strong>não precisam ser comprados amanhã</strong>. O saldo
+                projetado terminará abaixo da margem de segurança, e a compra
+                deverá ocorrer na próxima terça-feira.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 {forecast.warningItems
@@ -1700,7 +1892,18 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                           </span>
                         </div>
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                          Estoque: <strong>{item.currentStock} {item.unit}</strong> | Consumo semana: <strong>{item.projectedConsumption} {item.unit}</strong> | Saldo: <strong>{item.projectedBalance} {item.unit}</strong>
+                          Estoque:{" "}
+                          <strong>
+                            {item.currentStock} {item.unit}
+                          </strong>{" "}
+                          | Consumo semana:{" "}
+                          <strong>
+                            {item.projectedConsumption} {item.unit}
+                          </strong>{" "}
+                          | Saldo:{" "}
+                          <strong>
+                            {item.projectedBalance} {item.unit}
+                          </strong>
                         </div>
                       </div>
                       <div className="text-right shrink-0">
@@ -1720,21 +1923,24 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       )}
 
       {/* SUB-VIEW 2: QUADRO GERAL DE PREVISÃO DE ESTOQUE (TODOS OS PRODUTOS) */}
-      {subView === 'full_table' && (
+      {subView === "full_table" && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-2">
             <div>
               <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <Package className="w-5 h-5 text-indigo-500" />
-                2. Quadro Geral de Previsão de Estoque ({forecast.filteredItems.length} produtos)
+                2. Quadro Geral de Previsão de Estoque (
+                {forecast.filteredItems.length} produtos)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Visão de todos os produtos, consumo histórico, autonomia, saldo projetado e estoque de segurança.
+                Visão de todos os produtos, consumo histórico, autonomia, saldo
+                projetado e estoque de segurança.
               </p>
             </div>
 
             <div className="text-xs text-slate-400 font-mono">
-              Horizonte: {periodDays} dias ({forecast.baseDateFormatted} a {forecast.endDateFormatted})
+              Horizonte: {periodDays} dias ({forecast.baseDateFormatted} a{" "}
+              {forecast.endDateFormatted})
             </div>
           </div>
 
@@ -1755,7 +1961,10 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {forecast.filteredItems.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <tr
+                    key={item.id}
+                    className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                  >
                     {/* Item */}
                     <td className="py-3.5 px-3 font-extrabold text-slate-900 dark:text-white">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -1768,13 +1977,15 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                             Multissetorial (Cozinha/Padaria/Casas/Adm)
                           </span>
                         )}
-                        {item.inventoryStatus === 'DIVERGENTE' && (
+                        {item.inventoryStatus === "DIVERGENTE" && (
                           <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-bold">
                             Físico: {item.physicalStock} {item.unit}
                           </span>
                         )}
                       </div>
-                      <div className="text-[10px] text-slate-400 font-normal">{item.category}</div>
+                      <div className="text-[10px] text-slate-400 font-normal">
+                        {item.category}
+                      </div>
                       {item.customNote && (
                         <div className="mt-1 text-[10px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800/60 rounded-md px-2 py-0.5 leading-snug font-medium max-w-sm">
                           ⚠️ {item.customNote}
@@ -1797,13 +2008,17 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold ${
                           item.daysAutonomy !== null && item.daysAutonomy <= 3
-                            ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300'
-                            : item.daysAutonomy !== null && item.daysAutonomy <= 7
-                            ? 'bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-300'
-                            : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
+                            ? "bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300"
+                            : item.daysAutonomy !== null &&
+                                item.daysAutonomy <= 7
+                              ? "bg-orange-100 dark:bg-orange-950/80 text-orange-700 dark:text-orange-300"
+                              : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
                         }`}
                       >
-                        {item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} d` : 'Eventual')}
+                        {item.autonomyText ||
+                          (item.daysAutonomy != null
+                            ? `${Number(item.daysAutonomy).toFixed(1)} d`
+                            : "Eventual")}
                       </span>
                     </td>
 
@@ -1814,7 +2029,13 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
                     {/* Saldo Projetado */}
                     <td className="py-3.5 px-3 text-right font-black">
-                      <span className={item.projectedBalance < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-700 dark:text-slate-300'}>
+                      <span
+                        className={
+                          item.projectedBalance < 0
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-slate-700 dark:text-slate-300"
+                        }
+                      >
                         {item.projectedBalance} {item.unit}
                       </span>
                     </td>
@@ -1830,13 +2051,20 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                         <span className="text-rose-600 dark:text-rose-400">
                           +{item.suggestedPurchaseQty} {item.unit}
                         </span>
-                      ) : item.purchaseTiming === 'PROXIMA_SEMANA' ? (
+                      ) : item.purchaseTiming === "PROXIMA_SEMANA" ? (
                         <div className="flex flex-col items-end">
-                          <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">0 (Amanhã)</span>
-                          <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">Próx. Terça: +{item.nextCyclePurchaseQty} {item.unit}</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                            0 (Amanhã)
+                          </span>
+                          <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                            Próx. Terça: +{item.nextCyclePurchaseQty}{" "}
+                            {item.unit}
+                          </span>
                         </div>
                       ) : (
-                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">0</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                          0
+                        </span>
                       )}
                     </td>
 
@@ -1844,11 +2072,11 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                     <td className="py-3.5 px-3 text-center">
                       <span
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-black ${
-                          item.status === 'CRITICO'
-                            ? 'bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300'
-                            : item.status === 'ATENCAO'
-                            ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300'
-                            : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
+                          item.status === "CRITICO"
+                            ? "bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300"
+                            : item.status === "ATENCAO"
+                              ? "bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300"
+                              : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
                         }`}
                       >
                         {item.statusBadge}
@@ -1876,7 +2104,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             {copiedManagerialNote ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="text-emerald-600 dark:text-emerald-400">Copiado!</span>
+                <span className="text-emerald-600 dark:text-emerald-400">
+                  Copiado!
+                </span>
               </>
             ) : (
               <>
@@ -1896,11 +2126,15 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
           <span>
-            <strong>Garantia de Integridade e Somente Leitura:</strong> A previsão de compras e o gerador de e-mail operam exclusivamente em modo de leitura (Read-Only), sem realizar qualquer gravação, alteração de saldos ou baixa fictícia de consumo no banco de dados.
+            <strong>Garantia de Integridade e Somente Leitura:</strong> A
+            previsão de compras e o gerador de e-mail operam exclusivamente em
+            modo de leitura (Read-Only), sem realizar qualquer gravação,
+            alteração de saldos ou baixa fictícia de consumo no banco de dados.
           </span>
         </div>
         <span className="text-[11px] font-mono text-slate-400 shrink-0">
-          Horizonte: {periodDays} dias | Próxima compra: {forecast.nextPurchaseDateFormatted}
+          Horizonte: {periodDays} dias | Próxima compra:{" "}
+          {forecast.nextPurchaseDateFormatted}
         </span>
       </div>
 
@@ -1911,16 +2145,18 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-2xl ${
-                  emailReportType === 'post_purchase'
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                    : emailReportType === 'all_items'
-                    ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400'
-                    : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
-                }`}>
-                  {emailReportType === 'post_purchase' ? (
+                <div
+                  className={`p-2.5 rounded-2xl ${
+                    emailReportType === "post_purchase"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                      : emailReportType === "all_items"
+                        ? "bg-teal-500/10 text-teal-600 dark:text-teal-400"
+                        : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                  }`}
+                >
+                  {emailReportType === "post_purchase" ? (
                     <Package className="w-5 h-5" />
-                  ) : emailReportType === 'all_items' ? (
+                  ) : emailReportType === "all_items" ? (
                     <FileText className="w-5 h-5" />
                   ) : (
                     <ShoppingCart className="w-5 h-5" />
@@ -1929,28 +2165,34 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 <div>
                   <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                     <span>
-                      {emailReportType === 'post_purchase'
-                        ? 'Atualização Geral & Pós-Compras (Novas Entradas + Quadro Geral)'
-                        : emailReportType === 'all_items'
-                        ? 'Quadro Geral de Todo o Estoque (14 Produtos)'
-                        : 'E-mail Semanal de Previsão de Compras'}
+                      {emailReportType === "post_purchase"
+                        ? "Atualização Geral & Pós-Compras (Novas Entradas + Quadro Geral)"
+                        : emailReportType === "all_items"
+                          ? "Quadro Geral de Todo o Estoque (14 Produtos)"
+                          : "E-mail Semanal de Previsão de Compras"}
                     </span>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase ${
-                      emailReportType === 'post_purchase'
-                        ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300'
-                        : emailReportType === 'all_items'
-                        ? 'bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-200'
-                        : 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300'
-                    }`}>
-                      {emailReportType === 'post_purchase' ? 'Entradas + Estoque' : emailReportType === 'all_items' ? 'Balanço Geral' : 'Planejamento'}
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase ${
+                        emailReportType === "post_purchase"
+                          ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
+                          : emailReportType === "all_items"
+                            ? "bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-200"
+                            : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300"
+                      }`}
+                    >
+                      {emailReportType === "post_purchase"
+                        ? "Entradas + Estoque"
+                        : emailReportType === "all_items"
+                          ? "Balanço Geral"
+                          : "Planejamento"}
                     </span>
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {emailReportType === 'post_purchase'
-                      ? 'Confirmação das compras recebidas, novo saldo físico e quadro geral de todos os 14 itens'
-                      : emailReportType === 'all_items'
-                      ? 'Posição consolidada de todos os 14 itens com saldos conferidos, consumos, autonomias e notas da Padaria e Cozinha'
-                      : 'Formato objetivo com visibilidade de compras prioritárias, consumo semanal e estoque de segurança'}
+                    {emailReportType === "post_purchase"
+                      ? "Confirmação das compras recebidas, novo saldo físico e quadro geral de todos os 14 itens"
+                      : emailReportType === "all_items"
+                        ? "Posição consolidada de todos os 14 itens com saldos conferidos, consumos, autonomias e notas da Padaria e Cozinha"
+                        : "Formato objetivo com visibilidade de compras prioritárias, consumo semanal e estoque de segurança"}
                   </p>
                 </div>
               </div>
@@ -1969,17 +2211,19 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setEmailReportType('post_purchase');
-                    setEmailSubject('');
+                    setEmailReportType("post_purchase");
+                    setEmailSubject("");
                   }}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                    emailReportType === 'post_purchase'
-                      ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-200/80 dark:border-emerald-800'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    emailReportType === "post_purchase"
+                      ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-sm border border-emerald-200/80 dark:border-emerald-800"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   <Package className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                  <span className="truncate">1. Atualização Geral + Entradas</span>
+                  <span className="truncate">
+                    1. Atualização Geral + Entradas
+                  </span>
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold uppercase shrink-0">
                     Completo
                   </span>
@@ -1988,17 +2232,19 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setEmailReportType('all_items');
-                    setEmailSubject('');
+                    setEmailReportType("all_items");
+                    setEmailSubject("");
                   }}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                    emailReportType === 'all_items'
-                      ? 'bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-sm border border-teal-200/80 dark:border-teal-800'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    emailReportType === "all_items"
+                      ? "bg-white dark:bg-slate-900 text-teal-700 dark:text-teal-300 shadow-sm border border-teal-200/80 dark:border-teal-800"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   <FileText className="w-3.5 h-3.5 text-teal-500 shrink-0" />
-                  <span className="truncate">2. Quadro Geral (14 Produtos)</span>
+                  <span className="truncate">
+                    2. Quadro Geral (14 Produtos)
+                  </span>
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-extrabold uppercase shrink-0">
                     Balanço
                   </span>
@@ -2007,13 +2253,13 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setEmailReportType('forecast');
-                    setEmailSubject('');
+                    setEmailReportType("forecast");
+                    setEmailSubject("");
                   }}
                   className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                    emailReportType === 'forecast'
-                      ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200/80 dark:border-indigo-800'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    emailReportType === "forecast"
+                      ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-200/80 dark:border-indigo-800"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
                   <ShoppingCart className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
@@ -2041,7 +2287,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                         <span>estoquecristolandia.netlify.app</span>
                         <ExternalLink className="w-3 h-3" />
                       </a>
-                      <span className="text-slate-400 dark:text-slate-500 hidden sm:inline">•</span>
+                      <span className="text-slate-400 dark:text-slate-500 hidden sm:inline">
+                        •
+                      </span>
                       <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold hidden sm:inline">
                         Incluído com botão e link em destaque no e-mail
                       </span>
@@ -2051,7 +2299,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText('https://estoquecristolandia.netlify.app');
+                    navigator.clipboard.writeText(
+                      "https://estoquecristolandia.netlify.app",
+                    );
                     setCopiedAppLink(true);
                     setTimeout(() => setCopiedAppLink(false), 2500);
                   }}
@@ -2061,7 +2311,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                   {copiedAppLink ? (
                     <>
                       <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-emerald-600 font-extrabold">Link Copiado!</span>
+                      <span className="text-emerald-600 font-extrabold">
+                        Link Copiado!
+                      </span>
                     </>
                   ) : (
                     <>
@@ -2109,9 +2361,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                   value={customEmailNote}
                   onChange={(e) => setCustomEmailNote(e.target.value)}
                   placeholder={
-                    emailReportType === 'post_purchase'
-                      ? 'Ex: Todas as notas fiscais foram conferidas e os lotes foram armazenados no depósito central...'
-                      : 'Ex: Favor priorizar pedido do fornecedor de hortifrúti na terça de manhã...'
+                    emailReportType === "post_purchase"
+                      ? "Ex: Todas as notas fiscais foram conferidas e os lotes foram armazenados no depósito central..."
+                      : "Ex: Favor priorizar pedido do fornecedor de hortifrúti na terça de manhã..."
                   }
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
@@ -2122,11 +2374,11 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
                   <button
                     type="button"
-                    onClick={() => setEmailModalTab('preview')}
+                    onClick={() => setEmailModalTab("preview")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      emailModalTab === 'preview'
-                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      emailModalTab === "preview"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -2137,11 +2389,11 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setEmailModalTab('plain')}
+                    onClick={() => setEmailModalTab("plain")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      emailModalTab === 'plain'
-                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      emailModalTab === "plain"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     }`}
                   >
                     <FileText className="w-3.5 h-3.5" />
@@ -2149,16 +2401,18 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                   </button>
                 </div>
                 <span className="text-[11px] text-slate-400 font-mono">
-                  {emailReportType === 'post_purchase'
+                  {emailReportType === "post_purchase"
                     ? `${forecast.purchasesList.length} itens reabastecidos • Risco de Ruptura Zero`
                     : `Ciclo de ${periodDays} dias • ${forecast.purchasesList.length} itens com sugestão de compra`}
                 </span>
               </div>
 
               {/* View Content */}
-              {emailModalTab === 'preview' ? (
+              {emailModalTab === "preview" ? (
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 overflow-x-auto shadow-inner max-h-[340px] overflow-y-auto">
-                  <div dangerouslySetInnerHTML={{ __html: emailContent.html }} />
+                  <div
+                    dangerouslySetInnerHTML={{ __html: emailContent.html }}
+                  />
                 </div>
               ) : (
                 <textarea
@@ -2204,7 +2458,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                   {emailCopied ? (
                     <>
                       <Check className="w-4 h-4 text-emerald-500" />
-                      <span className="text-emerald-600 dark:text-emerald-400">Texto Copiado!</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        Texto Copiado!
+                      </span>
                     </>
                   ) : (
                     <>

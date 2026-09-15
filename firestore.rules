@@ -35,8 +35,7 @@ service cloud.firestore {
 
     match /meals/{mealId} {
       allow read: if signedIn();
-      allow create, update: if signedIn();
-      allow delete: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     match /missionaries/{missionaryId} {
