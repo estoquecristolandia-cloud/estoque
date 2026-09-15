@@ -698,6 +698,15 @@ export function executeDeterministicStockQuery(
     norm.includes('o que comprar') ||
     norm.includes('o que falta') ||
     norm.includes('precisa comprar') ||
+    norm.includes('precisamos comprar') ||
+    norm.includes('necessitamos de comprar') ||
+    norm.includes('necessitamos comprar') ||
+    norm.includes('previsao de compras') ||
+    norm.includes('previsao de compra') ||
+    norm.includes('itens que necessitamos') ||
+    norm.includes('o que necessitamos') ||
+    norm.includes('lista de compras') ||
+    norm.includes('sugestao de compras') ||
     norm.includes('repor') ||
     norm.includes('reposicao') ||
     norm.includes('falta') ||
