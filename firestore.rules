@@ -13,7 +13,6 @@ service cloud.firestore {
     }
 
     // Proteção Cirúrgica do Marco Zero (21/08/2026):
-    // Impede alteração e exclusão da sessão oficial, auditorias e movimentações de implantação vinculadas.
     function isMarcoZeroSession(sessionId) {
       return sessionId == 'marco-zero-20260821';
     }
@@ -24,7 +23,14 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if signedIn();
-      allow create, update: if signedIn() && (request.auth.uid == userId || isAdmin());
+      // Um usuário pode manter seu próprio perfil, mas jamais elevar o próprio papel.
+      allow create: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAdmin() || (
+        signedIn() && request.auth.uid == userId &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.uid == resource.data.uid
+      );
       allow delete: if isAdmin();
     }
 
@@ -37,7 +43,7 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if isAdmin();
       allow update: if isAdmin() && !isMarcoZeroRecord(movementId);
-      allow delete: if false; // Imutabilidade física: Movimentações nunca são excluídas fisicamente
+      allow delete: if false;
     }
 
     match /kits/{kitId} {
@@ -72,4 +78,3 @@ service cloud.firestore {
     }
   }
 }
-
