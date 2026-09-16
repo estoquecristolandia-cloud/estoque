@@ -71,8 +71,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
 
   // Pure Read-Only Mathematical Audit
   const mathematicalAuditReport = useMemo(() => {
-    return runStockMathematicalAudit(products, movements);
-  }, [products, movements]);
+    return runStockMathematicalAudit(products, movements, inventoryAudits);
+  }, [products, movements, inventoryAudits]);
 
   // Daily Ledger Tab filters
   const [ledgerTypeFilter, setLedgerTypeFilter] = useState<'all' | 'entrada' | 'saida'>('all');

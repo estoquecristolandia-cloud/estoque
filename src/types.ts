@@ -48,6 +48,11 @@ export interface StockMovement {
   difference?: number;
   userUid?: string;
   userEmail?: string;
+  compensatesMovementId?: string;
+  replacementForMovementId?: string;
+  movementRole?: 'original' | 'compensation' | 'replacement';
+  isCompensated?: boolean;
+  compensatedByMovementId?: string;
 }
 
 export interface KitItem { productId: string; productName: string; quantity: number; unit: Unit; }

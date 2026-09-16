@@ -667,70 +667,309 @@ export async function executeDailyKitTransaction(
   });
 }
 
-export async function updateStockMovementTransaction(
+export async function compensateStockMovementTransaction(
   movementId: string,
-  updatedData: Partial<StockMovement> & { productId: string; quantity: number; type: 'entrada' | 'saida' }
-): Promise<{ updatedProducts: Product[]; movement: StockMovement }> {
-  const qty = round2(Number(updatedData.quantity));
-  if (!Number.isFinite(qty) || qty <= 0) throw new Error('Informe uma quantidade válida maior que zero.');
+  reason?: string,
+  clientRequestId?: string
+): Promise<{ updatedProduct: Product; compensationMovement: StockMovement; originalMovement: StockMovement }> {
+  // Proteção Cirúrgica do Marco Zero (21/08/2026):
+  if (movementId.startsWith('adj-marco-zero-20260821-') || movementId.startsWith('adj-20260821-')) {
+    throw new Error('Operação bloqueada: As movimentações do Marco Zero de 21/08/2026 são imutáveis e não podem ser estornadas ou compensadas.');
+  }
+
+  const compOpId = clientRequestId
+    ? (clientRequestId.startsWith('comp-') ? clientRequestId : `comp-${clientRequestId}`)
+    : `comp-${movementId}`;
+
   return runTransaction(db, async (tx) => {
-    const oldRef = doc(db, MOVEMENTS_COLLECTION, movementId);
-    const oldSnap = await tx.get(oldRef);
-    if (!oldSnap.exists()) throw new Error('Movimentação não encontrada.');
-    const oldMovement = oldSnap.data() as StockMovement;
-    const oldProductRef = doc(db, PRODUCTS_COLLECTION, oldMovement.productId);
-    const newProductRef = doc(db, PRODUCTS_COLLECTION, updatedData.productId);
-    const oldProductSnap = await tx.get(oldProductRef);
-    if (!oldProductSnap.exists()) throw new Error('Produto original não encontrado.');
-    const oldProduct = oldProductSnap.data() as Product;
-    let newProduct = oldProduct;
-    if (updatedData.productId !== oldMovement.productId) {
-      const newSnap = await tx.get(newProductRef);
-      if (!newSnap.exists()) throw new Error('Novo produto não encontrado.');
-      newProduct = newSnap.data() as Product;
+    const origRef = doc(db, MOVEMENTS_COLLECTION, movementId);
+    const compRef = doc(db, MOVEMENTS_COLLECTION, compOpId);
+    const [origSnap, compSnap] = await Promise.all([tx.get(origRef), tx.get(compRef)]);
+
+    if (!origSnap.exists()) throw new Error('Movimentação original não encontrada.');
+    const origMovement = origSnap.data() as StockMovement;
+
+    if (compSnap.exists()) {
+      // Idempotência Atômica: compensação já processada anteriormente
+      const existingComp = compSnap.data() as StockMovement;
+      const productRef = doc(db, PRODUCTS_COLLECTION, origMovement.productId);
+      const prodSnap = await tx.get(productRef);
+      const prod = prodSnap.exists() ? (prodSnap.data() as Product) : ({ id: origMovement.productId, currentStock: 0 } as Product);
+      return { updatedProduct: prod, compensationMovement: existingComp, originalMovement: origMovement };
     }
-    const oldImpact = oldMovement.type === 'entrada' ? oldMovement.quantity : -oldMovement.quantity;
-    const newImpact = updatedData.type === 'entrada' ? qty : -qty;
-    const revertedOldStock = round2(oldProduct.currentStock - oldImpact);
-    if (revertedOldStock < 0) throw new Error('A edição não pode ser aplicada porque o saldo atual não comporta o estorno da movimentação original.');
-    const finalNewStock = round2(updatedData.productId === oldMovement.productId ? revertedOldStock + newImpact : newProduct.currentStock + newImpact);
-    if (finalNewStock < 0) throw new Error(`Estoque insuficiente em "${newProduct.name}" para esta edição (saldo final seria ${finalNewStock} ${newProduct.unit}).`);
+
+    if (origMovement.isCompensated) {
+      throw new Error(`Esta movimentação já foi compensada anteriormente pelo registro ${origMovement.compensatedByMovementId || ''}.`);
+    }
+
+    const productRef = doc(db, PRODUCTS_COLLECTION, origMovement.productId);
+    const productSnap = await tx.get(productRef);
+    if (!productSnap.exists()) throw new Error('Produto associado não encontrado no Firestore.');
+    const product = productSnap.data() as Product;
+    const currentStock = round2(Number(product.currentStock || 0));
+
+    // Cálculo exato do efeito reverso
+    let reverseImpact = 0;
+    let reverseType: 'entrada' | 'saida' | 'ajuste' = 'saida';
+    let reverseQty = origMovement.quantity;
+    let reverseDiff: number | undefined = undefined;
+
+    if (origMovement.type === 'entrada') {
+      reverseImpact = -origMovement.quantity;
+      reverseType = 'saida';
+      reverseQty = origMovement.quantity;
+    } else if (origMovement.type === 'saida') {
+      reverseImpact = origMovement.quantity;
+      reverseType = 'entrada';
+      reverseQty = origMovement.quantity;
+    } else if (origMovement.type === 'ajuste') {
+      const diff = origMovement.difference !== undefined ? origMovement.difference : 0;
+      reverseImpact = -diff;
+      reverseType = 'ajuste';
+      reverseQty = Math.abs(diff);
+      reverseDiff = -diff;
+    }
+
+    const restoredStock = round2(currentStock + reverseImpact);
+    if (restoredStock < 0) {
+      throw new Error(`Não é possível compensar esta movimentação porque o saldo de ${product.name} ficaria negativo (${restoredStock} ${product.unit}).`);
+    }
+
     const now = new Date().toISOString();
-    const opId = operationId('edit');
-    const movement: StockMovement = { ...oldMovement, ...updatedData, id: movementId, operationId: opId, productId: updatedData.productId, productName: newProduct.name, unit: newProduct.unit, quantity: qty, createdAt: oldMovement.createdAt || now };
-    if (updatedData.productId === oldMovement.productId) {
-      const updatedProduct = { ...oldProduct, currentStock: finalNewStock, lastUpdated: now, lastOperationId: opId, updatedAt: serverTimestamp() } as Product;
-      tx.set(oldProductRef, cleanForFirestore(updatedProduct), { merge: true });
-      tx.set(oldRef, cleanForFirestore(movement), { merge: true });
-      return { updatedProducts: [updatedProduct], movement };
-    }
-    const updatedOldProduct = { ...oldProduct, currentStock: revertedOldStock, lastUpdated: now, updatedAt: serverTimestamp() } as Product;
-    const updatedNewProduct = { ...newProduct, currentStock: finalNewStock, lastUpdated: now, lastOperationId: opId, updatedAt: serverTimestamp() } as Product;
-    tx.set(oldProductRef, cleanForFirestore(updatedOldProduct), { merge: true });
-    tx.set(newProductRef, cleanForFirestore(updatedNewProduct), { merge: true });
-    tx.set(oldRef, cleanForFirestore(movement), { merge: true });
-    return { updatedProducts: [updatedOldProduct, updatedNewProduct], movement };
+    const today = now.split('T')[0];
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    const compensationMovement: StockMovement = {
+      id: compOpId,
+      operationId: compOpId,
+      clientRequestId: clientRequestId || compOpId,
+      productId: product.id,
+      productName: product.name,
+      unit: product.unit,
+      type: reverseType,
+      quantity: reverseQty,
+      difference: reverseDiff,
+      previousStock: currentStock,
+      physicalStock: reverseType === 'ajuste' ? restoredStock : undefined,
+      date: today,
+      time: nowTime,
+      sector: 'Outros',
+      notes: `[Compensação/Estorno do movimento ${movementId}]: ${reason || 'Estorno autorizado'}`.trim(),
+      compensatesMovementId: movementId,
+      movementRole: 'compensation',
+      createdAt: now,
+    };
+
+    const updatedOrigMovement: StockMovement = {
+      ...origMovement,
+      isCompensated: true,
+      compensatedByMovementId: compOpId,
+    };
+
+    const updatedProduct: Product = {
+      ...product,
+      currentStock: restoredStock,
+      lastUpdated: now,
+      lastOperationId: compOpId,
+      updatedAt: serverTimestamp(),
+    };
+
+    tx.set(productRef, cleanForFirestore(updatedProduct), { merge: true });
+    tx.set(compRef, cleanForFirestore(compensationMovement));
+    tx.set(origRef, cleanForFirestore(updatedOrigMovement), { merge: true });
+
+    return { updatedProduct, compensationMovement, originalMovement: updatedOrigMovement };
   });
 }
 
-export async function deleteStockMovementTransaction(movementId: string): Promise<{ updatedProduct: Product; deletedMovementId: string }> {
+export async function replaceStockMovementTransaction(
+  movementId: string,
+  updatedData: Partial<StockMovement> & { productId: string; quantity: number; type: 'entrada' | 'saida' },
+  clientRequestId?: string
+): Promise<{ updatedProducts: Product[]; compensationMovement: StockMovement; replacementMovement: StockMovement }> {
+  // Proteção Cirúrgica do Marco Zero:
+  if (movementId.startsWith('adj-marco-zero-20260821-') || movementId.startsWith('adj-20260821-')) {
+    throw new Error('Operação bloqueada: As movimentações do Marco Zero de 21/08/2026 são imutáveis e não podem ser substituídas.');
+  }
+  const newQty = round2(Number(updatedData.quantity));
+  if (!Number.isFinite(newQty) || newQty <= 0) throw new Error('Informe uma quantidade válida maior que zero.');
+
+  const baseOpId = clientRequestId
+    ? (clientRequestId.startsWith('repl-') ? clientRequestId : `repl-${clientRequestId}`)
+    : `repl-${movementId}-${Date.now()}`;
+  const compOpId = `comp-${baseOpId}`;
+  const replOpId = `new-${baseOpId}`;
+
   return runTransaction(db, async (tx) => {
-    const movementRef = doc(db, MOVEMENTS_COLLECTION, movementId);
-    const movementSnap = await tx.get(movementRef);
-    if (!movementSnap.exists()) throw new Error('Movimentação não encontrada.');
-    const movement = movementSnap.data() as StockMovement;
-    const productRef = doc(db, PRODUCTS_COLLECTION, movement.productId);
-    const productSnap = await tx.get(productRef);
-    if (!productSnap.exists()) throw new Error('Produto associado não encontrado.');
-    const product = productSnap.data() as Product;
-    const restoredStock = round2(movement.type === 'entrada' ? product.currentStock - movement.quantity : product.currentStock + movement.quantity);
-    if (restoredStock < 0) throw new Error(`Não é possível excluir esta movimentação porque o saldo de ${product.name} ficaria negativo (${restoredStock} ${product.unit}).`);
+    const origRef = doc(db, MOVEMENTS_COLLECTION, movementId);
+    const compRef = doc(db, MOVEMENTS_COLLECTION, compOpId);
+    const replRef = doc(db, MOVEMENTS_COLLECTION, replOpId);
+
+    const [origSnap, compSnap, replSnap] = await Promise.all([
+      tx.get(origRef),
+      tx.get(compRef),
+      tx.get(replRef),
+    ]);
+
+    if (!origSnap.exists()) throw new Error('Movimentação original não encontrada.');
+    const origMovement = origSnap.data() as StockMovement;
+
+    if (compSnap.exists() && replSnap.exists()) {
+      // Idempotência Atômica: substituição já processada anteriormente
+      const existingComp = compSnap.data() as StockMovement;
+      const existingRepl = replSnap.data() as StockMovement;
+      const pRef = doc(db, PRODUCTS_COLLECTION, updatedData.productId);
+      const pSnap = await tx.get(pRef);
+      const p = pSnap.exists() ? (pSnap.data() as Product) : ({ id: updatedData.productId, currentStock: 0 } as Product);
+      return { updatedProducts: [p], compensationMovement: existingComp, replacementMovement: existingRepl };
+    }
+
+    if (origMovement.isCompensated) {
+      throw new Error(`Esta movimentação já foi compensada/substituída anteriormente pelo registro ${origMovement.compensatedByMovementId || ''}.`);
+    }
+
+    const oldProductRef = doc(db, PRODUCTS_COLLECTION, origMovement.productId);
+    const newProductRef = doc(db, PRODUCTS_COLLECTION, updatedData.productId);
+    const [oldProdSnap, newProdSnap] = await Promise.all([
+      tx.get(oldProductRef),
+      origMovement.productId === updatedData.productId ? Promise.resolve(null) : tx.get(newProductRef),
+    ]);
+
+    if (!oldProdSnap.exists()) throw new Error('Produto da movimentação original não encontrado.');
+    const oldProduct = oldProdSnap.data() as Product;
+    const newProduct = newProdSnap && newProdSnap.exists() ? (newProdSnap.data() as Product) : oldProduct;
+
+    // Efeito reverso da original
+    const oldImpact = origMovement.type === 'entrada' ? origMovement.quantity : -origMovement.quantity;
+    const revertedOldStock = round2(oldProduct.currentStock - oldImpact);
+    if (revertedOldStock < 0) {
+      throw new Error('A substituição não pode ser aplicada porque o saldo atual não comporta a compensação da movimentação original.');
+    }
+
+    // Efeito da nova movimentação
+    const newImpact = updatedData.type === 'entrada' ? newQty : -newQty;
+    const finalNewStock = round2(
+      updatedData.productId === origMovement.productId
+        ? revertedOldStock + newImpact
+        : newProduct.currentStock + newImpact
+    );
+    if (finalNewStock < 0) {
+      throw new Error(`Estoque insuficiente em "${newProduct.name}" para esta substituição (saldo final seria ${finalNewStock} ${newProduct.unit}).`);
+    }
+
     const now = new Date().toISOString();
-    const updatedProduct = { ...product, currentStock: restoredStock, lastUpdated: now, updatedAt: serverTimestamp() } as Product;
-    tx.set(productRef, cleanForFirestore(updatedProduct), { merge: true });
-    tx.delete(movementRef);
-    return { updatedProduct, deletedMovementId: movementId };
+    const today = now.split('T')[0];
+    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    // 1. Movimentação compensatória (-original)
+    const compType = origMovement.type === 'entrada' ? 'saida' : 'entrada';
+    const compensationMovement: StockMovement = {
+      id: compOpId,
+      operationId: compOpId,
+      clientRequestId: compOpId,
+      productId: oldProduct.id,
+      productName: oldProduct.name,
+      unit: oldProduct.unit,
+      type: compType,
+      quantity: origMovement.quantity,
+      date: today,
+      time: nowTime,
+      sector: 'Outros',
+      notes: `[Compensação automática para substituição pelo registro ${replOpId}]`,
+      compensatesMovementId: movementId,
+      movementRole: 'compensation',
+      createdAt: now,
+    };
+
+    // 2. Nova movimentação (+substituta)
+    const replacementMovement: StockMovement = {
+      ...origMovement,
+      ...updatedData,
+      id: replOpId,
+      operationId: replOpId,
+      clientRequestId: clientRequestId || replOpId,
+      productId: updatedData.productId,
+      productName: newProduct.name,
+      unit: newProduct.unit,
+      quantity: newQty,
+      type: updatedData.type,
+      date: updatedData.date || today,
+      time: updatedData.time || nowTime,
+      notes: `[Substituição do movimento ${movementId}]: ${updatedData.notes || ''}`.trim(),
+      replacementForMovementId: movementId,
+      movementRole: 'replacement',
+      createdAt: now,
+    };
+
+    // 3. Atualiza original para isCompensated = true
+    const updatedOrigMovement: StockMovement = {
+      ...origMovement,
+      isCompensated: true,
+      compensatedByMovementId: compOpId,
+      replacementForMovementId: replOpId,
+    };
+
+    const updatedProductsList: Product[] = [];
+    if (updatedData.productId === origMovement.productId) {
+      const updatedProd: Product = {
+        ...oldProduct,
+        currentStock: finalNewStock,
+        lastUpdated: now,
+        lastOperationId: replOpId,
+        updatedAt: serverTimestamp(),
+      };
+      tx.set(oldProductRef, cleanForFirestore(updatedProd), { merge: true });
+      updatedProductsList.push(updatedProd);
+    } else {
+      const updatedOld: Product = {
+        ...oldProduct,
+        currentStock: revertedOldStock,
+        lastUpdated: now,
+        updatedAt: serverTimestamp(),
+      };
+      const updatedNew: Product = {
+        ...newProduct,
+        currentStock: finalNewStock,
+        lastUpdated: now,
+        lastOperationId: replOpId,
+        updatedAt: serverTimestamp(),
+      };
+      tx.set(oldProductRef, cleanForFirestore(updatedOld), { merge: true });
+      tx.set(newProductRef, cleanForFirestore(updatedNew), { merge: true });
+      updatedProductsList.push(updatedOld, updatedNew);
+    }
+
+    tx.set(origRef, cleanForFirestore(updatedOrigMovement), { merge: true });
+    tx.set(compRef, cleanForFirestore(compensationMovement));
+    tx.set(replRef, cleanForFirestore(replacementMovement));
+
+    return { updatedProducts: updatedProductsList, compensationMovement, replacementMovement };
   });
+}
+
+export async function updateStockMovementTransaction(
+  movementId: string,
+  updatedData: Partial<StockMovement> & { productId: string; quantity: number; type: 'entrada' | 'saida' },
+  clientRequestId?: string
+): Promise<{ updatedProducts: Product[]; movement: StockMovement; compensationMovement?: StockMovement }> {
+  const result = await replaceStockMovementTransaction(movementId, updatedData, clientRequestId);
+  return { updatedProducts: result.updatedProducts, movement: result.replacementMovement, compensationMovement: result.compensationMovement };
+}
+
+export async function deleteStockMovementTransaction(
+  movementId: string,
+  clientRequestId?: string
+): Promise<{ updatedProduct: Product; deletedMovementId: string; compensationMovement: StockMovement }> {
+  const result = await compensateStockMovementTransaction(
+    movementId,
+    'Estorno por solicitação de exclusão do registro',
+    clientRequestId
+  );
+  return {
+    updatedProduct: result.updatedProduct,
+    deletedMovementId: movementId,
+    compensationMovement: result.compensationMovement,
+  };
 }
 
 export async function executeInventoryAdjustmentTransaction(

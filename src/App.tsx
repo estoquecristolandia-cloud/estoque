@@ -156,8 +156,13 @@ export default function App() {
     try {
       const result = await updateStockMovementTransaction(movementId, updatedData);
       setProducts((prev) => prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p));
-      setMovements((prev) => prev.map((m) => m.id === result.movement.id ? result.movement : m));
-      showToast('Movimentação atualizada com sucesso!', 'success');
+      setMovements((prev) => {
+        const updated = prev.map((m) => m.id === movementId ? { ...m, isCompensated: true } : m);
+        const toAdd = [result.movement];
+        if (result.compensationMovement) toAdd.push(result.compensationMovement);
+        return [...toAdd, ...updated];
+      });
+      showToast('Movimentação substituída com histórico preservado!', 'success');
     } catch (err: any) {
       showToast(err.message || 'Erro ao atualizar movimentação', 'warning');
       throw err;
@@ -172,8 +177,11 @@ export default function App() {
     try {
       const result = await deleteStockMovementTransaction(movementId);
       setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p));
-      setMovements((prev) => prev.filter((m) => m.id !== result.deletedMovementId));
-      showToast('Movimentação excluída e saldo de estoque estornado!', 'info');
+      setMovements((prev) => [
+        result.compensationMovement,
+        ...prev.map((m) => (m.id === movementId ? { ...m, isCompensated: true, compensatedByMovementId: result.compensationMovement.id } : m))
+      ]);
+      showToast('Movimentação compensada com sucesso e histórico preservado!', 'info');
     } catch (err: any) {
       showToast(err.message || 'Erro ao excluir movimentação', 'warning');
       throw err;

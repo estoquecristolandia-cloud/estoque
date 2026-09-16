@@ -36,7 +36,8 @@ service cloud.firestore {
     match /movements/{movementId} {
       allow read: if signedIn();
       allow create: if isAdmin();
-      allow update, delete: if isAdmin() && !isMarcoZeroRecord(movementId);
+      allow update: if isAdmin() && !isMarcoZeroRecord(movementId);
+      allow delete: if false; // Imutabilidade física: Movimentações nunca são excluídas fisicamente
     }
 
     match /kits/{kitId} {
