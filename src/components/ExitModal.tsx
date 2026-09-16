@@ -23,7 +23,8 @@ interface ExitModalProps {
     deliveredBy: string,
     date: string,
     time: string,
-    notes: string
+    notes: string,
+    clientRequestId?: string
   ) => Promise<void> | void;
   onSubmit?: (
     product: Product,
@@ -33,7 +34,8 @@ interface ExitModalProps {
     deliveredBy: string,
     date: string,
     time: string,
-    notes: string
+    notes: string,
+    clientRequestId?: string
   ) => Promise<void> | void;
 }
 
@@ -200,11 +202,14 @@ export const ExitModal: React.FC<ExitModalProps> = ({
       setIsSubmitting(true);
       setError('');
 
+      const clientRequestId = `req-exit-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
       if (onSubmitBatch) {
-        await onSubmitBatch(preparedItems, sector, retrievedBy.trim(), deliveredBy.trim(), date, time, notes.trim());
+        await onSubmitBatch(preparedItems, sector, retrievedBy.trim(), deliveredBy.trim(), date, time, notes.trim(), clientRequestId);
       } else if (onSubmit) {
         for (const item of preparedItems) {
-          await onSubmit(item.product, item.quantity, sector, retrievedBy.trim(), deliveredBy.trim(), date, time, notes.trim());
+          const itemRequestId = `${clientRequestId}-${item.product.id}`;
+          await onSubmit(item.product, item.quantity, sector, retrievedBy.trim(), deliveredBy.trim(), date, time, notes.trim(), itemRequestId);
         }
       }
 

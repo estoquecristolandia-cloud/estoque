@@ -40,6 +40,7 @@ export interface StockMovement {
   notes?: string;
   createdAt: string;
   operationId?: string;
+  clientRequestId?: string;
   responsible?: string;
   reason?: string;
   previousStock?: number;

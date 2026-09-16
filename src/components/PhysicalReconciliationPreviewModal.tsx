@@ -167,6 +167,7 @@ export const PhysicalReconciliationPreviewModal: React.FC<PhysicalReconciliation
       setExecutionProgress(`Gravando item ${index + 1} de ${needsAdjustmentItems.length}: ${item.product.name}...`);
 
       try {
+        const clientRequestId = `req-reconcile-${item.product.id}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         await executeInventoryAdjustmentTransaction(
           item.product.id,
           item.physicalStock,
@@ -176,7 +177,8 @@ export const PhysicalReconciliationPreviewModal: React.FC<PhysicalReconciliation
           nowTime,
           currentUserUid,
           currentUserEmail,
-          item.currentStock // Enforces concurrency check!
+          item.currentStock, // Enforces concurrency check!
+          clientRequestId
         );
         successCount++;
       } catch (err: any) {

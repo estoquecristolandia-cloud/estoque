@@ -211,6 +211,7 @@ export const PhysicalInventoryModal: React.FC<PhysicalInventoryModalProps> = ({
     try {
       const today = new Date().toISOString().split('T')[0];
       const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const clientRequestId = `req-adj-${selectedProductForAdj.id}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
       await executeInventoryAdjustmentTransaction(
         selectedProductForAdj.id,
@@ -221,7 +222,8 @@ export const PhysicalInventoryModal: React.FC<PhysicalInventoryModalProps> = ({
         nowTime,
         currentUserUid,
         currentUserEmail,
-        selectedProductForAdj.currentStock
+        selectedProductForAdj.currentStock,
+        clientRequestId
       );
 
       onNotify?.(`Ajuste de ${selectedProductForAdj.name} registrado com sucesso para ${physicalNum} ${selectedProductForAdj.unit}.`, 'success');

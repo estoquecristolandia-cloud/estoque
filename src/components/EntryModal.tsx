@@ -17,7 +17,8 @@ interface EntryModalProps {
     receivedBy: string,
     date: string,
     time: string,
-    notes: string
+    notes: string,
+    clientRequestId?: string
   ) => Promise<void> | void;
 }
 
@@ -74,10 +75,13 @@ export const EntryModal: React.FC<EntryModalProps> = ({
       return;
     }
 
+    if (isSubmitting) return;
+
     try {
       setIsSubmitting(true);
       setError('');
-      await onSubmit(targetProd, qtyNum, entryType, supplierOrDonor.trim(), receivedBy.trim(), date, time, notes.trim());
+      const clientRequestId = `req-entry-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      await onSubmit(targetProd, qtyNum, entryType, supplierOrDonor.trim(), receivedBy.trim(), date, time, notes.trim(), clientRequestId);
       onClose();
     } catch (err: any) {
       setError(err?.message || 'Erro ao registrar entrada no estoque.');

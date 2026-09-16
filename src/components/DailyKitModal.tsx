@@ -41,7 +41,8 @@ interface DailyKitModalProps {
     deliveredBy: string,
     date: string,
     time: string,
-    saveAsDefault?: boolean
+    saveAsDefault?: boolean,
+    clientRequestId?: string
   ) => Promise<void> | void;
 }
 
@@ -275,7 +276,8 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
 
     try {
       setIsSubmitting(true);
-      await onSubmitKit(updatedKit, retrievedBy, deliveredBy, date, time, saveAsDefault);
+      const clientRequestId = `req-kit-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      await onSubmitKit(updatedKit, retrievedBy, deliveredBy, date, time, saveAsDefault, clientRequestId);
       onClose();
     } catch (err: any) {
       alert(err?.message || 'Erro ao baixar o Kit Diário no estoque.');

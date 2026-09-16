@@ -99,13 +99,13 @@ export default function App() {
   const handleOpenTimeline = (product: Product) => setTimelineProduct(product);
   const handleOpenTimelineById = (productId: string) => { const p = products.find((prod) => prod.id === productId); if (p) setTimelineProduct(p); };
 
-  const handleAddEntry = async (product: Product, quantity: number, entryType: EntryType, supplierOrDonor: string, receivedBy: string, date: string, time: string, notes: string) => {
+  const handleAddEntry = async (product: Product, quantity: number, entryType: EntryType, supplierOrDonor: string, receivedBy: string, date: string, time: string, notes: string, clientRequestId?: string) => {
     if (currentUser?.role !== 'admin') {
       showToast('Apenas o Administrador do Estoque pode registrar entradas.', 'warning');
       return;
     }
     try {
-      const result = await executeEntryTransaction(product.id, quantity, entryType, supplierOrDonor, receivedBy, date, time, notes);
+      const result = await executeEntryTransaction(product.id, quantity, entryType, supplierOrDonor, receivedBy, date, time, notes, clientRequestId);
       setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p));
       setMovements((prev) => [result.movement, ...prev.filter((m) => m.id !== result.movement.id)]);
       showToast(`+ ${quantity} ${product.unit} de ${product.name} registrada com sucesso!`, 'success');
@@ -115,13 +115,13 @@ export default function App() {
     }
   };
 
-  const handleAddExit = async (product: Product, quantity: number, sector: Sector, retrievedBy: string, deliveredBy: string, date: string, time: string, notes: string) => {
+  const handleAddExit = async (product: Product, quantity: number, sector: Sector, retrievedBy: string, deliveredBy: string, date: string, time: string, notes: string, clientRequestId?: string) => {
     if (currentUser?.role !== 'admin') {
       showToast('Apenas o Administrador do Estoque pode registrar saídas.', 'warning');
       return;
     }
     try {
-      const result = await executeExitTransaction(product.id, quantity, sector, retrievedBy, deliveredBy, date, time, notes);
+      const result = await executeExitTransaction(product.id, quantity, sector, retrievedBy, deliveredBy, date, time, notes, clientRequestId);
       setProducts((prev) => prev.map((p) => p.id === result.updatedProduct.id ? result.updatedProduct : p));
       setMovements((prev) => [result.movement, ...prev.filter((m) => m.id !== result.movement.id)]);
       showToast(`- ${quantity} ${product.unit} de ${product.name} entregue para ${sector}!`, 'success');
@@ -131,13 +131,13 @@ export default function App() {
     }
   };
 
-  const handleAddBatchExit = async (items: Array<{ product: Product; quantity: number }>, sector: Sector, retrievedBy: string, deliveredBy: string, date: string, time: string, notes: string) => {
+  const handleAddBatchExit = async (items: Array<{ product: Product; quantity: number }>, sector: Sector, retrievedBy: string, deliveredBy: string, date: string, time: string, notes: string, clientRequestId?: string) => {
     if (currentUser?.role !== 'admin') {
       showToast('Apenas o Administrador do Estoque pode registrar saídas.', 'warning');
       return;
     }
     try {
-      const result = await executeBatchExitTransaction(items.map((item) => ({ productId: item.product.id, quantity: item.quantity })), sector, retrievedBy, deliveredBy, date, time, notes);
+      const result = await executeBatchExitTransaction(items.map((item) => ({ productId: item.product.id, quantity: item.quantity })), sector, retrievedBy, deliveredBy, date, time, notes, clientRequestId);
       setProducts((prev) => prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p));
       setMovements((prev) => [...result.movements, ...prev.filter((m) => !result.movements.some((r) => r.id === m.id))]);
       const itemsSummary = items.map((i) => `${i.quantity} ${i.product.unit} ${i.product.name}`).join(', ');
@@ -180,7 +180,7 @@ export default function App() {
     }
   };
 
-  const handleDeliverKit = async (kitToDeliver: DailyKit, retrievedBy: string, deliveredBy: string, date: string, time: string, saveAsDefault?: boolean) => {
+  const handleDeliverKit = async (kitToDeliver: DailyKit, retrievedBy: string, deliveredBy: string, date: string, time: string, saveAsDefault?: boolean, clientRequestId?: string) => {
     if (currentUser?.role !== 'admin') {
       showToast('Apenas o Administrador do Estoque pode efetivar baixa do Kit Cozinha.', 'warning');
       return;
@@ -191,7 +191,7 @@ export default function App() {
         setDailyKit(kitToDeliver);
         saveDailyKit(kitToDeliver);
       }
-      const result = await executeDailyKitTransaction(kitToDeliver, retrievedBy, deliveredBy, date, time);
+      const result = await executeDailyKitTransaction(kitToDeliver, retrievedBy, deliveredBy, date, time, clientRequestId);
       setProducts((prev) => prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p));
       setMovements((prev) => [...result.movements, ...prev.filter((m) => !result.movements.some((r) => r.id === m.id))]);
       showToast(`⚡ Kit Diário da Cozinha baixado com sucesso! (${result.deliveredCount} itens atualizados)${saveAsDefault ? ' - Novo modelo padrão salvo!' : ''}`, 'success');
