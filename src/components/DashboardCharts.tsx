@@ -147,14 +147,14 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ products, move
   return (
     <div className="space-y-6 mb-8">
       {/* Interactive Tabs for Chart Focus */}
-      <div className="flex items-center justify-between flex-wrap gap-3 bg-surface p-2 border border-border-subtle rounded-2xl shadow-xs">
+      <div className="flex items-center justify-between flex-wrap gap-3 bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm">
         <div className="flex items-center gap-1 overflow-x-auto w-full sm:w-auto scrollbar-none">
           <button
             onClick={() => setChartTab('all')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               chartTab === 'all'
-                ? 'bg-text-primary text-surface shadow-xs'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-slate-950 text-white dark:bg-blue-600 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
@@ -165,11 +165,11 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ products, move
             onClick={() => setChartTab('duration')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               chartTab === 'duration'
-                ? 'bg-text-primary text-surface shadow-xs'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-slate-950 text-white dark:bg-blue-600 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <BarChart3 className="w-3.5 h-3.5 text-status-info" />
+            <BarChart3 className="w-3.5 h-3.5 text-blue-500" />
             <span>Previsão de Término</span>
           </button>
 
@@ -177,11 +177,11 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ products, move
             onClick={() => setChartTab('sector')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               chartTab === 'sector'
-                ? 'bg-text-primary text-surface shadow-xs'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-slate-950 text-white dark:bg-blue-600 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <PieChartIcon className="w-3.5 h-3.5 text-accent" />
+            <PieChartIcon className="w-3.5 h-3.5 text-amber-500" />
             <span>Consumo por Setor</span>
           </button>
 
@@ -189,16 +189,16 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ products, move
             onClick={() => setChartTab('trend')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               chartTab === 'trend'
-                ? 'bg-text-primary text-surface shadow-xs'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-slate-950 text-white dark:bg-blue-600 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <TrendingUp className="w-3.5 h-3.5 text-status-success" />
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
             <span>Tendência Diária</span>
           </button>
         </div>
 
-        <span className="hidden lg:inline-flex text-[11px] font-bold text-text-muted px-3 py-1">
+        <span className="hidden lg:inline-flex text-[11px] font-bold text-slate-400 px-3 py-1">
           📊 Análise em Tempo Real
         </span>
       </div>
@@ -206,28 +206,28 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ products, move
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Chart 1: Previsão de Término do Estoque (Bar Chart) */}
         {(chartTab === 'all' || chartTab === 'duration') && (
-          <div className={`${chartTab === 'duration' ? 'lg:col-span-12' : 'lg:col-span-7'} bg-surface border border-border-subtle rounded-3xl p-6 shadow-xs flex flex-col justify-between`}>
+          <div className={`${chartTab === 'duration' ? 'lg:col-span-12' : 'lg:col-span-7'} bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm flex flex-col justify-between`}>
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                 <div>
-                  <h3 className="text-base font-black text-text-primary flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-status-info" />
+                  <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-blue-500" />
                     Previsão de Duração do Estoque (Dias Restantes)
                   </h3>
-                  <p className="text-xs text-text-secondary mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Tempo estimado de abastecimento baseado no consumo médio diário.
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2 text-[10px] font-bold flex-wrap">
-                  <span className="inline-flex items-center gap-1 text-status-critical">
-                    <span className="w-2.5 h-2.5 rounded-full bg-status-critical"></span> Crítico (&le;5d)
+                  <span className="inline-flex items-center gap-1 text-rose-500">
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Crítico (&le;5d)
                   </span>
-                  <span className="inline-flex items-center gap-1 text-status-warning">
-                    <span className="w-2.5 h-2.5 rounded-full bg-status-warning"></span> Alerta (&le;8d)
+                  <span className="inline-flex items-center gap-1 text-amber-500">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Alerta (&le;8d)
                   </span>
-                  <span className="inline-flex items-center gap-1 text-status-success">
-                    <span className="w-2.5 h-2.5 rounded-full bg-status-success"></span> Seguro
+                  <span className="inline-flex items-center gap-1 text-emerald-500">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Seguro
                   </span>
                 </div>
               </div>
@@ -239,21 +239,21 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ products, move
                     layout="vertical"
                     margin={{ top: 5, right: 25, left: 10, bottom: 5 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="currentColor" className="text-border-subtle" opacity={0.3} />
-                    <XAxis type="number" domain={[0, 'auto']} unit=" dias" tick={{ fill: 'currentColor', fontSize: 11 }} className="text-text-muted" />
-                    <YAxis dataKey="name" type="category" width={110} tick={{ fill: 'currentColor', fontSize: 11 }} className="text-text-secondary" />
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" opacity={0.15} />
+                    <XAxis type="number" domain={[0, 'auto']} unit=" dias" tick={{ fill: '#64748b', fontSize: 11 }} />
+                    <YAxis dataKey="name" type="category" width={110} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                     <Tooltip
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
                           return (
-                            <div className="bg-surface-raised border border-border-default p-3 rounded-2xl text-xs text-text-primary shadow-2xl space-y-1">
-                              <p className="font-extrabold text-accent">{data.fullName}</p>
-                              <p className="text-text-secondary">
-                                Estoque Atual: <strong className="text-text-primary font-bold tabular-nums">{data.stock} {data.unit}</strong>
+                            <div className="bg-slate-950 border border-slate-800 p-3 rounded-2xl text-xs text-white shadow-2xl space-y-1">
+                              <p className="font-extrabold text-amber-400">{data.fullName}</p>
+                              <p className="text-slate-300">
+                                Estoque Atual: <strong className="text-white font-bold">{data.stock} {data.unit}</strong>
                               </p>
-                              <p className="text-text-secondary">
-                                Duração Estimada: <strong className="text-status-critical font-black tabular-nums">{data.exactDays} dias</strong>
+                              <p className="text-slate-300">
+                                Duração Estimada: <strong className="text-rose-400 font-black">{data.exactDays} dias</strong>
                               </p>
                             </div>
                           );
@@ -275,18 +275,18 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ products, move
 
         {/* Chart 2: Consumo por Setor (Donut Chart Bento Card) */}
         {(chartTab === 'all' || chartTab === 'sector') && (
-          <div className={`${chartTab === 'sector' ? 'lg:col-span-12' : 'lg:col-span-5'} bg-surface-raised border border-border-subtle p-6 rounded-3xl shadow-xs flex flex-col justify-between`}>
+          <div className={`${chartTab === 'sector' ? 'lg:col-span-12' : 'lg:col-span-5'} bg-slate-950 text-white p-6 rounded-3xl border border-slate-800 shadow-md flex flex-col justify-between`}>
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-base font-black text-text-primary flex items-center gap-2">
-                  <PieChartIcon className="w-5 h-5 text-accent" />
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <PieChartIcon className="w-5 h-5 text-amber-400" />
                   Consumo por Setor
                 </h3>
-                <span className="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-full bg-accent/20 text-accent border border-accent/30">
+                <span className="text-[10px] font-extrabold tracking-wider uppercase px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                   Todos os 11 Setores
                 </span>
               </div>
-              <p className="text-xs text-text-secondary mb-4">
+              <p className="text-xs text-slate-400 mb-4">
                 Proporção do consumo de alimentos entregue a cada setor da Cristolândia.
               </p>
 
@@ -315,10 +315,10 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ products, move
                           if (active && payload && payload.length) {
                             const data = payload[0].payload;
                             return (
-                              <div className="bg-surface border border-border-default p-3 rounded-2xl text-xs text-text-primary shadow-2xl">
-                                <p className="font-extrabold text-accent">{data.name}</p>
-                                <p className="mt-1 text-text-secondary">
-                                  Volume Entregue: <strong className="text-text-primary font-bold tabular-nums">{data.value} vol.</strong> ({data.percentage}%)
+                              <div className="bg-slate-900 border border-slate-700 p-3 rounded-2xl text-xs text-white shadow-2xl">
+                                <p className="font-extrabold text-amber-400">{data.name}</p>
+                                <p className="mt-1">
+                                  Volume Entregue: <strong className="text-white font-bold">{data.value} vol.</strong> ({data.percentage}%)
                                 </p>
                               </div>
                             );
@@ -329,23 +329,23 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ products, move
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <p className="text-xs text-text-muted">Nenhum consumo registrado ainda.</p>
+                  <p className="text-xs text-slate-400">Nenhum consumo registrado ainda.</p>
                 )}
               </div>
             </div>
 
             {/* Legend pills */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 pt-3 border-t border-border-subtle text-xs max-h-56 overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-800/80 text-xs max-h-56 overflow-y-auto pr-1">
               {sectorData.map((s) => (
-                <div key={s.name} className={`flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl border ${s.value > 0 ? 'bg-surface border-border-subtle' : 'bg-surface/50 border-border-subtle/50 opacity-60'}`}>
+                <div key={s.name} className={`flex items-center justify-between gap-1.5 px-3 py-2 rounded-xl border ${s.value > 0 ? 'bg-slate-900 border-slate-800' : 'bg-slate-950/60 border-slate-900 opacity-60'}`}>
                   <div className="flex items-center gap-2 truncate">
                     <span
                       className="w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ backgroundColor: SECTOR_COLORS[s.name] || '#64748b' }}
                     />
-                    <span className="truncate font-semibold text-text-secondary">{s.name}</span>
+                    <span className="truncate font-semibold text-slate-300">{s.name}</span>
                   </div>
-                  <span className={`font-black shrink-0 tabular-nums ${s.value > 0 ? 'text-accent' : 'text-text-muted'}`}>{s.percentage}%</span>
+                  <span className={`font-black shrink-0 ${s.value > 0 ? 'text-amber-400' : 'text-slate-500'}`}>{s.percentage}%</span>
                 </div>
               ))}
             </div>
@@ -354,29 +354,29 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ products, move
 
         {/* Chart 3: Tendência Diária de Consumo dos Principais Alimentos */}
         {(chartTab === 'all' || chartTab === 'trend') && (
-          <div className="lg:col-span-12 bg-surface border border-border-subtle rounded-3xl p-6 shadow-xs">
+          <div className="lg:col-span-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <div>
-                <h3 className="text-base font-black text-text-primary flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-status-success" />
+                <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-emerald-500" />
                   Evolução do Consumo Diário (Últimos 7 Dias)
                 </h3>
-                <p className="text-xs text-text-secondary">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Volume de retiradas diárias para Arroz (kg), Feijão (kg), Óleo (L) e Manteiga (kg).
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs font-bold flex-wrap">
-                <span className="flex items-center gap-1.5 text-status-info">
-                  <span className="w-3 h-1 bg-status-info rounded"></span> Arroz
+                <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                  <span className="w-3 h-1 bg-blue-500 rounded"></span> Arroz
                 </span>
-                <span className="flex items-center gap-1.5 text-status-warning">
-                  <span className="w-3 h-1 bg-status-warning rounded"></span> Feijão
+                <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+                  <span className="w-3 h-1 bg-amber-500 rounded"></span> Feijão
                 </span>
-                <span className="flex items-center gap-1.5 text-status-success">
-                  <span className="w-3 h-1 bg-status-success rounded"></span> Óleo
+                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                  <span className="w-3 h-1 bg-emerald-500 rounded"></span> Óleo
                 </span>
-                <span className="flex items-center gap-1.5 text-accent">
-                  <span className="w-3 h-1 bg-accent rounded"></span> Manteiga
+                <span className="flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
+                  <span className="w-3 h-1 bg-purple-500 rounded"></span> Manteiga
                 </span>
               </div>
             </div>
@@ -398,17 +398,17 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ products, move
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border-subtle" opacity={0.25} />
-                  <XAxis dataKey="date" tick={{ fill: 'currentColor', fontSize: 11 }} className="text-text-muted" />
-                  <YAxis tick={{ fill: 'currentColor', fontSize: 11 }} className="text-text-muted" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.15} />
+                  <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
                   <Tooltip
                     content={({ active, payload, label }) => {
                       if (active && payload && payload.length) {
                         return (
-                          <div className="bg-surface-raised border border-border-default p-3 rounded-2xl text-xs text-text-primary shadow-2xl space-y-1">
-                            <p className="font-extrabold text-text-secondary border-b border-border-subtle pb-1">Data: {label}</p>
+                          <div className="bg-slate-950 border border-slate-800 p-3 rounded-2xl text-xs text-white shadow-2xl space-y-1">
+                            <p className="font-extrabold text-slate-300 border-b border-slate-800 pb-1">Data: {label}</p>
                             {payload.map((p) => (
-                              <p key={p.name} style={{ color: p.color }} className="font-extrabold tabular-nums">
+                              <p key={p.name} style={{ color: p.color }} className="font-extrabold">
                                 {p.name}: {p.value} unidades/kg
                               </p>
                             ))}

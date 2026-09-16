@@ -12,6 +12,16 @@ service cloud.firestore {
       );
     }
 
+    // Proteção Cirúrgica do Marco Zero (21/08/2026):
+    // Impede alteração e exclusão da sessão oficial, auditorias e movimentações de implantação vinculadas.
+    function isMarcoZeroSession(sessionId) {
+      return sessionId == 'marco-zero-20260821';
+    }
+
+    function isMarcoZeroRecord(id) {
+      return id.matches('^adj-marco-zero-20260821-.*') || id.matches('^adj-20260821-.*');
+    }
+
     match /users/{userId} {
       allow read: if signedIn();
       allow create, update: if signedIn() && (request.auth.uid == userId || isAdmin());
@@ -25,7 +35,8 @@ service cloud.firestore {
 
     match /movements/{movementId} {
       allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() && !isMarcoZeroRecord(movementId);
     }
 
     match /kits/{kitId} {
@@ -45,12 +56,14 @@ service cloud.firestore {
 
     match /inventory_audits/{auditId} {
       allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() && !isMarcoZeroRecord(auditId);
     }
 
     match /inventory_sessions/{sessionId} {
       allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() && !isMarcoZeroSession(sessionId);
     }
 
     match /{document=**} {

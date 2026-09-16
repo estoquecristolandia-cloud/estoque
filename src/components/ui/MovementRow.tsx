@@ -6,7 +6,6 @@ interface MovementRowProps {
   movement: StockMovement;
   showNotesByDefault?: boolean;
   className?: string;
-  onClick?: () => void;
   onEdit?: (movement: StockMovement) => void;
   onDelete?: (id: string) => void;
   isAdmin?: boolean;
@@ -16,7 +15,6 @@ export const MovementRow: React.FC<MovementRowProps> = ({
   movement,
   showNotesByDefault = false,
   className = '',
-  onClick,
 }) => {
   const [expanded, setExpanded] = useState(showNotesByDefault);
 
@@ -81,8 +79,7 @@ export const MovementRow: React.FC<MovementRowProps> = ({
 
   return (
     <div
-      onClick={onClick}
-      className={`group rounded-lg border border-border-subtle bg-surface hover:border-border-default transition-colors p-3.5 ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      className={`group rounded-lg border border-border-subtle bg-surface hover:border-border-default transition-colors p-3.5 ${className}`}
     >
       <div className="flex items-center justify-between gap-3">
         {/* Left Side: Type Badge & Product Title */}
@@ -122,10 +119,7 @@ export const MovementRow: React.FC<MovementRowProps> = ({
           {hasExtraNotes && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setExpanded(!expanded);
-              }}
+              onClick={() => setExpanded(!expanded)}
               aria-label="Ver observações"
               className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-surface-raised transition-colors"
             >
