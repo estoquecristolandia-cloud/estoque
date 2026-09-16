@@ -19,6 +19,7 @@ import {
 import { Product, DailyKit } from '../types';
 import { UserRole } from '../firebase';
 import { getProductStockStatus } from '../utils/storage';
+import { StatusBadge } from './ui/StatusBadge';
 
 interface HeroAlertBannerProps {
   products: Product[];
@@ -175,29 +176,29 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
   const totalVolume = products.reduce((acc, p) => acc + p.currentStock, 0);
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+    <div className="bg-surface border border-border-subtle rounded-2xl shadow-xs overflow-hidden">
       {/* 1. Header Bar: Exactly matches the Clean Date & Card Header Style from Image 1 */}
-      <div className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-900">
+      <div className="p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface">
         {/* Left Side: Icon box + Title + Subtitle */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-100 dark:border-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-status-info-bg border border-status-info-border flex items-center justify-center text-status-info shrink-0">
             <Calendar className="w-5 h-5" />
           </div>
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+              <h2 className="text-base sm:text-lg font-bold text-text-primary">
                 Visão de Autonomia de Alimentos por Item
               </h2>
-              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+              <span className="text-xs font-semibold text-text-muted tabular-nums">
                 ({products.length} itens cadastrados)
               </span>
             </div>
 
-            <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-2 mt-0.5">
-              <span>+ {totalVolume} vol. total em estoque físico</span>
+            <div className="text-xs font-semibold text-status-success flex items-center gap-2 mt-0.5">
+              <span className="tabular-nums">+ {totalVolume} vol. total em estoque físico</span>
               {alertProducts.length > 0 && (
-                <span className="text-rose-600 dark:text-rose-400 font-bold">
+                <span className="text-status-critical font-bold tabular-nums">
                   &bull; {alertProducts.length} itens próximos a acabar (≤ 5 dias)
                 </span>
               )}
@@ -211,14 +212,14 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
             <>
               <button
                 onClick={() => onOpenEntryModal()}
-                className="px-3.5 py-1.5 bg-[#009b62] hover:bg-[#008252] text-white font-bold rounded-xl text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-1.5 bg-status-success hover:bg-status-success/90 text-slate-950 font-bold rounded-xl text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
               >
                 <span>+ + Entrada no dia</span>
               </button>
 
               <button
                 onClick={() => onOpenExitModal()}
-                className="px-3.5 py-1.5 bg-[#f08519] hover:bg-[#d9730e] text-white font-bold rounded-xl text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-1.5 bg-accent hover:bg-accent/90 text-slate-950 font-bold rounded-xl text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
               >
                 <span>+ + Saída no dia</span>
               </button>
@@ -233,7 +234,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
                 handleSendWhatsAppAlert();
               }
             }}
-            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-1.5 bg-status-success hover:bg-status-success/90 text-slate-950 font-bold rounded-xl text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
             title="Enviar Alerta Oficial de Feijão / Estoque para Chefe Marcos (+55 62 99974-6823)"
           >
             <MessageCircle className="w-3.5 h-3.5" />
@@ -242,7 +243,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
 
           <button
             onClick={onOpenKitModal}
-            className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+            className="px-3 py-1.5 bg-accent hover:bg-accent/90 text-slate-950 font-bold rounded-xl text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
           >
             <Utensils className="w-3.5 h-3.5" />
             <span>{isAdmin ? 'Kit Cozinha' : 'Ver Kit Cozinha'}</span>
@@ -251,7 +252,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
           {onOpenMeals && (
             <button
               onClick={onOpenMeals}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer"
+              className="px-3 py-1.5 bg-surface-raised hover:bg-surface-raised/80 border border-border-subtle text-text-primary font-bold rounded-xl text-xs transition-all cursor-pointer"
             >
               <span>Refeições</span>
             </button>
@@ -259,7 +260,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
 
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="px-2 py-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors ml-1"
+            className="px-2 py-1 text-text-muted hover:text-text-primary text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors ml-1"
           >
             <span>{isCollapsed ? 'Expandir' : 'Recolher'}</span>
             {isCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
@@ -269,18 +270,18 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
 
       {/* Filter Tabs & Search Sub-Header (Only visible when expanded) */}
       {!isCollapsed && (
-        <div className="px-4 sm:px-5 py-2.5 bg-slate-50/70 dark:bg-slate-800/40 border-t border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="px-4 sm:px-5 py-2.5 bg-surface-raised border-t border-b border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
           {/* Tabs */}
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setViewTab('alerts')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 viewTab === 'alerts'
-                  ? 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-status-critical-bg text-status-critical border border-status-critical-border'
+                  : 'text-text-secondary hover:bg-surface'
               }`}
             >
-              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+              <AlertTriangle className="w-3.5 h-3.5 text-status-critical" />
               <span>Itens em Alerta ({alertProducts.length})</span>
             </button>
 
@@ -288,11 +289,11 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
               onClick={() => setViewTab('staples')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 viewTab === 'staples'
-                  ? 'bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 border border-slate-200 dark:border-slate-700 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-surface text-accent border border-border-default shadow-xs'
+                  : 'text-text-secondary hover:bg-surface'
               }`}
             >
-              <Package className="w-3.5 h-3.5 text-amber-500" />
+              <Package className="w-3.5 h-3.5 text-accent" />
               <span>Kit Cozinha Diário</span>
             </button>
 
@@ -300,24 +301,24 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
               onClick={() => setViewTab('all')}
               className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 viewTab === 'all'
-                  ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-surface text-text-primary border border-border-default shadow-xs'
+                  : 'text-text-secondary hover:bg-surface'
               }`}
             >
-              <Layers className="w-3.5 h-3.5 text-slate-500" />
+              <Layers className="w-3.5 h-3.5 text-text-muted" />
               <span>Todos ({products.length})</span>
             </button>
           </div>
 
           {/* Search box */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+            <Search className="w-3.5 h-3.5 text-text-muted absolute left-2.5 top-2" />
             <input
               type="text"
               placeholder="Buscar item de autonomia..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none w-full sm:w-56"
+              className="pl-8 pr-3 py-1 bg-surface text-text-primary border border-border-default rounded-lg text-xs focus:ring-1 focus:ring-status-info focus:outline-none w-full sm:w-56"
             />
           </div>
         </div>
@@ -325,9 +326,9 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
 
       {/* 2. Item Rows: Exact List Item Row Structure from Image 1 */}
       {!isCollapsed && (
-        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="divide-y divide-border-subtle">
           {displayedList.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 dark:text-slate-400 text-xs">
+            <div className="p-8 text-center text-text-muted text-xs">
               Nenhum produto encontrado neste filtro.
             </div>
           ) : (
@@ -340,7 +341,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
               return (
                 <div
                   key={product.id}
-                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-surface-raised transition-colors"
                 >
                   {/* Left Side: Rounded Icon Box + Title + Pills + Subtitle */}
                   <div className="flex items-start sm:items-center gap-3.5 min-w-0">
@@ -348,10 +349,10 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
                     <div
                       className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
                         isCritical
-                          ? 'bg-rose-50 border-rose-200 text-rose-600 dark:bg-rose-950/60 dark:border-rose-900/40'
+                          ? 'bg-status-critical-bg border-status-critical-border text-status-critical'
                           : isWarning
-                          ? 'bg-amber-50 border-amber-200 text-amber-600 dark:bg-amber-950/60 dark:border-amber-900/40'
-                          : 'bg-emerald-50 border-emerald-200 text-emerald-600 dark:bg-emerald-950/60 dark:border-emerald-900/40'
+                          ? 'bg-status-warning-bg border-status-warning-border text-status-warning'
+                          : 'bg-status-success-bg border-status-success-border text-status-success'
                       }`}
                     >
                       {isCritical || isWarning ? (
@@ -364,40 +365,35 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
                     {/* Product Name + Badges + Subtext details */}
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold text-slate-900 dark:text-white text-sm">
+                        <span className="font-bold text-text-primary text-sm">
                           {product.name}
                         </span>
 
-                        {/* Status Pill Badge */}
-                        <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-bold tracking-tight uppercase ${
-                            isCritical
-                              ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
+                        {/* Status Pill Badge using StatusBadge */}
+                        <StatusBadge
+                          status={isSporadic ? 'neutral' : isCritical ? 'critical' : isWarning ? 'warning' : 'normal'}
+                          label={
+                            isSporadic
+                              ? 'SOB DEMANDA'
+                              : isCritical
+                              ? `ALERTA CRÍTICO (${days} DIAS)`
                               : isWarning
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200'
-                              : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-900/40'
-                          }`}
-                        >
-                          {isSporadic
-                            ? 'SOB DEMANDA'
-                            : isCritical
-                            ? `ALERTA CRÍTICO (${days} DIAS)`
-                            : isWarning
-                            ? `ALERTA (${days} DIAS)`
-                            : `AUTONOMIA: ${days} DIAS`}
-                        </span>
+                              ? `ALERTA (${days} DIAS)`
+                              : `AUTONOMIA: ${days} DIAS`
+                          }
+                        />
 
                         {/* Daily Rate Pill */}
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800">
-                          <Clock className="w-3 h-3 text-slate-400" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-text-secondary bg-surface-raised border border-border-subtle tabular-nums">
+                          <Clock className="w-3 h-3 text-text-muted" />
                           {dailyRate > 0 ? `${dailyRate} ${product.unit}/dia` : 'Esporádico'}
                         </span>
                       </div>
 
                       {/* Subtitle with stock, location and notes in italics/gray */}
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        Local: <strong>{product.location}</strong> &bull; Estoque Mínimo:{' '}
-                        <strong>
+                      <p className="text-xs text-text-secondary mt-1">
+                        Local: <strong className="text-text-primary">{product.location}</strong> &bull; Estoque Mínimo:{' '}
+                        <strong className="text-text-primary tabular-nums">
                           {product.minStock} {product.unit}
                         </strong>{' '}
                         &bull; Categoria: {product.category}
@@ -409,17 +405,17 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
                   <div className="flex items-center justify-between sm:justify-end gap-5 shrink-0">
                     <div className="text-right">
                       <div
-                        className={`text-base sm:text-lg font-black tracking-tight ${
+                        className={`text-base sm:text-lg font-black tracking-tight tabular-nums ${
                           isCritical
-                            ? 'text-rose-600 dark:text-rose-400'
+                            ? 'text-status-critical'
                             : isWarning
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-emerald-600 dark:text-emerald-400'
+                            ? 'text-status-warning'
+                            : 'text-status-success'
                         }`}
                       >
                         {product.currentStock} {product.unit}
                       </div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[11px] text-text-muted">
                         Saldo Físico em Prateleira
                       </div>
                     </div>
@@ -428,7 +424,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
                     {isAdmin && (
                       <button
                         onClick={() => onOpenEntryModal(product)}
-                        className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-bold rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer border border-emerald-200 dark:border-emerald-800 shadow-2xs active:scale-95"
+                        className="px-3 py-1.5 bg-status-success-bg hover:bg-status-success-bg/80 text-status-success font-bold rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer border border-status-success-border shadow-2xs active:scale-95"
                         title="Registrar Entrada / Reposição"
                       >
                         <ArrowDownLeft className="w-3.5 h-3.5" />

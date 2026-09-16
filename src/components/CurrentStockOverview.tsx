@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { getProductStockStatus, calculateDaysRemaining, getProductAutonomyLabel } from '../utils/storage';
 import { StockNewsletterModal } from './StockNewsletterModal';
+import { StatusBadge } from './ui/StatusBadge';
 
 interface CurrentStockOverviewProps {
   products: Product[];
@@ -86,22 +87,22 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
   });
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-6">
+    <div className="bg-surface border border-border-subtle rounded-3xl p-6 shadow-xs space-y-6">
       {/* Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-border-subtle">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+            <span className="p-2 rounded-xl bg-status-info-bg text-status-info border border-status-info-border">
               <Boxes className="w-5 h-5" />
             </span>
-            <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+            <h3 className="text-lg font-black text-text-primary tracking-tight">
               Controle de Estoque Atual & Saldos Físicos
             </h3>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-status-info-bg text-status-info border border-status-info-border">
               Ao Vivo
             </span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs text-text-secondary mt-1">
             Visão detalhada dos saldos disponíveis em prateleira, localização, estoque mínimo e ações diretas de movimentação.
           </p>
         </div>
@@ -110,10 +111,10 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-2xl text-xs font-black transition-all cursor-pointer border ${
+            className={`px-3 py-1.5 rounded-2xl text-xs font-black transition-all cursor-pointer border tabular-nums ${
               statusFilter === 'all'
-                ? 'bg-slate-900 text-white dark:bg-blue-600 border-slate-900 dark:border-blue-500'
-                : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                ? 'bg-text-primary text-surface border-text-primary'
+                : 'bg-surface-raised text-text-secondary border-border-subtle hover:bg-surface'
             }`}
           >
             Total: {totalProducts}
@@ -121,26 +122,26 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
 
           <button
             onClick={() => setStatusFilter('normal')}
-            className={`px-3 py-1.5 rounded-2xl text-xs font-black transition-all cursor-pointer border flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-2xl text-xs font-black transition-all cursor-pointer border flex items-center gap-1.5 tabular-nums ${
               statusFilter === 'normal'
-                ? 'bg-emerald-600 text-white border-emerald-500'
-                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80 hover:bg-emerald-100'
+                ? 'bg-status-success text-slate-950 border-status-success'
+                : 'bg-status-success-bg text-status-success border-status-success-border hover:opacity-90'
             }`}
           >
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-status-success" />
             Normal: {normalProducts.length}
           </button>
 
           {warningProducts.length > 0 && (
             <button
               onClick={() => setStatusFilter('warning')}
-              className={`px-3 py-1.5 rounded-2xl text-xs font-black transition-all cursor-pointer border flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-2xl text-xs font-black transition-all cursor-pointer border flex items-center gap-1.5 tabular-nums ${
                 statusFilter === 'warning'
-                  ? 'bg-amber-600 text-white border-amber-500'
-                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/80 hover:bg-amber-100'
+                  ? 'bg-status-warning text-slate-950 border-status-warning'
+                  : 'bg-status-warning-bg text-status-warning border-status-warning-border hover:opacity-90'
               }`}
             >
-              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+              <AlertTriangle className="w-3.5 h-3.5 text-status-warning" />
               Alerta: {warningProducts.length}
             </button>
           )}
@@ -148,13 +149,13 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
           {criticalProducts.length > 0 && (
             <button
               onClick={() => setStatusFilter('critical')}
-              className={`px-3 py-1.5 rounded-2xl text-xs font-black transition-all cursor-pointer border flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-2xl text-xs font-black transition-all cursor-pointer border flex items-center gap-1.5 tabular-nums ${
                 statusFilter === 'critical'
-                  ? 'bg-rose-600 text-white border-rose-500'
-                  : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 animate-pulse'
+                  ? 'bg-status-critical text-white border-status-critical'
+                  : 'bg-status-critical-bg text-status-critical border-status-critical-border hover:opacity-90'
               }`}
             >
-              <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
+              <ShieldAlert className="w-3.5 h-3.5 text-status-critical" />
               Crítico/Zerado: {criticalProducts.length}
             </button>
           )}
@@ -162,10 +163,10 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
           {onOpenReconciliationPreview && (
             <button
               onClick={onOpenReconciliationPreview}
-              className="px-3 py-1.5 rounded-2xl text-xs font-black bg-amber-500/10 dark:bg-amber-950/40 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+              className="px-3 py-1.5 rounded-2xl text-xs font-black bg-surface-raised hover:bg-surface-raised/80 text-accent border border-border-default transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
               title="Abrir Prévia da Conciliação Física dos 14 produtos (Marco Zero)"
             >
-              <Scale className="w-3.5 h-3.5 text-amber-500" />
+              <Scale className="w-3.5 h-3.5 text-accent" />
               <span>Prévia Marco Zero</span>
             </button>
           )}
@@ -173,7 +174,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
           {canManageEmails && (
             <button
               onClick={() => setIsNewsletterOpen(true)}
-              className="px-3.5 py-1.5 rounded-2xl text-xs font-black bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 shadow-md shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ml-auto"
+              className="px-3.5 py-1.5 rounded-2xl text-xs font-black bg-accent hover:bg-accent/90 text-slate-950 shadow-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 ml-auto"
               title="Gerar e-mail executivo / newsletter profissional com a tabela detalhada de saldos físicos"
             >
               <Mail className="w-3.5 h-3.5" />
@@ -184,24 +185,24 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-raised p-3 rounded-2xl border border-border-subtle">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-text-muted absolute left-3 top-2.5" />
           <input
             type="text"
             placeholder="Buscar por nome, categoria ou prateleira..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-4 py-1.5 bg-surface text-text-primary text-xs border border-border-default rounded-xl focus:outline-none focus:ring-1 focus:ring-status-info"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-          <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <Filter className="w-3.5 h-3.5 text-text-muted shrink-0" />
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-1.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer w-full sm:w-auto font-medium"
+            className="px-3 py-1.5 bg-surface text-text-primary text-xs border border-border-default rounded-xl focus:outline-none focus:ring-1 focus:ring-status-info cursor-pointer w-full sm:w-auto font-medium"
           >
             <option value="all">Todas as Categorias ({products.length})</option>
             {categories.map((cat) => (
@@ -215,7 +216,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
             <button
               onClick={onOpenPhysicalInventory}
               title="Abrir Conferência de Inventário Físico, Ajustes e Marco Zero"
-              className="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ml-auto"
+              className="px-3.5 py-1.5 bg-accent hover:bg-accent/90 text-slate-950 rounded-xl text-xs font-black shadow-xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ml-auto"
             >
               <Scale className="w-3.5 h-3.5" />
               <span>⚖️ Inventário Físico / Marco Zero</span>
@@ -226,9 +227,9 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
             <button
               onClick={onForceSyncPhysicalStock}
               title="Ajusta e sincroniza imediatamente o sistema com o inventário físico real da despensa (19/08)"
-              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+              className="px-3 py-1.5 bg-status-info-bg hover:bg-status-info-bg/80 text-status-info border border-status-info-border rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
             >
-              <Sparkles className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <Sparkles className="w-3.5 h-3.5 text-status-info" />
               <span>Sincronizar Estoque Real (19/08)</span>
             </button>
           )}
@@ -236,10 +237,10 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
       </div>
 
       {/* Main Stock Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+      <div className="overflow-x-auto rounded-2xl border border-border-subtle">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-400 text-[11px] font-black uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+            <tr className="bg-surface-raised text-text-muted text-[11px] font-black uppercase tracking-wider border-b border-border-subtle">
               <th className="py-3 px-4">Produto & Categoria</th>
               <th className="py-3 px-4">Localização</th>
               <th className="py-3 px-4 text-center">Saldo Atual</th>
@@ -250,7 +251,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+          <tbody className="divide-y divide-border-subtle text-xs">
             {filteredProducts.map((p) => {
               const days = calculateDaysRemaining(p);
               const isZero = p.currentStock === 0;
@@ -263,29 +264,29 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
               return (
                 <tr
                   key={p.id}
-                  className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
-                    isZero ? 'bg-rose-50/40 dark:bg-rose-950/20' : ''
+                  className={`hover:bg-surface-raised transition-colors ${
+                    isZero ? 'bg-status-critical-bg/20' : ''
                   }`}
                 >
                   {/* Product & Category */}
                   <td className="py-3.5 px-4">
                     <button
                       onClick={() => onOpenTimeline(p.id)}
-                      className="font-extrabold text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 text-xs text-left cursor-pointer transition-colors block"
+                      className="font-extrabold text-text-primary hover:text-status-info text-xs text-left cursor-pointer transition-colors block"
                     >
                       {p.name}
                     </button>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-slate-400 font-medium">{p.category}</span>
-                      <span className="text-[10px] text-slate-300 dark:text-slate-600">&bull;</span>
-                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">{p.usageFrequency}</span>
+                      <span className="text-[10px] text-text-muted font-medium">{p.category}</span>
+                      <span className="text-[10px] text-border-default">&bull;</span>
+                      <span className="text-[10px] text-accent font-semibold">{p.usageFrequency}</span>
                     </div>
                   </td>
 
                   {/* Storage Location */}
-                  <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
+                  <td className="py-3.5 px-4 text-text-secondary">
                     <div className="flex items-center gap-1.5 text-[11px]">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <MapPin className="w-3.5 h-3.5 text-text-muted shrink-0" />
                       <span className="truncate max-w-[180px] font-medium" title={p.location}>
                         {p.location}
                       </span>
@@ -296,28 +297,28 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
                   <td className="py-3.5 px-4 text-center">
                     <div className="inline-flex flex-col items-center">
                       <span
-                        className={`text-sm font-black tracking-tight ${
+                        className={`text-sm font-black tracking-tight tabular-nums ${
                           isZero
-                            ? 'text-rose-600 dark:text-rose-400 animate-pulse'
+                            ? 'text-status-critical'
                             : p.currentStock <= p.minStock
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-slate-900 dark:text-white'
+                            ? 'text-status-warning'
+                            : 'text-text-primary'
                         }`}
                       >
                         {p.currentStock} {p.unit}
                       </span>
 
                       {/* Micro Progress Bar */}
-                      <div className="w-16 bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 mt-1 overflow-hidden">
+                      <div className="w-16 bg-surface-raised rounded-full h-1.5 mt-1 overflow-hidden border border-border-subtle">
                         <div
                           className={`h-full rounded-full transition-all duration-300 ${
                             isZero
-                              ? 'bg-rose-500'
+                              ? 'bg-status-critical'
                               : status === 'critical'
-                              ? 'bg-rose-500'
+                              ? 'bg-status-critical'
                               : status === 'warning'
-                              ? 'bg-amber-500'
-                              : 'bg-emerald-500'
+                              ? 'bg-status-warning'
+                              : 'bg-status-success'
                           }`}
                           style={{ width: `${Math.max(8, stockRatioPct)}%` }}
                         />
@@ -326,19 +327,19 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
                   </td>
 
                   {/* Minimum Stock Level */}
-                  <td className="py-3.5 px-4 text-center text-slate-500 dark:text-slate-400 font-semibold">
+                  <td className="py-3.5 px-4 text-center text-text-muted font-semibold tabular-nums">
                     {p.minStock} {p.unit}
                   </td>
 
                   {/* Estimated Autonomy */}
                   <td className="py-3.5 px-4 text-center">
                     <span
-                      className={`text-xs font-extrabold ${
+                      className={`text-xs font-extrabold tabular-nums ${
                         days <= 1.5
-                          ? 'text-rose-600 dark:text-rose-400'
+                          ? 'text-status-critical'
                           : days <= 3
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : 'text-emerald-600 dark:text-emerald-400'
+                          ? 'text-status-warning'
+                          : 'text-status-success'
                       }`}
                     >
                       {getProductAutonomyLabel(p)}
@@ -347,27 +348,10 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
 
                   {/* Status Badge */}
                   <td className="py-3.5 px-4 text-center">
-                    {isZero ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-rose-500 text-white animate-pulse shadow-sm">
-                        <AlertCircle className="w-3 h-3" />
-                        ZERADO
-                      </span>
-                    ) : status === 'critical' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800">
-                        <ShieldAlert className="w-3 h-3" />
-                        Crítico
-                      </span>
-                    ) : status === 'warning' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-                        <AlertTriangle className="w-3 h-3" />
-                        Alerta
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Normal
-                      </span>
-                    )}
+                    <StatusBadge
+                      status={isZero ? 'critical' : status}
+                      label={isZero ? 'ZERADO' : status === 'critical' ? 'Crítico' : status === 'warning' ? 'Alerta' : 'Normal'}
+                    />
                   </td>
 
                   {/* Quick Entry & Exit Actions (Admin Only) or Timeline Link */}
@@ -377,25 +361,25 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
                         <button
                           onClick={() => onOpenExit(p)}
                           title={`Dar saída no item: ${p.name}`}
-                          className="p-1.5 rounded-xl bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-800 dark:bg-slate-800 dark:hover:bg-amber-950 dark:text-slate-300 dark:hover:text-amber-300 border border-slate-200 dark:border-slate-700 transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold"
+                          className="p-1.5 rounded-xl bg-surface-raised hover:bg-status-warning-bg text-text-primary hover:text-status-warning border border-border-subtle transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold"
                         >
-                          <ArrowUpRight className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                          <ArrowUpRight className="w-3.5 h-3.5 text-status-warning" />
                           <span className="hidden sm:inline">Saída</span>
                         </button>
 
                         <button
                           onClick={() => onOpenEntry(p)}
                           title={`Lançar entrada no item: ${p.name}`}
-                          className="p-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:hover:bg-blue-900 dark:text-blue-300 border border-blue-200 dark:border-blue-800 transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold"
+                          className="p-1.5 rounded-xl bg-status-info-bg hover:bg-status-info-bg/80 text-status-info border border-status-info-border transition-all cursor-pointer flex items-center gap-1 text-[11px] font-bold"
                         >
-                          <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <ArrowDownLeft className="w-3.5 h-3.5 text-status-success" />
                           <span className="hidden sm:inline">+ Entrada</span>
                         </button>
                       </div>
                     ) : (
                       <button
                         onClick={() => onOpenTimeline(p.id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-text-muted hover:text-status-info text-xs font-semibold hover:bg-surface-raised rounded-lg transition-colors cursor-pointer"
                       >
                         <Clock className="w-3.5 h-3.5" />
                         <span>Histórico</span>
@@ -408,7 +392,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
 
             {filteredProducts.length === 0 && (
               <tr>
-                <td colSpan={7} className="py-8 text-center text-slate-400 text-xs font-medium">
+                <td colSpan={7} className="py-8 text-center text-text-muted text-xs font-medium">
                   Nenhum produto encontrado para o filtro selecionado.
                 </td>
               </tr>

@@ -1,1 +1,84 @@
 @import "tailwindcss";
+
+:root,
+[data-theme="dark"] {
+  --bg-canvas: #0b0e14;
+  --bg-surface: #12161f;
+  --bg-surface-raised: #1a202e;
+  --border-subtle: #232838;
+  --border-default: #2e3548;
+  --text-primary: #f4f6fb;
+  --text-secondary: #9aa3b8;
+  --text-muted: #64748b;
+
+  --success-text: #2fbe73;
+  --success-bg: rgba(47, 190, 115, 0.12);
+  --success-border: rgba(47, 190, 115, 0.32);
+
+  --warning-text: #e8a33d;
+  --warning-bg: rgba(232, 163, 61, 0.12);
+  --warning-border: rgba(232, 163, 61, 0.32);
+
+  --critical-text: #f0555c;
+  --critical-bg: rgba(240, 85, 92, 0.12);
+  --critical-border: rgba(240, 85, 92, 0.32);
+
+  --info-text: #4c8dff;
+  --info-bg: rgba(76, 141, 255, 0.12);
+  --info-border: rgba(76, 141, 255, 0.32);
+}
+
+[data-theme="light"] {
+  --bg-canvas: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-raised: #f1f5f9;
+  --border-subtle: #e2e8f0;
+  --border-default: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  --success-text: #059669;
+  --success-bg: rgba(5, 150, 105, 0.08);
+  --success-border: rgba(5, 150, 105, 0.25);
+
+  --warning-text: #d97706;
+  --warning-bg: rgba(217, 119, 6, 0.08);
+  --warning-border: rgba(217, 119, 6, 0.25);
+
+  --critical-text: #e11d48;
+  --critical-bg: rgba(225, 29, 72, 0.08);
+  --critical-border: rgba(225, 29, 72, 0.25);
+
+  --info-text: #2563eb;
+  --info-bg: rgba(37, 99, 235, 0.08);
+  --info-border: rgba(37, 99, 235, 0.25);
+}
+
+@theme {
+  --color-canvas: var(--bg-canvas);
+  --color-surface: var(--bg-surface);
+  --color-surface-raised: var(--bg-surface-raised);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  --color-status-success: var(--success-text);
+  --color-status-success-bg: var(--success-bg);
+  --color-status-success-border: var(--success-border);
+
+  --color-status-warning: var(--warning-text);
+  --color-status-warning-bg: var(--warning-bg);
+  --color-status-warning-border: var(--warning-border);
+
+  --color-status-critical: var(--critical-text);
+  --color-status-critical-bg: var(--critical-bg);
+  --color-status-critical-border: var(--critical-border);
+
+  --color-status-info: var(--info-text);
+  --color-status-info-bg: var(--info-bg);
+  --color-status-info-border: var(--info-border);
+}
