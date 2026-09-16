@@ -1,5 +1,6 @@
 import { AiAssistantResponse, AiQueryAuditLog, Product, StockMovement, DailyMealRecord, DailyKit, Missionary, InventoryAudit, InventorySessionSummary } from '../types';
 import { executeDeterministicStockQuery } from './aiStockEngine';
+import { auth } from '../firebase';
 
 const AUDIT_LOGS_KEY = 'cristolandia_ai_query_logs';
 
@@ -38,7 +39,6 @@ export async function askGeminiAiAssistant(
   inventorySessions: InventorySessionSummary[] = [],
   currentUser?: { displayName?: string; email?: string; role?: string } | null
 ): Promise<AiAssistantResponse> {
-  // 1. Executar cálculo determinístico e exato no código do sistema
   const deterministicResult = executeDeterministicStockQuery(
     prompt,
     products,
@@ -50,12 +50,13 @@ export async function askGeminiAiAssistant(
     inventorySessions
   );
 
-  // 2. Chamar o backend seguro com o Gemini
   try {
+    const idToken = await auth.currentUser?.getIdToken();
     const response = await fetch('/api/ai/ask', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
       },
       body: JSON.stringify({
         prompt,
@@ -68,12 +69,14 @@ export async function askGeminiAiAssistant(
         inventorySnapshot: {
           totalProducts: products.length,
           products: products.map((p) => ({
+            id: p.id,
             name: p.name,
             currentStock: p.currentStock,
             minStock: p.minStock,
             unit: p.unit,
             dailyAvgConsumption: p.dailyAvgConsumption,
             location: p.location,
+            lastUpdated: p.lastUpdated || null,
             status: p.currentStock < p.minStock ? 'critico' : p.currentStock <= p.minStock * 1.3 ? 'alerta' : 'normal',
           })),
           recentMovementsCount: movements.length,
@@ -95,7 +98,6 @@ export async function askGeminiAiAssistant(
     if (response.ok) {
       const data = await response.json();
       if (data && data.summary) {
-        // Salvar log auditável
         saveAiAuditLog({
           userEmail: currentUser?.email,
           userName: currentUser?.displayName,
@@ -121,7 +123,6 @@ export async function askGeminiAiAssistant(
     console.info('Assistente utilizando modo determinístico local (Gemini offline ou chave em configuração):', err);
   }
 
-  // Fallback seguro caso o servidor do Gemini esteja inacessível
   saveAiAuditLog({
     userEmail: currentUser?.email,
     userName: currentUser?.displayName,
