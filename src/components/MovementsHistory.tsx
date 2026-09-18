@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { StockMovement, Product, Sector, EntryType } from '../types';
 import { UserRole } from '../firebase';
 import { getTodayDateString } from '../utils/storage';
@@ -10,6 +10,8 @@ import {
   Calendar,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Layers,
   CalendarDays,
   Pencil,
@@ -88,6 +90,10 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
   const [dateFilter, setDateFilter] = useState<string>('all'); // 'all', 'today', 'yesterday', '7days', '30days', or custom
   const [customDate, setCustomDate] = useState<string>('');
 
+  // Pagination state (paginates day groups to optimize DOM rendering and performance)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(10); // 10 dias por página por padrão
+
   // Track collapsed days (by default all days open)
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
@@ -99,6 +105,11 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
   // Deleting state
   const [deletingMovement, setDeletingMovement] = useState<StockMovement | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Reset page to 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, typeFilter, sectorFilter, dateFilter, customDate, pageSize]);
 
   const toggleDayCollapse = (dateStr: string) => {
     setCollapsedDays((prev) => ({
@@ -286,6 +297,16 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
     .filter((m) => m.type === 'saida')
     .reduce((acc, m) => acc + m.quantity, 0);
 
+  // Paginação segura dos grupos de dias
+  const totalPages = pageSize > 0 ? Math.ceil(groupedMovements.length / pageSize) || 1 : 1;
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedGroupedMovements = useMemo(() => {
+    if (pageSize <= 0) return groupedMovements;
+    const start = (safePage - 1) * pageSize;
+    return groupedMovements.slice(start, start + pageSize);
+  }, [groupedMovements, safePage, pageSize]);
+
   return (
     <div className="space-y-6">
       {/* Top Filter Bar */}
@@ -432,7 +453,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
 
       {/* Grouped Day-by-Day Cards List */}
       <div className="space-y-4">
-        {groupedMovements.map((group) => {
+        {paginatedGroupedMovements.map((group) => {
           const isCollapsed = !!collapsedDays[group.date];
 
           return (
@@ -723,6 +744,64 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
             <Layers className="w-10 h-10 text-slate-300 mx-auto" />
             <h4 className="font-bold text-slate-700 dark:text-slate-300">Nenhuma movimentação para os filtros selecionados</h4>
             <p className="text-xs text-slate-400">Tente buscar por outro produto, limpar o filtro de busca ou alterar a data.</p>
+          </div>
+        )}
+
+        {/* PAGINATION CONTROLS */}
+        {groupedMovements.length > 0 && (
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+              <span>
+                Mostrando página <strong>{safePage}</strong> de <strong>{totalPages}</strong> ({groupedMovements.length} dias no total)
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Page size selector */}
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <span>Exibir:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none"
+                >
+                  <option value={5}>5 dias</option>
+                  <option value={10}>10 dias</option>
+                  <option value={20}>20 dias</option>
+                  <option value={50}>50 dias</option>
+                  <option value={0}>Todos os dias</option>
+                </select>
+              </div>
+
+              {/* Prev / Next buttons */}
+              {pageSize > 0 && totalPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={safePage <= 1}
+                    className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-700 dark:text-slate-200 cursor-pointer"
+                    title="Página Anterior"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  <span className="px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {safePage} / {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={safePage >= totalPages}
+                    className="p-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-slate-700 dark:text-slate-200 cursor-pointer"
+                    title="Próxima Página"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

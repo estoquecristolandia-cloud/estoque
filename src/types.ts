@@ -138,6 +138,9 @@ export interface AiAssistantResponse {
   suggestedFollowUps: string[];
   timestamp: string;
   fallbackMode?: boolean;
+  contextValidated?: boolean;
+  staleContext?: boolean;
+  errorDetails?: any;
 }
 
 export interface AiQueryAuditLog {

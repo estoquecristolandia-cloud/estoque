@@ -11,6 +11,11 @@ import {
   AiQueryAuditLog,
 } from '../types';
 import { askGeminiAiAssistant, getAiAuditLogs } from '../services/aiAssistantService';
+import {
+  checkVoiceSupport,
+  categorizeVoiceError,
+  transcribeAudioViaServer,
+} from '../services/voiceTranscription';
 import { toast } from '../utils/toast';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -184,8 +189,9 @@ export const AiAssistantView: React.FC<AiAssistantViewProps> = ({
       return;
     }
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      toast.error('Seu navegador não suporta gravação de áudio pelo microfone. Digite sua pergunta.');
+    const voiceSupport = checkVoiceSupport();
+    if (!voiceSupport.canRecordVoice && (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)) {
+      toast.error('Seu navegador não suporta captura de microfone. Você pode digitar sua pergunta normalmente.');
       return;
     }
 
@@ -203,7 +209,7 @@ export const AiAssistantView: React.FC<AiAssistantViewProps> = ({
 
       // Detecta formato suportado pelo navegador
       let selectedMimeType = '';
-      if (typeof MediaRecorder.isTypeSupported === 'function') {
+      if (typeof MediaRecorder !== 'undefined' && typeof MediaRecorder.isTypeSupported === 'function') {
         if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
           selectedMimeType = 'audio/webm;codecs=opus';
         } else if (MediaRecorder.isTypeSupported('audio/webm')) {
@@ -238,7 +244,7 @@ export const AiAssistantView: React.FC<AiAssistantViewProps> = ({
           audioStreamRef.current = null;
         }
 
-        if (audioBlob.size < 1200) {
+        if (audioBlob.size < 800) {
           toast.info('Áudio muito curto. Clique no microfone, fale sua pergunta e clique em Concluir.');
           setIsRecording(false);
           setIsTranscribing(false);
@@ -247,24 +253,9 @@ export const AiAssistantView: React.FC<AiAssistantViewProps> = ({
 
         setIsTranscribing(true);
         try {
-          const base64Audio = await blobToBase64(audioBlob);
-          const response = await fetch('/api/ai/transcribe-audio', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              audioBase64: base64Audio,
-              mimeType: actualMime,
-            }),
-          });
-
-          if (!response.ok) {
-            const errJson = await response.json().catch(() => ({}));
-            throw new Error(errJson.error || 'Erro na transcrição do áudio.');
-          }
-
-          const data = await response.json();
-          if (data.text && data.text.trim()) {
-            const recognized = data.text.trim();
+          const result = await transcribeAudioViaServer(audioBlob, actualMime, 25000);
+          if (result.text && !result.empty) {
+            const recognized = result.text.trim();
             setQuery((prev) => {
               const prevTrimmed = prev.trim();
               return prevTrimmed ? `${prevTrimmed} ${recognized}` : recognized;
@@ -276,7 +267,8 @@ export const AiAssistantView: React.FC<AiAssistantViewProps> = ({
           }
         } catch (err: any) {
           console.error('Falha na transcrição:', err);
-          toast.error('Não foi possível transcrever o áudio: ' + (err.message || 'Erro de conexão'));
+          const categorized = categorizeVoiceError(err);
+          toast.error(categorized.friendlyMessage);
         } finally {
           setIsTranscribing(false);
           setRecordingSeconds(0);
@@ -289,19 +281,21 @@ export const AiAssistantView: React.FC<AiAssistantViewProps> = ({
       setRecordingSeconds(0);
 
       timerIntervalRef.current = setInterval(() => {
-        setRecordingSeconds((prev) => prev + 1);
+        setRecordingSeconds((prev) => {
+          if (prev >= 60) {
+            // Auto-stop aos 60 segundos de gravação contínua
+            stopVoiceRecording();
+            return 60;
+          }
+          return prev + 1;
+        });
       }, 1000);
 
       toast.info('🎙️ Gravando áudio... Fale sua pergunta sobre o estoque.');
     } catch (err: any) {
       console.error('Erro ao acessar microfone:', err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        toast.error('Permissão de microfone negada. Clique no ícone de permissões do navegador e permita o microfone.');
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        toast.error('Nenhum microfone foi detectado no seu dispositivo.');
-      } else {
-        toast.error('Não foi possível iniciar o microfone: ' + (err.message || 'Erro no dispositivo'));
-      }
+      const categorized = categorizeVoiceError(err);
+      toast.error(categorized.friendlyMessage);
       setIsRecording(false);
     }
   };
@@ -769,6 +763,27 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                 "{currentResponse.query}"
               </h2>
             </div>
+
+            {/* STALE CONTEXT WARNING (HTTP 409) */}
+            {currentResponse.staleContext && (
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900">
+                <div className="flex items-start sm:items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+                  <div>
+                    <p className="text-sm font-bold">Atenção: Os dados do estoque no navegador estão desatualizados</p>
+                    <p className="text-xs text-amber-700 mt-0.5">O servidor identificou divergência em relação aos registros oficiais consolidados no Firestore.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="px-3.5 py-2 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs transition-colors whitespace-nowrap flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Recarregar e Atualizar</span>
+                </button>
+              </div>
+            )}
 
             {/* BENTO KPI METRICS */}
             {currentResponse.metrics && currentResponse.metrics.length > 0 && (

@@ -63,9 +63,9 @@ export function getDetailedStockNote(p: Product): string | null {
     return `Garante cerca de ${refeicoes} refeições grandes (quartas/domingos)`;
   }
   if (nameLower.includes("flocão") || nameLower.includes("flocao")) {
-    const preparos = Math.floor(p.currentStock / 20);
-    const sobra = p.currentStock % 20;
-    return `Garante ${preparos} preparos (20 pc/preparo às quartas e domingos)${sobra > 0 ? ` + ${sobra} pc de sobra` : ""}`;
+    const preparos = Math.floor(p.currentStock / 22);
+    const sobra = p.currentStock % 22;
+    return `Garante ${preparos} preparos (22 pc/preparo às quartas e domingos = 44 pc/sem)${sobra > 0 ? ` + ${sobra} pc de sobra` : ""}`;
   }
   if (nameLower.includes("suco") && p.unit === "pacote") {
     return `Total de ${p.currentStock * 250}g em pó para suco`;

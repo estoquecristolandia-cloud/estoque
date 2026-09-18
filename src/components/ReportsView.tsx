@@ -29,7 +29,9 @@ import {
   Scale,
   ShieldCheck,
   AlertTriangle,
+  Database,
 } from 'lucide-react';
+import { FirestoreLiveAuditReport } from './FirestoreLiveAuditReport';
 
 interface ReportsViewProps {
   products: Product[];
@@ -64,7 +66,7 @@ interface SectorDetails {
 }
 
 export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, inventoryAudits = [], userRole, userName, userEmail }) => {
-  const [activeReportTab, setActiveReportTab] = useState<'daily_ledger' | 'product' | 'sector' | 'person' | 'shopping' | 'audit'>('daily_ledger');
+  const [activeReportTab, setActiveReportTab] = useState<'daily_ledger' | 'product' | 'sector' | 'person' | 'shopping' | 'audit' | 'live_audit'>('daily_ledger');
   const [bufferDays, setBufferDays] = useState<number>(30); // Target buffer days e.g. 15 or 30 days
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<string>('todos');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
@@ -457,7 +459,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
       </div>
 
       {/* Report Sub-Tabs - Responsive Grid so no tab is cut off */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pb-1">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 pb-1">
         <button
           onClick={() => setActiveReportTab('daily_ledger')}
           className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center ${
@@ -531,6 +533,19 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
         >
           <Scale className="w-4 h-4 shrink-0" />
           <span>Auditoria & Saldos</span>
+        </button>
+
+        <button
+          onClick={() => setActiveReportTab('live_audit')}
+          className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center relative ${
+            activeReportTab === 'live_audit'
+              ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-2 ring-purple-400'
+              : 'bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 border-2 border-purple-400/60 dark:border-purple-500/50'
+          }`}
+        >
+          <Database className="w-4 h-4 shrink-0 text-purple-600 dark:text-purple-400" />
+          <span className="font-black">Diagnóstico Firestore</span>
+          <span className="w-2 h-2 rounded-full bg-purple-500 absolute top-1.5 right-1.5 animate-pulse" />
         </button>
       </div>
 
@@ -1239,6 +1254,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
             </div>
           </div>
         </div>
+      )}
+      {/* TAB 7: DIAGNÓSTICO REAL DO FIRESTORE (SOMENTE LEITURA) */}
+      {activeReportTab === 'live_audit' && (
+        <FirestoreLiveAuditReport
+          products={products}
+          movements={movements}
+          userEmail={userEmail}
+          userName={userName}
+          userRole={userRole}
+        />
       )}
     </div>
   );

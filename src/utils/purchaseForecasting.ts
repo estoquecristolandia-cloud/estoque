@@ -245,7 +245,7 @@ export function calculatePurchaseForecast(
 
     if (normId.includes('flocao') || normName.includes('flocão')) {
       usageRule = 'wed_sun';
-      usageRuleDescription = 'Somente Quartas e Domingos (20 pc/preparo)';
+      usageRuleDescription = 'Quarta (22 pc) e Domingo (22 pc) = 44 pc/sem';
       occurrencesInPeriod = wedSunOccurrences;
     } else if (normId.includes('macarrao') || normName.includes('macarrão')) {
       usageRule = 'wed_sun';
@@ -253,7 +253,7 @@ export function calculatePurchaseForecast(
       occurrencesInPeriod = wedSunOccurrences;
     } else if (normId.includes('milho-pipoca') || normName.includes('pipoca')) {
       usageRule = 'eventual';
-      usageRuleDescription = 'Consumo Eventual';
+      usageRuleDescription = 'Consumo Eventual (sob demanda)';
       occurrencesInPeriod = 0;
     }
 
@@ -293,18 +293,18 @@ export function calculatePurchaseForecast(
       }
     } else if (usageRule === 'wed_sun') {
       // Specific days (Wednesday & Sunday)
-      // For Flocão: strictly 20 pacotes per preparation day (used only on Wed & Sun, NOT daily)
+      // For Flocão: strictly 22 pacotes on Wednesday + 22 pacotes on Sunday = 44 pacotes/semana
       // For Macarrão: ~10 pacotes per preparation day
       const isFlocao = normId.includes('flocao') || normName.includes('flocão');
-      const consumptionPerMeal = isFlocao ? 20 : 10;
-      dailyAvgConsumption = Number(((consumptionPerMeal * 2) / 7).toFixed(2));
+      const consumptionPerMeal = isFlocao ? 22 : 10;
+      dailyAvgConsumption = isFlocao ? 6.29 : Number(((consumptionPerMeal * 2) / 7).toFixed(2));
       consumptionUnitText = isFlocao
-        ? `20 pacotes/preparo (Qua/Dom - não é diário)`
+        ? `22 pacotes/preparo (Qua: 22 / Dom: 22 = 44/sem)`
         : `${consumptionPerMeal} ${product.unit}/preparo (Qua/Dom)`;
 
       projectedConsumption = occurrencesInPeriod * consumptionPerMeal;
       
-      // Safety Stock for weekly items: 1 preparation buffer (e.g. 20 pc for Flocão = ~3.5 days safety buffer)
+      // Safety Stock for weekly items: 1 preparation buffer (22 pc for Flocão)
       safetyStock = consumptionPerMeal;
 
       // Autonomy calculation based on real preparation rate

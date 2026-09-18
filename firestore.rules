@@ -13,6 +13,7 @@ service cloud.firestore {
     }
 
     // Proteção Cirúrgica do Marco Zero (21/08/2026):
+    // Impede alteração e exclusão da sessão oficial, auditorias e movimentações de implantação vinculadas.
     function isMarcoZeroSession(sessionId) {
       return sessionId == 'marco-zero-20260821';
     }
@@ -21,16 +22,31 @@ service cloud.firestore {
       return id.matches('^adj-marco-zero-20260821-.*') || id.matches('^adj-20260821-.*');
     }
 
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    // Criação segura de perfil: impede que um usuário comum se auto-atribua 'admin'
+    function isSafeSelfUserCreate(userId) {
+      return isSelf(userId) &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.role != 'admin' &&
+        (request.auth.token.email == null || request.resource.data.email == request.auth.token.email);
+    }
+
+    // Atualização segura de perfil: impede alteração de role, email ou uid pelo próprio usuário comum
+    function isSafeSelfUserUpdate(userId) {
+      return isSelf(userId) &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.role != 'admin';
+    }
+
     match /users/{userId} {
       allow read: if signedIn();
-      // Um usuário pode manter seu próprio perfil, mas jamais elevar o próprio papel.
-      allow create: if signedIn() && (request.auth.uid == userId || isAdmin());
-      allow update: if isAdmin() || (
-        signedIn() && request.auth.uid == userId &&
-        request.resource.data.role == resource.data.role &&
-        request.resource.data.email == resource.data.email &&
-        request.resource.data.uid == resource.data.uid
-      );
+      allow create: if isAdmin() || isSafeSelfUserCreate(userId);
+      allow update: if isAdmin() || isSafeSelfUserUpdate(userId);
       allow delete: if isAdmin();
     }
 
@@ -43,7 +59,7 @@ service cloud.firestore {
       allow read: if signedIn();
       allow create: if isAdmin();
       allow update: if isAdmin() && !isMarcoZeroRecord(movementId);
-      allow delete: if false;
+      allow delete: if false; // Imutabilidade física: Movimentações nunca são excluídas fisicamente
     }
 
     match /kits/{kitId} {
@@ -78,3 +94,4 @@ service cloud.firestore {
     }
   }
 }
+

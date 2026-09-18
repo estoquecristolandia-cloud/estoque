@@ -628,32 +628,57 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     }
 
     // =========================================================================
-    // MODE 2: QUADRO GERAL DE TODO O ESTOQUE (14 PRODUTOS)
+    // MODE 2: QUADRO GERAL DE TODO O ESTOQUE (14 PRODUTOS) + PREVISÃO DE COMPRAS
     // =========================================================================
     if (emailReportType === "all_items") {
-      const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Quadro Geral de Todo o Estoque — Balanço e Autonomia Atual (${today}) — ${APP_DOMAIN}`;
+      const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Quadro Geral de Estoque & Previsão de Compras (${periodDays} Dias) — Emissão: ${today}`;
 
       let body = `A/C: Pastor Huberto, Missª. Débora (Coordenação) e Chefe Marcos\n`;
       body += `Cc: Marconi Castro (Almoxarifado / Estoque)\n`;
       body += `Data da Emissão: ${today}\n`;
-      body += `Painel Online: ${APP_URL}\n\n`;
+      body += `Horizonte de Planejamento: ${periodDays} dias (${forecast.baseDateFormatted} a ${forecast.endDateFormatted})\n`;
+      body += `Painel Online Oficial: ${APP_URL}\n\n`;
 
       body += `Prezados Pastor Huberto, Missª. Débora e Chefe Marcos,\n\n`;
       body += `Graça e paz!\n\n`;
-      body += `Apresentamos o Quadro Geral de Previsão de Estoque do Almoxarifado da Cristolândia (LEM/BA), com a posição física atualizada de todos os ${forecast.allItems.length} itens alimentícios cadastrados, as novas entradas recebidas que recomposeram os saldos, seus respectivos consumos diários, autonomias e observações operacionais.\n\n`;
+      body += `Apresentamos o Quadro Geral de Estoque e Previsão de Compras do Almoxarifado da Cristolândia (LEM/BA) projetado para os próximos ${periodDays} dias.\n`;
+      body += `Este relatório consolida a posição física oficial de todos os ${forecast.allItems.length} produtos alimentícios cadastrados, seus consumos médios, autonomias atuais e a necessidade exata de compra calculada para garantir abastecimento contínuo e 100% seguro durante o período de viagem da liderança e rotina da unidade.\n\n`;
 
       body += `📱 ACESSO AO SISTEMA ONLINE EM TEMPO REAL:\n`;
       body += `Para consultar o painel completo, movimentações e relatórios em tempo real:\n`;
       body += `👉 ${APP_URL}\n\n`;
 
-      body += `RESUMO DO QUADRO GERAL:\n`;
-      body += `• Total de Produtos Alimentícios: ${forecast.allItems.length} itens\n`;
-      body += `• Itens com Saldo Positivo e Seguro: ${forecast.allItems.length} itens (100%);\n`;
-      body += `• Itens Críticos: 0 (Zero Ruptura);\n`;
-      body += `• Autonomia Média da Unidade: 11 dias de cobertura operacional.\n\n`;
+      body += `RESUMO DO QUADRO GERAL & PLANEJAMENTO (${periodDays} DIAS):\n`;
+      body += `• Total de Produtos Alimentícios: ${forecast.allItems.length} itens cadastrados\n`;
+      body += `• Itens com Necessidade de Compra (${periodDays}d): ${forecast.purchasesList.length} itens (${forecast.totalSuggestedPurchaseUnits} un/kg no total)\n`;
+      body += `• Itens com Estoque Seguro para o Período: ${forecast.allItems.length - forecast.purchasesList.length} itens\n`;
+      body += `• Autonomia Média da Unidade: 11 dias de cobertura operacional garantida\n\n`;
 
+      // CAMADA 1: RESUMO EXECUTIVO DE COMPRAS (SE HOUVER)
+      if (forecast.purchasesList.length > 0) {
+        body += `════════════════════════════════════════════════════════════════════════\n`;
+        body += `1. LISTA PRIORITÁRIA DE COMPRAS RECOMENDADAS (${periodDays} DIAS)\n`;
+        body += `════════════════════════════════════════════════════════════════════════\n\n`;
+        forecast.purchasesList.forEach((item, idx) => {
+          body += `${idx + 1}. ${item.name} (${item.category})\n`;
+          body += `   ➔ COMPRA RECOMENDADA: +${item.suggestedPurchaseQty} ${item.unit}\n`;
+          body += `   • Estoque Atual: ${item.currentStock} ${item.unit} | Autonomia: ${item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)} dias` : "Eventual")}\n`;
+          body += `   • Consumo Estimado (${periodDays}d): ${item.projectedConsumption} ${item.unit} | Saldo Projetado: ${item.projectedBalance} ${item.unit}\n`;
+          if (item.customNote) {
+            body += `   ⚠️ Observação: ${item.customNote}\n`;
+          }
+          body += `\n`;
+        });
+      } else {
+        body += `════════════════════════════════════════════════════════════════════════\n`;
+        body += `1. NECESSIDADE DE COMPRAS (${periodDays} DIAS): ZERO ITENS\n`;
+        body += `════════════════════════════════════════════════════════════════════════\n`;
+        body += `🟢 Todos os ${forecast.allItems.length} itens do Almoxarifado possuem estoque suficiente para cobrir integralmente o horizonte de ${periodDays} dias com reserva técnica de segurança preservada.\n\n`;
+      }
+
+      // CAMADA 2: QUADRO GERAL COMPLETO COM A COLUNA DE PREVISÃO DE COMPRAS
       body += `════════════════════════════════════════════════════════════════════════\n`;
-      body += `QUADRO GERAL DE TODOS OS PRODUTOS (POSIÇÃO OFICIAL DO ALMOXARIFADO)\n`;
+      body += `2. QUADRO GERAL DE TODOS OS PRODUTOS (POSIÇÃO OFICIAL DO ALMOXARIFADO)\n`;
       body += `════════════════════════════════════════════════════════════════════════\n\n`;
 
       forecast.allItems.forEach((item, index) => {
@@ -675,12 +700,18 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               ? "🟢 Seguro"
               : "🟡 Monitorar";
 
+        const purchaseSuggestionText =
+          item.suggestedPurchaseQty > 0
+            ? `🛒 +${item.suggestedPurchaseQty} ${item.unit} (COMPRAR)`
+            : `🟢 0 ${item.unit} (Estoque Cobre o Período de ${periodDays}d)`;
+
         body += `${index + 1}. ${item.name} (${item.category})\n`;
         body += `   • Saldo Atual em Estoque: ${item.currentStock} ${item.unit}\n`;
         body += `   • Consumo Diário Médio: ${item.consumptionUnitText}\n`;
         body += `   • Autonomia Garantida: ${autonomy}\n`;
+        body += `   • Previsão de Compra (${periodDays} dias): ${purchaseSuggestionText}\n`;
         body += `   • Situação: ${statusText}\n`;
-        body += `   • Observação: ${note}\n\n`;
+        body += `   • Observação Operacional: ${note}\n\n`;
       });
 
       body += `────────────────────────────────────────────────────────────────────────\n`;
@@ -696,7 +727,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       body += `DESTAQUES OPERACIONAIS DA UNIDADE:\n`;
       body += `────────────────────────────────────────────────────────────────────────\n`;
       body += `• Padaria (Fernando Pates): Farinha de trigo e sal refinado com estoques regularizados para a produção contínua de pães.\n`;
-      body += `• Flocão de Milho: Consumo exclusivo às quartas e domingos (20 pct por preparo). Saldo de 52 pct cobre a semana com folga; programar compra na próxima terça.\n\n`;
+      body += `• Flocão de Milho: Consumo exclusivo às quartas e domingos (20 pct por preparo). Saldo cobre a rotina; planejar compra com antecedência conforme calendário.\n\n`;
 
       if (customEmailNote.trim()) {
         body += `────────────────────────────────────────────────────────────────────────\n`;
@@ -759,6 +790,15 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 ? "🟢 100% Abastecido"
                 : "🟢 Seguro";
 
+          const purchaseBadge =
+            item.suggestedPurchaseQty > 0
+              ? `<span style="display: inline-block; padding: 4px 10px; border-radius: 6px; background-color: #fef2f2; border: 1.5px solid #fca5a5; color: #b91c1c; font-weight: 900; font-size: 12px; white-space: nowrap;">
+                  🛒 +${item.suggestedPurchaseQty} ${item.unit}
+                </span>`
+              : `<span style="display: inline-block; padding: 3px 8px; border-radius: 6px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; font-weight: 800; font-size: 11px; white-space: nowrap;">
+                  0 ${item.unit} (Cobre ${periodDays}d)
+                </span>`;
+
           return `
             <tr style="border-bottom: 1px solid #e2e8f0;">
               <td style="padding: 10px 12px; font-weight: 700; color: #0f172a; vertical-align: middle;">
@@ -778,6 +818,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                   ${autonomy}
                 </span>
               </td>
+              <td style="padding: 10px 12px; text-align: center; vertical-align: middle; background-color: ${item.suggestedPurchaseQty > 0 ? "#fff1f2" : "#f8fafc"}; border-left: 1px dashed #e2e8f0; border-right: 1px dashed #e2e8f0;">
+                ${purchaseBadge}
+              </td>
               <td style="padding: 10px 12px; text-align: center; vertical-align: middle;">
                 <span style="display: inline-block; padding: 3px 8px; border-radius: 6px; background-color: ${statusBg}; border: 1px solid ${statusBorder}; color: ${statusColor}; font-weight: 800; font-size: 10.5px; white-space: nowrap;">
                   ${statusLabel}
@@ -788,8 +831,46 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
         })
         .join("");
 
+      const purchasesSummaryCardsHtml =
+        forecast.purchasesList.length > 0
+          ? `
+          <!-- CAMADA 1: Resumo Prioritário de Compras (Aprovação Rápida) -->
+          <div style="background-color: #fff1f2; border: 2px solid #fda4af; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;">
+            <div style="font-weight: 900; color: #9f1239; font-size: 13.5px; display: flex; align-items: center; gap: 6px;">
+              <span>🛒 1. RESUMO DE COMPRAS NECESSÁRIAS PARA ${periodDays} DIAS (${forecast.purchasesList.length} itens identificados)</span>
+            </div>
+            <div style="font-size: 11.5px; color: #881337; margin-top: 4px; margin-bottom: 12px;">
+              Relação prioritária calculada para assegurar abastecimento ininterrupto durante o horizonte de ${periodDays} dias (${forecast.baseDateFormatted} a ${forecast.endDateFormatted}):
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px;">
+              ${forecast.purchasesList
+                .map(
+                  (item) => `
+                <div style="background-color: #ffffff; border: 1px solid #fecdd3; border-radius: 8px; padding: 10px 12px; font-size: 11.5px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+                  <div style="font-weight: 800; color: #0f172a; font-size: 12.5px;">${item.name}</div>
+                  <div style="font-weight: 900; color: #be123c; font-size: 14px; margin-top: 3px;">➔ Comprar: +${item.suggestedPurchaseQty} ${item.unit}</div>
+                  <div style="color: #64748b; font-size: 10.5px; margin-top: 3px;">Saldo Atual: <strong>${item.currentStock} ${item.unit}</strong> | Autonomia: <strong>${item.autonomyText || (item.daysAutonomy != null ? `${Number(item.daysAutonomy).toFixed(1)}d` : "Eventual")}</strong></div>
+                </div>
+              `,
+                )
+                .join("")}
+            </div>
+          </div>
+          `
+          : `
+          <!-- Sem Necessidade de Compra -->
+          <div style="background-color: #f0fdf4; border: 2px solid #86efac; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;">
+            <div style="font-weight: 900; color: #166534; font-size: 13.5px;">
+              <span>🟢 1. ESTOQUE 100% SUFICIENTE PARA OS PRÓXIMOS ${periodDays} DIAS</span>
+            </div>
+            <div style="color: #14532d; font-size: 12px; margin-top: 4px;">
+              Todos os ${forecast.allItems.length} produtos possuem saldo físico suficiente para cobrir integralmente a rotina do período planejado sem risco de desabastecimento.
+            </div>
+          </div>
+          `;
+
       const html = `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; max-width: 780px; margin: 0 auto; line-height: 1.6; font-size: 13px;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; max-width: 820px; margin: 0 auto; line-height: 1.6; font-size: 13px;">
           <!-- Header Executivo -->
           <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 14px; margin-bottom: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -798,12 +879,12 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 <a href="${APP_URL}" target="_blank" style="color: #059669; text-decoration: none;">🌐 ${APP_DOMAIN}</a>
               </div>
             </div>
-            <div style="font-size: 19px; font-weight: 900; color: #0f172a; margin-top: 4px;">Quadro Geral de Todo o Estoque (Visão Consolidada)</div>
-            <div style="font-size: 12px; color: #475569; margin-top: 4px;">Data de Emissão: <strong>${today}</strong> &bull; Total de Itens: <strong>${forecast.allItems.length} produtos</strong></div>
+            <div style="font-size: 19px; font-weight: 900; color: #0f172a; margin-top: 4px;">Quadro Geral de Todo o Estoque & Previsão de Compras (${periodDays} Dias)</div>
+            <div style="font-size: 12px; color: #475569; margin-top: 4px;">Data de Emissão: <strong>${today}</strong> &bull; Período de Planejamento: <strong>${forecast.baseDateFormatted} a ${forecast.endDateFormatted} (${periodDays} dias)</strong></div>
           </div>
 
           <p style="margin: 0 0 10px 0;">Prezados Pastor Huberto, Missª. Débora e Chefe Marcos, graça e paz!</p>
-          <p style="margin: 0 0 16px 0;">Apresentamos a relação completa de todos os itens do Almoxarifado da Cristolândia com saldos conferidos, média de consumo diário, dias de autonomia e notas operacionais da Padaria (liderada por <strong>Fernando Pates</strong>) e Cozinha:</p>
+          <p style="margin: 0 0 16px 0;">Apresentamos o relatório consolidado com a posição física de todos os ${forecast.allItems.length} itens do Almoxarifado da Cristolândia, acompanhado da <strong>necessidade exata de compras para os próximos ${periodDays} dias</strong>, média diária de consumo, autonomia e notas técnicas operacionais:</p>
 
           <!-- Banner Oficial de Acesso ao Sistema Web -->
           <div style="background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%); border: 2px solid #86efac; border-radius: 12px; padding: 14px 18px; margin: 16px 0; text-align: center;">
@@ -816,7 +897,39 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             </div>
           </div>
 
-          <!-- Tabela do Quadro Geral -->
+          <!-- KPI Cards Rápidos -->
+          <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 130px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px;">
+              <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase;">Horizonte Planejado</div>
+              <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 2px;">${periodDays} dias</div>
+            </div>
+            <div style="flex: 1; min-width: 130px; background-color: ${forecast.purchasesList.length > 0 ? "#fff1f2" : "#f0fdf4"}; border: 1px solid ${forecast.purchasesList.length > 0 ? "#fecdd3" : "#bbf7d0"}; border-radius: 10px; padding: 10px 14px;">
+              <div style="font-size: 10px; font-weight: 700; color: ${forecast.purchasesList.length > 0 ? "#be123c" : "#166534"}; text-transform: uppercase;">Itens a Comprar</div>
+              <div style="font-size: 18px; font-weight: 900; color: ${forecast.purchasesList.length > 0 ? "#be123c" : "#166534"}; margin-top: 2px;">${forecast.purchasesList.length} produtos</div>
+            </div>
+            <div style="flex: 1; min-width: 130px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 10px 14px;">
+              <div style="font-size: 10px; font-weight: 700; color: #166534; text-transform: uppercase;">Total Cadastrado</div>
+              <div style="font-size: 18px; font-weight: 900; color: #166534; margin-top: 2px;">${forecast.allItems.length} itens</div>
+            </div>
+            <div style="flex: 1; min-width: 130px; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px 14px;">
+              <div style="font-size: 10px; font-weight: 700; color: #1d4ed8; text-transform: uppercase;">Autonomia Média</div>
+              <div style="font-size: 18px; font-weight: 900; color: #1d4ed8; margin-top: 2px;">11.0 dias</div>
+            </div>
+          </div>
+
+          <!-- CAMADA 1: Resumo Prioritário de Compras -->
+          ${purchasesSummaryCardsHtml}
+
+          <!-- CAMADA 2: Tabela do Quadro Geral com Coluna de Previsão de Compras -->
+          <div style="margin-top: 20px; margin-bottom: 8px;">
+            <div style="font-size: 14px; font-weight: 900; color: #0f172a;">
+              📋 2. Quadro Geral de Auditoria e Cobertura (Todos os ${forecast.allItems.length} Produtos)
+            </div>
+            <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">
+              Posição física completa com saldos, consumos médios, autonomias e a necessidade de compras calculada para <strong>${periodDays} dias</strong>:
+            </div>
+          </div>
+
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
             <thead>
               <tr style="background-color: #f8fafc; border-bottom: 2px solid #cbd5e1; color: #475569; font-size: 10.5px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">
@@ -824,6 +937,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 <th style="padding: 10px 12px; text-align: center;">Saldo Atual</th>
                 <th style="padding: 10px 12px; text-align: center;">Consumo Diário</th>
                 <th style="padding: 10px 12px; text-align: center;">Autonomia</th>
+                <th style="padding: 10px 12px; text-align: center; background-color: #fff1f2; color: #9f1239; border-left: 1.5px solid #fda4af; border-right: 1.5px solid #fda4af;">Previsão Compra (${periodDays}d)</th>
                 <th style="padding: 10px 12px; text-align: center;">Situação</th>
               </tr>
             </thead>
@@ -1352,10 +1466,10 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               <button
                 onClick={() => handleOpenEmailModal("all_items")}
                 className="px-3.5 py-2.5 rounded-2xl bg-teal-50 dark:bg-teal-950/60 hover:bg-teal-100 dark:hover:bg-teal-900/40 text-teal-800 dark:text-teal-200 font-bold text-xs sm:text-sm border border-teal-200 dark:border-teal-800 transition-all cursor-pointer flex items-center gap-2 active:scale-95 shadow-sm"
-                title="Gerar e-mail com a relação completa e balanço de todos os 14 itens do estoque"
+                title={`Gerar e-mail com a relação completa e previsão de compras (${periodDays} dias) de todos os ${forecast.allItems.length} itens do estoque`}
               >
                 <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                <span>📋 E-mail Quadro Geral (14 Itens)</span>
+                <span>📋 E-mail Quadro Geral ({forecast.allItems.length} Itens)</span>
               </button>
 
               {/* Gerar E-mail Semanal de Previsão Button */}
@@ -2168,8 +2282,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                       {emailReportType === "post_purchase"
                         ? "Atualização Geral & Pós-Compras (Novas Entradas + Quadro Geral)"
                         : emailReportType === "all_items"
-                          ? "Quadro Geral de Todo o Estoque (14 Produtos)"
-                          : "E-mail Semanal de Previsão de Compras"}
+                          ? `Quadro Geral & Previsão de Compras (${periodDays} Dias — ${forecast.allItems.length} Itens)`
+                          : `E-mail Semanal de Previsão de Compras (${periodDays} Dias)`}
                     </span>
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase ${
@@ -2183,7 +2297,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                       {emailReportType === "post_purchase"
                         ? "Entradas + Estoque"
                         : emailReportType === "all_items"
-                          ? "Balanço Geral"
+                          ? `Balanço + ${periodDays}d`
                           : "Planejamento"}
                     </span>
                   </h3>
@@ -2191,7 +2305,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                     {emailReportType === "post_purchase"
                       ? "Confirmação das compras recebidas, novo saldo físico e quadro geral de todos os 14 itens"
                       : emailReportType === "all_items"
-                        ? "Posição consolidada de todos os 14 itens com saldos conferidos, consumos, autonomias e notas da Padaria e Cozinha"
+                        ? `Posição oficial de todos os ${forecast.allItems.length} itens com saldos, consumo diário, autonomia, previsão de compras calculada para ${periodDays} dias e notas da Padaria e Cozinha`
                         : "Formato objetivo com visibilidade de compras prioritárias, consumo semanal e estoque de segurança"}
                   </p>
                 </div>
@@ -2243,10 +2357,10 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 >
                   <FileText className="w-3.5 h-3.5 text-teal-500 shrink-0" />
                   <span className="truncate">
-                    2. Quadro Geral (14 Produtos)
+                    2. Quadro Geral & Compras ({periodDays}d)
                   </span>
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300 font-extrabold uppercase shrink-0">
-                    Balanço
+                    {periodDays}d
                   </span>
                 </button>
 
