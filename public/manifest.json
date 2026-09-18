@@ -1,14 +1,14 @@
 {
   "id": "/",
-  "name": "Estoque Cristolândia",
-  "short_name": "Estoque",
-  "description": "Sistema de gestão de estoque, controle de refeições e previsão de abastecimento para a Cristolândia LEM.",
+  "name": "SIG-Cristolândia — Sistema Integrado de Gestão",
+  "short_name": "SIG Cristolândia",
+  "description": "SIG-Cristolândia: Sistema Integrado de Gestão da Missão Cristolândia. Controle de suprimentos, alimentação, DML e governança operacional.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#020617",
-  "theme_color": "#2563eb",
+  "theme_color": "#059669",
   "icons": [
     {
       "src": "/icon-192.png",

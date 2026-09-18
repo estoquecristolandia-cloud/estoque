@@ -3,25 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Estoque Cristolândia</title>
-    <meta name="description" content="Sistema de controle de estoque, consumo diário, rastreabilidade por setor e previsão de abastecimento para a Cristolândia." />
+    <title>SIG-Cristolândia — Sistema Integrado de Gestão</title>
+    <meta name="description" content="SIG-Cristolândia: Sistema Integrado de Gestão da Missão Cristolândia. Controle de suprimentos, alimentação, DML e governança operacional." />
 
     <!-- PWA & Manifesto -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#2563eb" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <meta name="theme-color" content="#059669" />
+    <link rel="icon" type="image/svg+xml" href="/logo-cristolandia.svg" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
 
     <!-- Suporte Apple iOS / iPadOS -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Estoque" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <meta name="apple-mobile-web-app-title" content="SIG Cristolândia" />
+    <link rel="apple-touch-icon" href="/logo-cristolandia.svg" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
 
-    <meta property="og:title" content="Estoque Cristolândia" />
-    <meta property="og:description" content="Sistema de controle de estoque, consumo diário, rastreabilidade por setor e previsão de abastecimento para a Cristolândia." />
-    <meta property="og:image" content="/icon-512.png" />
+    <meta property="og:title" content="SIG-Cristolândia — Sistema Integrado de Gestão" />
+    <meta property="og:description" content="SIG-Cristolândia: Sistema Integrado de Gestão da Missão Cristolândia. Controle de suprimentos, alimentação, DML e governança operacional." />
+    <meta property="og:image" content="/logo-cristolandia.svg" />
+    <script>
+      (function() {
+        var theme = localStorage.getItem('cristolandia_theme');
+        if (theme === 'light') {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.setAttribute('data-theme', 'light');
+        } else {
+          document.documentElement.classList.add('dark');
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

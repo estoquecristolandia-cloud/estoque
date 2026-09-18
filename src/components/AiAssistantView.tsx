@@ -476,7 +476,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Gemini 3.7 Flash • Somente Leitura • Entrada por Voz</span>
+              <span>Gemini 3.8 Flash • Somente Leitura • Entrada por Voz</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
               <Bot className="w-8 h-8 text-emerald-600" />

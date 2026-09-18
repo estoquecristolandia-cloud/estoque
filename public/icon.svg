@@ -1,61 +1,129 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a"/>
-      <stop offset="50%" stop-color="#020617"/>
-      <stop offset="100%" stop-color="#090d16"/>
+    <!-- Gradiente da Folha Principal (Direita) -->
+    <linearGradient id="mainLeafGrad" x1="15%" y1="85%" x2="90%" y2="15%">
+      <stop offset="0%" stop-color="#047857"/>
+      <stop offset="35%" stop-color="#059669"/>
+      <stop offset="70%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#34d399"/>
     </linearGradient>
-    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3b82f6"/>
-      <stop offset="100%" stop-color="#1d4ed8"/>
+
+    <!-- Gradiente da Folha Menor (Esquerda) -->
+    <linearGradient id="smallLeafGrad" x1="90%" y1="90%" x2="10%" y2="20%">
+      <stop offset="0%" stop-color="#047857"/>
+      <stop offset="40%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#10b981"/>
     </linearGradient>
-    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#60a5fa"/>
-      <stop offset="100%" stop-color="#2563eb"/>
+
+    <!-- Gradiente do Arco Orbital Inferior Verde -->
+    <linearGradient id="orbitGreenGrad" x1="10%" y1="30%" x2="85%" y2="85%">
+      <stop offset="0%" stop-color="#0d9488"/>
+      <stop offset="30%" stop-color="#059669"/>
+      <stop offset="65%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#34d399"/>
     </linearGradient>
-    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#fbbf24"/>
-      <stop offset="100%" stop-color="#d97706"/>
+
+    <!-- Gradiente do Arco Orbital Superior Prateado/Cinza -->
+    <linearGradient id="orbitSilverGrad" x1="10%" y1="10%" x2="90%" y2="90%">
+      <stop offset="0%" stop-color="#94a3b8" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#cbd5e1" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#e2e8f0" stop-opacity="0.7"/>
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="16" result="blur"/>
-      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+
+    <!-- Sombra Suave para Efeito Profissional -->
+    <filter id="softShadow" x="-10%" y="-10%" width="125%" height="125%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#047857" flood-opacity="0.18"/>
     </filter>
   </defs>
 
-  <!-- Background Base -->
-  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
-  <rect width="504" height="504" x="4" y="4" rx="108" fill="none" stroke="#1e293b" stroke-width="4"/>
+  <g id="logo-cristolandia-mark" filter="url(#softShadow)">
+    <!-- 1. Arco Orbital Prateado (Superior Direito) -->
+    <path
+      d="M 395 355
+         C 428 290, 425 190, 375 125
+         C 325 60, 235 40, 160 58
+         C 120 68, 88 88, 70 108
+         C 68 110, 72 114, 75 112
+         C 105 88, 160 66, 230 64
+         C 310 62, 385 110, 408 185
+         C 422 232, 412 298, 388 350
+         C 386 354, 393 358, 395 355 Z"
+      fill="url(#orbitSilverGrad)"
+    />
 
-  <!-- Subtle Ambient Glow -->
-  <circle cx="256" cy="240" r="140" fill="#2563eb" opacity="0.15" filter="url(#glow)"/>
+    <!-- 2. Haste / Broto Curvado Superior -->
+    <path
+      d="M 195 240
+         C 178 190, 150 145, 115 115
+         C 112 112, 116 108, 120 110
+         C 162 138, 195 185, 208 242
+         Z"
+      fill="#059669"
+    />
 
-  <!-- Stylized Supply Box / Almoxarifado Icon -->
-  <g transform="translate(0, -10)">
-    <!-- Box Base -->
-    <path d="M120 220 L256 150 L392 220 L392 360 L256 430 L120 360 Z" fill="#0f172a" stroke="url(#primaryGrad)" stroke-width="12" stroke-linejoin="round"/>
-    
-    <!-- Top Isometric Lid -->
-    <path d="M120 220 L256 150 L392 220 L256 290 Z" fill="url(#accentGrad)" opacity="0.9"/>
-    
-    <!-- Left Flap / Shade -->
-    <path d="M120 220 L256 290 L256 430 L120 360 Z" fill="#1e3a8a" opacity="0.6"/>
-    
-    <!-- Right Flap / Highlight -->
-    <path d="M256 290 L392 220 L392 360 L256 430 Z" fill="#1d4ed8" opacity="0.8"/>
-    
-    <!-- Front Divider Seam -->
-    <line x1="256" y1="290" x2="256" y2="430" stroke="#60a5fa" stroke-width="4" stroke-linecap="round"/>
+    <!-- 3. Folha Menor (Esquerda) -->
+    <path
+      d="M 182 328
+         C 145 285, 95 230, 48 186
+         C 44 182, 48 178, 52 180
+         C 95 198, 138 238, 165 282
+         C 182 310, 185 325, 182 328 Z"
+      fill="url(#smallLeafGrad)"
+    />
+    <path
+      d="M 182 328
+         C 152 320, 105 282, 65 242
+         C 52 228, 48 200, 48 186
+         C 55 210, 85 248, 125 285
+         C 152 310, 172 324, 182 328 Z"
+      fill="#047857"
+      opacity="0.35"
+    />
 
-    <!-- Central Emblem: Bread/Cross/Heart of Cristolândia -->
-    <g transform="translate(256, 335) scale(0.95)">
-      <!-- Shield circle -->
-      <circle cx="0" cy="0" r="42" fill="#020617" stroke="#38bdf8" stroke-width="6"/>
-      <!-- Humanitarian Cross -->
-      <path d="M -8 -22 H 8 V -8 H 22 V 8 H 8 V 22 H -8 V 8 H -22 V -8 H -8 Z" fill="url(#goldGrad)"/>
-    </g>
+    <!-- 4. Folha Principal Maior (Direita) -->
+    <path
+      d="M 188 358
+         C 215 270, 275 160, 470 140
+         C 475 140, 473 146, 468 149
+         C 385 220, 310 340, 198 368
+         C 192 370, 186 364, 188 358 Z"
+      fill="url(#mainLeafGrad)"
+    />
+
+    <!-- Nervura Central da Folha Maior (Branco Translúcido / Traço Nítido) -->
+    <path
+      d="M 194 360
+         C 245 275, 320 205, 465 142"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="5.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      opacity="0.95"
+    />
+
+    <!-- Sombra / Profundidade da metade inferior da Folha Maior -->
+    <path
+      d="M 194 360
+         C 245 275, 320 205, 465 142
+         C 385 215, 310 335, 198 368
+         Z"
+      fill="#047857"
+      opacity="0.18"
+    />
+
+    <!-- 5. Arco Orbital Verde (Inferior / Envolvente) -->
+    <path
+      d="M 72 195
+         C 75 190, 82 192, 84 198
+         C 98 255, 88 335, 145 392
+         C 198 445, 285 455, 355 422
+         C 388 406, 408 382, 420 358
+         C 422 354, 428 356, 426 360
+         C 408 400, 370 435, 320 452
+         C 240 478, 145 452, 92 390
+         C 52 342, 60 255, 72 195 Z"
+      fill="url(#orbitGreenGrad)"
+    />
   </g>
-
-  <!-- Title Monogram / Label Detail -->
-  <text x="256" y="474" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" fill="#94a3b8" letter-spacing="4">CRISTOLÂNDIA</text>
 </svg>

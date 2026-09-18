@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye, Bot, Sparkles } from 'lucide-react';
 import { AppUserProfile, ROLE_LABELS } from '../firebase';
+import { CristolandiaLogo } from './CristolandiaLogo';
 
 interface HeaderProps {
   activeTab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports' | 'ai_assistant';
@@ -94,17 +95,20 @@ export const Header: React.FC<HeaderProps> = ({
       {/* MOBILE TOP BAR */}
       <div className="md:hidden bg-slate-950 text-white p-4 sticky top-0 z-40 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-md shadow-blue-600/30">
-            <Package className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 p-1 flex items-center justify-center shadow-md">
+            <CristolandiaLogo size={32} variant="mark" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-black tracking-widest uppercase text-amber-400 bg-amber-500/20 px-1.5 py-0.2 rounded border border-amber-500/30">
+              <span className="text-[9px] font-black tracking-widest uppercase text-emerald-400 bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-800/80">
+                SIG
+              </span>
+              <span className="text-[9px] font-bold tracking-wider uppercase text-slate-400">
                 JMN • CBB
               </span>
             </div>
             <h1 className="text-sm font-black tracking-tight uppercase leading-tight text-white">
-              Estoque <span className="text-amber-400">Cristolândia</span>
+              SIG-<span className="text-emerald-400">Cristolândia</span>
             </h1>
           </div>
         </div>
@@ -267,15 +271,18 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div>
-            <div className="flex items-center gap-2.5 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
-                <Package className="w-5 h-5 text-white" />
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-11 h-11 rounded-2xl bg-slate-900 border border-slate-800 p-1.5 flex items-center justify-center shadow-md shadow-emerald-950/40 shrink-0">
+                <CristolandiaLogo size={36} variant="mark" />
               </div>
-              <div>
-                <h1 className="text-white text-base font-black tracking-tight uppercase leading-tight">
-                  Estoque <span className="text-amber-400">Cristolândia</span>
+              <div className="min-w-0">
+                <h1 className="text-white text-base font-black tracking-tight uppercase leading-tight truncate">
+                  SIG-<span className="text-emerald-400">Cristolândia</span>
                 </h1>
-                <p className="text-[10px] italic text-slate-400 leading-tight mt-0.5">
+                <p className="text-[10px] font-semibold text-slate-400 leading-tight">
+                  Sistema Integrado de Gestão
+                </p>
+                <p className="text-[9px] italic text-slate-500 leading-tight mt-0.5">
                   "Transformando Vidas pelo Amor de Cristo"
                 </p>
               </div>

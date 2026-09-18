@@ -19,9 +19,13 @@ export function useAppNavigation() {
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.body.classList.add('dark');
       localStorage.setItem('cristolandia_theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
+      document.documentElement.setAttribute('data-theme', 'light');
+      document.body.classList.remove('dark');
       localStorage.setItem('cristolandia_theme', 'light');
     }
   }, [isDarkMode]);

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root,
 [data-theme="dark"] {
   --bg-canvas: #0b0e14;
