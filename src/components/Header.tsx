@@ -372,10 +372,10 @@ export const Header: React.FC<HeaderProps> = ({
       )}
 
       {/* DESKTOP BENTO SIDEBAR */}
-      <aside className="hidden md:flex w-64 bg-slate-950 h-screen sticky top-0 p-5 flex-col border-r border-slate-800 shrink-0">
-        <div className="mb-5 space-y-3">
+      <aside className="hidden md:flex w-64 bg-slate-950 h-screen sticky top-0 p-3.5 flex-col border-r border-slate-800 shrink-0 overflow-y-auto overflow-x-hidden select-none scrollbar-thin scrollbar-thumb-slate-800 hover:scrollbar-thumb-slate-700">
+        <div className="mb-3 space-y-2.5 shrink-0">
           {/* Institutional Badge */}
-          <div className="bg-gradient-to-r from-blue-950 to-slate-900 p-3 rounded-2xl border border-blue-800/40 space-y-1.5 shadow-inner">
+          <div className="bg-gradient-to-r from-blue-950 to-slate-900 p-2.5 rounded-2xl border border-blue-800/40 space-y-1 shadow-inner">
             <div className="flex items-center justify-between">
               <span className="text-[9px] font-black uppercase tracking-widest text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">
                 JMN • CBB
@@ -386,45 +386,63 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </div>
 
-            <p className="text-[10px] font-semibold text-slate-300 uppercase tracking-wider">
+            <p className="text-[9px] font-semibold text-slate-300 uppercase tracking-wider truncate">
               Junta de Missões Nacionais
             </p>
           </div>
 
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-11 h-11 rounded-2xl bg-slate-900 border border-slate-800 p-1.5 flex items-center justify-center shadow-md shadow-emerald-950/40 shrink-0">
-                <CristolandiaLogo size={36} variant="mark" />
+            <div className="flex items-center gap-2.5 mb-0.5">
+              <div className="w-10 h-10 rounded-2xl bg-slate-900 border border-slate-800 p-1 flex items-center justify-center shadow-md shadow-emerald-950/40 shrink-0">
+                <CristolandiaLogo size={32} variant="mark" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-white text-base font-black tracking-tight uppercase leading-tight truncate">
+                <h1 className="text-white text-sm font-black tracking-tight uppercase leading-tight truncate">
                   SIG-<span className="text-emerald-400">Cristolândia</span>
                 </h1>
-                <p className="text-[10px] font-semibold text-slate-400 leading-tight">
+                <p className="text-[9px] font-semibold text-slate-400 leading-tight truncate">
                   Sistema Integrado de Gestão
                 </p>
-                <p className="text-[9px] italic text-slate-500 leading-tight mt-0.5">
+                <p className="text-[8.5px] italic text-slate-500 leading-tight mt-0.5 truncate">
                   "Transformando Vidas pelo Amor de Cristo"
                 </p>
               </div>
             </div>
           </div>
 
-          {/* User Role Card */}
-          <button
-            onClick={onOpenAuthModal}
-            className="w-full p-2.5 rounded-2xl bg-slate-900/90 hover:bg-slate-900 border border-slate-800 flex items-center justify-between text-left transition-all cursor-pointer group shadow-sm"
-          >
-            <div className="min-w-0 pr-1">
-              <p className="text-xs font-bold text-white truncate">
-                {currentUser?.displayName || 'Equipe Cristolândia'}
-              </p>
-              <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase border mt-0.5 ${roleMeta.color}`}>
-                {roleMeta.badge}
-              </span>
-            </div>
-            <User className="w-4 h-4 text-slate-400 group-hover:text-amber-400 transition-colors shrink-0" />
-          </button>
+          {/* User Role Card & Quick Theme Toggle */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={onOpenAuthModal}
+              className="flex-1 p-2 rounded-xl bg-slate-900/90 hover:bg-slate-900 border border-slate-800 flex items-center justify-between text-left transition-all cursor-pointer group shadow-sm min-w-0"
+              title="Gerenciar perfil e permissões de usuário"
+            >
+              <div className="min-w-0 pr-1">
+                <p className="text-xs font-bold text-white truncate">
+                  {currentUser?.displayName || 'Equipe Cristolândia'}
+                </p>
+                <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase border mt-0.5 ${roleMeta.color}`}>
+                  {roleMeta.badge}
+                </span>
+              </div>
+              <User className="w-3.5 h-3.5 text-slate-400 group-hover:text-amber-400 transition-colors shrink-0" />
+            </button>
+
+            {onToggleDarkMode && (
+              <button
+                onClick={onToggleDarkMode}
+                className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white transition-all cursor-pointer shrink-0 shadow-sm flex items-center justify-center group"
+                title={isDarkMode ? 'Alternar para Modo Claro (☀️)' : 'Alternar para Modo Escuro (🌙)'}
+                aria-label="Alternar tema claro ou escuro"
+              >
+                {isDarkMode ? (
+                  <Sun className="w-4 h-4 text-amber-400 group-hover:rotate-45 transition-transform" />
+                ) : (
+                  <Moon className="w-4 h-4 text-indigo-400 group-hover:-rotate-12 transition-transform" />
+                )}
+              </button>
+            )}
+          </div>
 
           {/* DEPARTAMENTOS DO SIG-CRISTOLÂNDIA */}
           <div className="bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 shadow-inner space-y-1">
@@ -437,7 +455,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
               <button
                 onClick={() => onSelectDepartment?.('alimentacao')}
-                className={`py-2 px-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`py-1.5 px-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   !isDml
                     ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -449,7 +467,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
               <button
                 onClick={() => onSelectDepartment?.('dml')}
-                className={`py-2 px-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`py-1.5 px-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   isDml
                     ? 'bg-cyan-600 text-white shadow-md shadow-cyan-950/40'
                     : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
@@ -464,7 +482,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-2">
+        <nav className="flex-1 space-y-1 shrink-0">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -472,28 +490,28 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center space-x-3 p-3 rounded-xl transition-all text-sm font-medium cursor-pointer ${
+                className={`w-full flex items-center space-x-2.5 py-2 px-3 rounded-xl transition-all text-xs font-semibold cursor-pointer ${
                   isActive
                     ? `${item.activeColor} shadow-sm`
                     : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
                 }`}
               >
-                <Icon className="w-5 h-5 shrink-0" />
-                <span>{item.label}</span>
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
               </button>
             );
           })}
         </nav>
 
         {/* Footer Actions */}
-        <div className="mt-auto space-y-2 pt-4 border-t border-slate-800">
+        <div className="mt-3 space-y-1.5 pt-3 border-t border-slate-800 shrink-0">
           {isAdmin && onOpenReconciliationPreview && (
             <button
               onClick={onOpenReconciliationPreview}
-              className="w-full py-2.5 bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/60 text-amber-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-              title="Abrir Prévia da Conciliação Física dos 14 produtos (Marco Zero)"
+              className="w-full py-2 bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/60 text-amber-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              title="Abrir Prévia da Conciliação Física (Marco Zero)"
             >
-              <Eye className="w-4 h-4 text-amber-400" />
+              <Eye className="w-3.5 h-3.5 text-amber-400" />
               <span>🔍 Prévia de Conciliação</span>
             </button>
           )}
@@ -501,10 +519,10 @@ export const Header: React.FC<HeaderProps> = ({
           {isAdmin && onOpenPhysicalInventory && (
             <button
               onClick={onOpenPhysicalInventory}
-              className="w-full py-2.5 bg-purple-950/60 hover:bg-purple-900/80 border border-purple-700/60 text-purple-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              className="w-full py-2 bg-purple-950/60 hover:bg-purple-900/80 border border-purple-700/60 text-purple-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
               title="Abrir Conferência de Inventário Físico e Ajustes Auditados"
             >
-              <Scale className="w-4 h-4 text-purple-400" />
+              <Scale className="w-3.5 h-3.5 text-purple-400" />
               <span>⚖️ Inventário Físico</span>
             </button>
           )}
@@ -512,10 +530,10 @@ export const Header: React.FC<HeaderProps> = ({
           {isAdmin && onOpenWhatsAppModal && (
             <button
               onClick={onOpenWhatsAppModal}
-              className="w-full py-2.5 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-700/60 text-emerald-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              className="w-full py-2 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-700/60 text-emerald-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
               title="Abrir Alerta de Estoque para Chefe Marcos (+55 62 99974-6823)"
             >
-              <MessageCircle className="w-4 h-4 text-emerald-400" />
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
               <span>📲 Alerta WhatsApp (Marcos)</span>
             </button>
           )}
@@ -523,9 +541,9 @@ export const Header: React.FC<HeaderProps> = ({
           {isAdmin && (
             <button
               onClick={onOpenKitModal}
-              className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl text-xs font-black shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl text-xs font-black shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              <Utensils className="w-4 h-4" />
+              <Utensils className="w-3.5 h-3.5" />
               <span>+ Kit Cozinha Diário</span>
             </button>
           )}
@@ -533,7 +551,7 @@ export const Header: React.FC<HeaderProps> = ({
           {isAdmin && onOpenMissionariesModal && (
             <button
               onClick={onOpenMissionariesModal}
-              className="w-full py-2.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-amber-400 rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2 bg-slate-900 border border-slate-800 text-slate-300 hover:text-amber-400 rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <Users className="w-3.5 h-3.5 text-amber-500" />
               <span>Missionários & Turnos</span>
@@ -543,14 +561,14 @@ export const Header: React.FC<HeaderProps> = ({
           {onToggleDarkMode && (
             <button
               onClick={onToggleDarkMode}
-              className="w-full py-2.5 px-3 bg-slate-900 border border-slate-800 text-slate-200 hover:text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all flex items-center justify-between gap-2 cursor-pointer group shadow-xs"
+              className="w-full py-2 px-3 bg-slate-900 border border-slate-800 text-slate-200 hover:text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all flex items-center justify-between gap-2 cursor-pointer group shadow-xs"
               title={isDarkMode ? 'Clique para alternar para o Modo Claro' : 'Clique para alternar para o Modo Escuro'}
             >
               <div className="flex items-center gap-2">
                 {isDarkMode ? (
-                  <Moon className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+                  <Moon className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
                 ) : (
-                  <Sun className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                  <Sun className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
                 )}
                 <span>Tema: <strong>{isDarkMode ? 'Escuro' : 'Claro'}</strong></span>
               </div>
@@ -565,9 +583,9 @@ export const Header: React.FC<HeaderProps> = ({
           {onLogout && (
             <button
               onClick={onLogout}
-              className="w-full py-2.5 bg-rose-950/30 hover:bg-rose-900/50 border border-rose-900/40 text-rose-300 hover:text-rose-200 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2 bg-rose-950/30 hover:bg-rose-900/50 border border-rose-900/40 text-rose-300 hover:text-rose-200 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
-              <LogOut className="w-4 h-4 text-rose-400" />
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
               <span>Sair do Sistema</span>
             </button>
           )}
