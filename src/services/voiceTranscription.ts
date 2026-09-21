@@ -6,6 +6,8 @@
  * 3. Graceful handling of unsupported browsers (Firefox/Safari), denied permissions, and network timeouts.
  */
 
+import { auth } from '../firebase';
+
 export interface VoiceSupportStatus {
   hasWebSpeech: boolean;
   hasMediaRecorder: boolean;
@@ -158,12 +160,19 @@ export async function transcribeAudioViaServer(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const idToken = await auth.currentUser?.getIdToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (idToken) {
+      headers['Authorization'] = `Bearer ${idToken}`;
+    }
+
     const response = await fetch('/api/ai/transcribe-audio', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         audioBase64: base64Audio,
         mimeType: actualMime,
+        idToken,
       }),
       signal: controller.signal,
     });

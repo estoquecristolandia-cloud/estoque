@@ -52,8 +52,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
 }) => {
   const canManageEmails = Boolean(
     userEmail &&
-    (userEmail.trim().toLowerCase() === 'estoquecristolandia@gmail.com' ||
-     userEmail.trim().toLowerCase() === 'admin@app.local')
+    userEmail.trim().toLowerCase() === 'estoquecristolandia@gmail.com'
   );
   const isAdmin = userRole === 'admin';
   const [searchTerm, setSearchTerm] = useState('');

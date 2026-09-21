@@ -108,9 +108,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   // Apenas o usuário oficial de gestão (estoquecristolandia@gmail.com) tem permissão de visualizar e disparar os blocos de e-mail
   const canManageEmails = Boolean(
     currentUserEmail &&
-    (currentUserEmail.trim().toLowerCase() ===
-      "estoquecristolandia@gmail.com" ||
-      currentUserEmail.trim().toLowerCase() === "admin@app.local"),
+    currentUserEmail.trim().toLowerCase() === "estoquecristolandia@gmail.com",
   );
 
   // Horizon planning period: 8 (default), 14, 21, 30 days

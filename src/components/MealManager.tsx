@@ -65,9 +65,7 @@ export const MealManager: React.FC<MealManagerProps> = ({
   const isAdmin = userRole === "admin";
   const canManageEmails = Boolean(
     currentUserEmail &&
-    (currentUserEmail.trim().toLowerCase() ===
-      "estoquecristolandia@gmail.com" ||
-      currentUserEmail.trim().toLowerCase() === "admin@app.local"),
+    currentUserEmail.trim().toLowerCase() === "estoquecristolandia@gmail.com",
   );
   const todayStr = getTodayDateString();
   const [activeMealTab, setActiveMealTab] = useState<"daily" | "monthly">(

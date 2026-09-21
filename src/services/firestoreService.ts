@@ -11,7 +11,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db, AppUserProfile, UserRole } from '../firebase';
-import { Product, StockMovement, DailyKit, DailyMealRecord, EntryType, Sector, InventoryAudit, InventorySessionSummary } from '../types';
+import { Product, StockMovement, DailyKit, DailyMealRecord, EntryType, Sector, InventoryAudit, InventorySessionSummary, Missionary, AuthorizedUser } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_MOVEMENTS, DEFAULT_DAILY_KIT } from '../data/initialData';
 import { INITIAL_DML_PRODUCTS, DEFAULT_DML_KIT } from '../data/initialDmlData';
 import { isDmlProduct } from '../utils/departmentUtils';
@@ -21,6 +21,8 @@ const MOVEMENTS_COLLECTION = 'movements';
 const KITS_COLLECTION = 'kits';
 const USERS_COLLECTION = 'users';
 const MEALS_COLLECTION = 'meals';
+const MISSIONARIES_COLLECTION = 'missionaries';
+const AUTHORIZED_USERS_COLLECTION = 'authorized_users';
 const INVENTORY_AUDITS_COLLECTION = 'inventory_audits';
 const INVENTORY_SESSIONS_COLLECTION = 'inventory_sessions';
 export const MARCO_ZERO_SESSION_ID = 'marco-zero-20260821';
@@ -1188,3 +1190,112 @@ export async function saveInventorySessionToFirestore(
   await setDoc(doc(db, INVENTORY_SESSIONS_COLLECTION, id), cleanForFirestore(session));
   return session;
 }
+
+// =============================================================================
+// GESTÃO DA LISTA DE PRÉ-AUTORIZAÇÃO (/authorized_users)
+// =============================================================================
+
+export function subscribeToAuthorizedUsers(
+  onData: (users: AuthorizedUser[]) => void,
+  onError?: (error: Error) => void
+) {
+  return onSnapshot(
+    collection(db, AUTHORIZED_USERS_COLLECTION),
+    (snapshot) => {
+      const list = snapshot.docs.map((d) => {
+        const raw = d.data();
+        return {
+          email: d.id.toLowerCase().trim(),
+          name: raw.name || d.id,
+          role: 'viewer' as const,
+          active: raw.active !== false,
+          authorizedBy: raw.authorizedBy || 'estoquecristolandia@gmail.com',
+          authorizedAt: raw.authorizedAt || new Date().toISOString(),
+        } as AuthorizedUser;
+      });
+      onData(list);
+    },
+    (err) => {
+      console.warn('subscribeToAuthorizedUsers error:', err);
+      if (onError) onError(toError(err, 'Erro ao subscrever lista de autorizados'));
+    }
+  );
+}
+
+export async function checkUserAuthorization(email: string): Promise<AuthorizedUser | null> {
+  const clean = email.toLowerCase().trim();
+  if (!clean) return null;
+  const snap = await getDoc(doc(db, AUTHORIZED_USERS_COLLECTION, clean));
+  if (snap.exists()) {
+    const raw = snap.data();
+    return {
+      email: clean,
+      name: raw.name || clean,
+      role: 'viewer',
+      active: raw.active !== false,
+      authorizedBy: raw.authorizedBy || 'estoquecristolandia@gmail.com',
+      authorizedAt: raw.authorizedAt || new Date().toISOString(),
+    };
+  }
+  return null;
+}
+
+export async function saveAuthorizedUserToFirestore(user: {
+  email: string;
+  name: string;
+  active?: boolean;
+}): Promise<void> {
+  const cleanEmail = user.email.toLowerCase().trim();
+  const payload: AuthorizedUser = {
+    email: cleanEmail,
+    name: user.name.trim(),
+    role: 'viewer',
+    active: user.active !== false,
+    authorizedBy: 'estoquecristolandia@gmail.com',
+    authorizedAt: new Date().toISOString(),
+  };
+  await setDoc(doc(db, AUTHORIZED_USERS_COLLECTION, cleanEmail), cleanForFirestore(payload), { merge: true });
+}
+
+export async function toggleAuthorizedUserActiveInFirestore(email: string, active: boolean): Promise<void> {
+  const cleanEmail = email.toLowerCase().trim();
+  await setDoc(doc(db, AUTHORIZED_USERS_COLLECTION, cleanEmail), { active }, { merge: true });
+}
+
+export async function deleteAuthorizedUserFromFirestore(email: string): Promise<void> {
+  const cleanEmail = email.toLowerCase().trim();
+  await deleteDoc(doc(db, AUTHORIZED_USERS_COLLECTION, cleanEmail));
+}
+
+// =============================================================================
+// GESTÃO DE MISSIONÁRIOS (/missionaries)
+// =============================================================================
+
+export function subscribeToMissionaries(
+  onData: (missionaries: Missionary[]) => void,
+  onError?: (error: Error) => void
+) {
+  return onSnapshot(
+    collection(db, MISSIONARIES_COLLECTION),
+    (snapshot) => {
+      const list = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as Missionary[];
+      onData(list);
+    },
+    (err) => {
+      console.warn('subscribeToMissionaries error:', err);
+      if (onError) onError(toError(err, 'Erro ao subscrever missionários no Firestore'));
+    }
+  );
+}
+
+export async function saveMissionariesToFirestore(missionaries: Missionary[]): Promise<void> {
+  const batch = writeBatch(db);
+  missionaries.forEach((m) => {
+    batch.set(doc(db, MISSIONARIES_COLLECTION, m.id), cleanForFirestore(m), { merge: true });
+  });
+  await batch.commit();
+}
+

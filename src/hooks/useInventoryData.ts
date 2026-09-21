@@ -35,6 +35,8 @@ import {
   saveDailyKitToFirestore,
   saveMealRecordToFirestore,
   deleteMealRecordFromFirestore,
+  subscribeToMissionaries,
+  saveMissionariesToFirestore,
   syncInitialFirestoreData,
   executeEntryTransaction,
   executeExitTransaction,
@@ -86,6 +88,13 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
     const unsubAudits = subscribeToInventoryAudits((data) => setInventoryAudits(data));
     const unsubSessions = subscribeToInventorySessions((data) => setInventorySessions(data));
 
+    const unsubMissionaries = subscribeToMissionaries((data) => {
+      if (data && data.length > 0) {
+        setMissionaries(data);
+        saveMissionaries(data);
+      }
+    });
+
     return () => {
       unsubProds();
       unsubMovs();
@@ -93,6 +102,7 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
       unsubMeals();
       unsubAudits();
       unsubSessions();
+      unsubMissionaries();
     };
   }, [currentUser?.uid, currentUser?.role]);
 
@@ -103,7 +113,12 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
     }
     setMissionaries(updated);
     saveMissionaries(updated);
-    toast.success('Lista de missionários e turnos atualizada!');
+    saveMissionariesToFirestore(updated).then(() => {
+      toast.success('Lista de missionários sincronizada com o Firestore!');
+    }).catch((err) => {
+      console.error('Erro ao salvar missionários no Firestore:', err);
+      toast.warning('Salvo localmente. Erro ao sincronizar na nuvem.');
+    });
   }, [currentUser?.role]);
 
   const handleSaveMealRecord = useCallback(

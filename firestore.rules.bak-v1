@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.email != null && (
+        request.auth.token.email.lower() == 'estoquecristolandia@gmail.com' ||
+        request.auth.token.email.lower() == 'admin@app.local'
+      );
+    }
+
+    // Proteção Cirúrgica do Marco Zero (21/08/2026 Alimentação e 21/09/2026 DML):
+    // Impede alteração e exclusão da sessão oficial, auditorias e movimentações de implantação vinculadas.
+    function isMarcoZeroSession(sessionId) {
+      return sessionId == 'marco-zero-20260821' || sessionId == 'marco-zero-dml-20260921';
+    }
+
+    function isMarcoZeroRecord(id) {
+      return id.matches('^adj-marco-zero-20260821-.*') || id.matches('^adj-20260821-.*') || id.matches('^adj-marco-zero-dml-20260921-.*');
+    }
+
+    function isSelf(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    // Criação segura de perfil: impede que um usuário comum se auto-atribua 'admin'
+    function isSafeSelfUserCreate(userId) {
+      return isSelf(userId) &&
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.role != 'admin' &&
+        (request.auth.token.email == null || request.resource.data.email == request.auth.token.email);
+    }
+
+    // Atualização segura de perfil: impede alteração de role, email ou uid pelo próprio usuário comum
+    function isSafeSelfUserUpdate(userId) {
+      return isSelf(userId) &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.role != 'admin';
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if isAdmin() || isSafeSelfUserCreate(userId);
+      allow update: if isAdmin() || isSafeSelfUserUpdate(userId);
+      allow delete: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /movements/{movementId} {
+      allow read: if signedIn();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && !isMarcoZeroRecord(movementId);
+      allow delete: if false; // Imutabilidade física: Movimentações nunca são excluídas fisicamente
+    }
+
+    match /kits/{kitId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /meals/{mealId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /missionaries/{missionaryId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /inventory_audits/{auditId} {
+      allow read: if signedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() && !isMarcoZeroRecord(auditId);
+    }
+
+    match /inventory_sessions/{sessionId} {
+      allow read: if signedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() && !isMarcoZeroSession(sessionId);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

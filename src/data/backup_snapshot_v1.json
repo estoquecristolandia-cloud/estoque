@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-09-21T08:04:40.000Z",
+  "project": "estoque-cristolandia",
+  "database": "ai-studio-estoque-256280f5-01ca-4416-ac4c-e04242a68ae4",
+  "masterAdmin": "estoquecristolandia@gmail.com",
+  "officialAuthorizedViewers": [
+    "chefmarcusviniciuses@gmail.com",
+    "humbertohpp.59@gmail.com",
+    "humberto.hpp59@gmail.com"
+  ],
+  "marcoZeroSessions": [
+    "marco-zero-20260821",
+    "marco-zero-dml-20260921"
+  ],
+  "collections": [
+    "products",
+    "movements",
+    "kits",
+    "meals",
+    "missionaries",
+    "inventory_audits",
+    "inventory_sessions",
+    "authorized_users",
+    "users"
+  ]
+}

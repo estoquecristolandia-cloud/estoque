@@ -248,12 +248,74 @@ Retorne SEMPRE um JSON válido estritamente com esta estrutura:
   }
 });
 
-// Endpoint seguro de transcrição de voz via áudio gravado (eliminando erros de rede do Web Speech)
+// Rate Limiter em memória para transcrição de áudio (10 requisições / minuto por usuário ou IP)
+const audioRateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const AUDIO_RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const AUDIO_RATE_LIMIT_MAX_REQUESTS = 10;
+const AUDIO_MAX_BASE64_LENGTH = 2.5 * 1024 * 1024; // ~2.5MB base64 (~1.8MB áudio binário)
+const AUDIO_MAX_DURATION_SECONDS = 60; // 60 segundos no máximo
+
+// Endpoint seguro de transcrição de voz via áudio gravado (com autenticação, limite de taxa e tamanho)
 app.post('/api/ai/transcribe-audio', async (req, res) => {
   try {
-    const { audioBase64, mimeType } = req.body;
-    if (!audioBase64) {
-      return res.status(400).json({ error: 'Nenhum áudio recebido.' });
+    // 1. Validação de Autenticação Firebase (ID Token)
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    const idToken = bearerToken || req.body?.idToken;
+
+    if (!idToken) {
+      return res.status(401).json({
+        error: 'Autenticação necessária para transcrição de áudio.',
+        code: 'AUTH_REQUIRED',
+      });
+    }
+
+    const verifiedUser = await verifyFirebaseToken(idToken);
+    if (!verifiedUser) {
+      return res.status(401).json({
+        error: 'Sessão inválida ou expirada. Faça login novamente.',
+        code: 'INVALID_TOKEN',
+      });
+    }
+
+    // 2. Proteção de Rate Limiting (por UID ou IP)
+    const clientKey = verifiedUser.uid || req.ip || 'anonymous';
+    const now = Date.now();
+    const rateData = audioRateLimitMap.get(clientKey);
+
+    if (rateData && now < rateData.resetTime) {
+      if (rateData.count >= AUDIO_RATE_LIMIT_MAX_REQUESTS) {
+        return res.status(429).json({
+          error: 'Limite de transcrições de áudio atingido (máx. 10 por minuto). Aguarde alguns segundos.',
+          code: 'RATE_LIMIT_EXCEEDED',
+        });
+      }
+      rateData.count += 1;
+    } else {
+      audioRateLimitMap.set(clientKey, {
+        count: 1,
+        resetTime: now + AUDIO_RATE_LIMIT_WINDOW_MS,
+      });
+    }
+
+    // 3. Validação de Payload, Tamanho e Duração
+    const { audioBase64, mimeType, durationSeconds } = req.body;
+    if (!audioBase64 || typeof audioBase64 !== 'string') {
+      return res.status(400).json({ error: 'Nenhum dado de áudio válido recebido.' });
+    }
+
+    if (audioBase64.length > AUDIO_MAX_BASE64_LENGTH) {
+      return res.status(400).json({
+        error: `O áudio excede o limite máximo permitido de ${Math.round(AUDIO_MAX_BASE64_LENGTH / (1024 * 1024))}MB.`,
+        code: 'AUDIO_SIZE_LIMIT_EXCEEDED',
+      });
+    }
+
+    if (typeof durationSeconds === 'number' && durationSeconds > AUDIO_MAX_DURATION_SECONDS) {
+      return res.status(400).json({
+        error: `O áudio ultrapassa a duração máxima permitida de ${AUDIO_MAX_DURATION_SECONDS} segundos.`,
+        code: 'AUDIO_DURATION_LIMIT_EXCEEDED',
+      });
     }
 
     const ai = getGeminiClient();

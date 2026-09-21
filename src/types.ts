@@ -35,6 +35,15 @@ export type KitchenShift = 'Café / Manhã' | 'Almoço' | 'Jantar / Tarde' | 'Ce
 
 export interface Missionary { id: string; name: string; role: string; sector: Sector; shift?: KitchenShift; }
 
+export interface AuthorizedUser {
+  email: string;
+  name: string;
+  role: 'viewer';
+  active: boolean;
+  authorizedBy: string;
+  authorizedAt: string;
+}
+
 export interface Product {
   id: string; name: string; category: Category; unit: Unit; currentStock: number; minStock: number;
   department?: Department;

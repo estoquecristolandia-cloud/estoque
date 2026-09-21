@@ -83,7 +83,7 @@ async function runTests() {
   const isFirestoreAdmin = (tokenEmail?: string | null) => {
     if (!tokenEmail) return false;
     const lower = tokenEmail.toLowerCase();
-    return lower === 'estoquecristolandia@gmail.com' || lower === 'admin@app.local';
+    return lower === 'estoquecristolandia@gmail.com';
   };
 
   const isMarcoZeroSession = (sessionId: string) =>

@@ -11,6 +11,7 @@ const testSuites = [
   { name: '8. Voz e Resiliência de Captura/Transcrição', file: 'src/tests/voiceCaptureResilience.test.ts' },
   { name: '9. Design System & Contratos Visuais', file: 'src/tests/designSystemContracts.test.ts' },
   { name: '10. RBAC (Controle de Acesso & Blindagem)', file: 'src/tests/rbacEnforcement.test.ts' },
+  { name: '11. Regras do Firestore & Whitelist de Visualizadores', file: 'src/tests/firestoreRulesSimulation.test.ts' },
 ];
 
 console.log('====================================================');
