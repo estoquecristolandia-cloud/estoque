@@ -491,6 +491,7 @@ export default function App() {
         <PhysicalInventoryModal
           isOpen={isPhysicalInventoryOpen}
           products={departmentProducts}
+          department={activeDepartment}
           userRole={currentUser.role}
           currentUserName={currentUser.displayName || 'Marconi Castro'}
           currentUserEmail={currentUser.email}
@@ -510,6 +511,7 @@ export default function App() {
         <PhysicalReconciliationPreviewModal
           isOpen={isReconciliationPreviewOpen}
           products={departmentProducts}
+          department={activeDepartment}
           userRole={currentUser.role}
           currentUserName={currentUser.displayName || 'Marconi Castro'}
           currentUserEmail={currentUser.email}

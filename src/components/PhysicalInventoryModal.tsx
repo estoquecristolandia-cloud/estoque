@@ -27,6 +27,7 @@ interface PhysicalInventoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   products: productsList;
+  department?: 'alimentacao' | 'dml';
   userRole?: UserRole;
   currentUserEmail?: string;
   currentUserUid?: string;
@@ -56,6 +57,7 @@ export const PhysicalInventoryModal: React.FC<PhysicalInventoryModalProps> = ({
   isOpen,
   onClose,
   products,
+  department = 'alimentacao',
   userRole = 'admin',
   currentUserEmail = '',
   currentUserUid = '',
@@ -65,6 +67,7 @@ export const PhysicalInventoryModal: React.FC<PhysicalInventoryModalProps> = ({
   onNotify,
 }) => {
   const isAdmin = userRole === 'admin' || (currentUserEmail || '').toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
+  const isDml = department === 'dml' || products.some((p) => p.department === 'dml' || p.id.startsWith('dml-'));
 
   // Tab State: 'count' (Conferência) or 'history' (Auditorias & Marcos)
   const [activeTab, setActiveTab] = useState<'count' | 'history'>('count');
@@ -250,10 +253,11 @@ export const PhysicalInventoryModal: React.FC<PhysicalInventoryModalProps> = ({
     setIsSavingMarcoZero(true);
 
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const today = isDml ? '2026-09-21' : new Date().toISOString().split('T')[0];
+      const nowTime = isDml ? '08:00' : new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
       await saveInventorySessionToFirestore({
+        id: isDml ? 'marco-zero-dml-20260921' : undefined,
         date: today,
         time: nowTime,
         responsible: currentUserName || currentUserEmail || 'Administrador',
@@ -261,11 +265,16 @@ export const PhysicalInventoryModal: React.FC<PhysicalInventoryModalProps> = ({
         checkedCount,
         divergentCount,
         adjustedCount: inventoryAudits.filter((a) => a.date === today).length,
-        notes: marcoZeroNotes.trim() || 'Marco Zero / Inventário Físico concluído com sucesso.',
+        notes: marcoZeroNotes.trim() || (isDml ? 'Marco Zero Oficial DML (Limpeza e Higiene) concluído.' : 'Marco Zero / Inventário Físico concluído com sucesso.'),
         userEmail: currentUserEmail,
       });
 
-      onNotify?.('Marco Zero do Estoque registrado com sucesso na auditoria!', 'success');
+      onNotify?.(
+        isDml
+          ? 'Marco Zero do DML registrado com sucesso na auditoria!'
+          : 'Marco Zero do Estoque registrado com sucesso na auditoria!',
+        'success'
+      );
       setShowMarcoZeroModal(false);
       setMarcoZeroNotes('');
       setActiveTab('history');
@@ -290,14 +299,16 @@ export const PhysicalInventoryModal: React.FC<PhysicalInventoryModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  Inventário Físico & Ajuste Auditado
+                  {isDml ? 'Inventário Físico & Marco Zero — DML' : 'Inventário Físico & Ajuste Auditado — Alimentação'}
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  Marco Zero
+                  {isDml ? 'Marco Zero DML' : 'Marco Zero'}
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
-                Conferência física, apuração de divergências e registro de ajustes auditados
+                {isDml
+                  ? 'Conferência física, apuração de divergências e Marco Zero do setor de Limpeza e Higiene'
+                  : 'Conferência física, apuração de divergências e registro de ajustes auditados'}
               </p>
             </div>
           </div>

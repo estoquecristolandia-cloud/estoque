@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Product, InventoryAudit, InventorySessionSummary } from '../types';
 import { UserRole, MASTER_ADMIN_EMAIL } from '../firebase';
 import {
@@ -27,6 +27,7 @@ interface PhysicalReconciliationPreviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   products: Product[];
+  department?: 'alimentacao' | 'dml';
   userRole?: UserRole;
   currentUserEmail?: string;
   currentUserUid?: string;
@@ -34,7 +35,7 @@ interface PhysicalReconciliationPreviewModalProps {
   onNotify?: (message: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
 }
 
-// Reference physical count values for the 14 items
+// Reference physical count values for the 14 items (Alimentação)
 export const OFFICIAL_MARCO_ZERO_COUNTS: Record<string, number> = {
   'prod-acucar': 35,          // Açúcar Cristal: 35 kg
   'prod-alho': 16.5,          // Alho (Pacote c/ 10 cabeças): 16,5 pacotes
@@ -52,6 +53,27 @@ export const OFFICIAL_MARCO_ZERO_COUNTS: Record<string, number> = {
   'prod-suco': 13,            // Suco em Pó (250g): 13 pacotes
 };
 
+// Reference physical count values for the 17 items (DML - Higiene e Limpeza)
+export const OFFICIAL_MARCO_ZERO_DML_COUNTS: Record<string, number> = {
+  'dml-sabonete': 0,
+  'dml-creme-dental': 0,
+  'dml-escova-dente': 0,
+  'dml-lamina-barbear': 0,
+  'dml-papel-higienico': 0,
+  'dml-desodorante': 0,
+  'dml-agua-sanitaria': 0,
+  'dml-desinfetante': 0,
+  'dml-detergente': 0,
+  'dml-sabao-po': 0,
+  'dml-sabao-barra': 0,
+  'dml-desengordurante': 0,
+  'dml-saco-lixo-100l': 0,
+  'dml-saco-lixo-30l': 0,
+  'dml-esponja': 0,
+  'dml-palha-aco': 0,
+  'dml-pano-chao': 0,
+};
+
 function round2(val: number): number {
   return Math.round(val * 100) / 100;
 }
@@ -60,6 +82,7 @@ export const PhysicalReconciliationPreviewModal: React.FC<PhysicalReconciliation
   isOpen,
   onClose,
   products,
+  department = 'alimentacao',
   userRole = 'admin',
   currentUserEmail = '',
   currentUserUid = '',
@@ -68,15 +91,32 @@ export const PhysicalReconciliationPreviewModal: React.FC<PhysicalReconciliation
 }) => {
   const isAdmin = userRole === 'admin' || (currentUserEmail || '').toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase();
 
+  const isDml = department === 'dml' || products.some((p) => p.department === 'dml' || p.id.startsWith('dml-'));
+  const defaultCounts = isDml ? OFFICIAL_MARCO_ZERO_DML_COUNTS : OFFICIAL_MARCO_ZERO_COUNTS;
+
   // Custom physical counts (initialized with official reference values)
   const [customCounts, setCustomCounts] = useState<Record<string, number>>(() => ({
-    ...OFFICIAL_MARCO_ZERO_COUNTS,
+    ...defaultCounts,
   }));
 
   // Reason for the adjustment
   const [adjustmentReason, setAdjustmentReason] = useState<string>(
-    'Conciliação física e estabelecimento de Marco Zero — contagem e recontagem física realizada em 21/08/2026.'
+    isDml
+      ? 'Marco Zero Oficial DML — Implantação e Zeramento aguardando conferência física presencial.'
+      : 'Conciliação física e estabelecimento de Marco Zero — contagem e recontagem física realizada em 21/08/2026.'
   );
+
+  // Sync state whenever modal opens or department changes
+  useEffect(() => {
+    if (isOpen) {
+      setCustomCounts({ ...defaultCounts });
+      setAdjustmentReason(
+        isDml
+          ? 'Marco Zero Oficial DML — Implantação e Zeramento aguardando conferência física presencial.'
+          : 'Conciliação física e estabelecimento de Marco Zero — contagem e recontagem física realizada em 21/08/2026.'
+      );
+    }
+  }, [isOpen, isDml]);
 
   // Filter and view state
   const [statusFilter, setStatusFilter] = useState<'all' | 'conciliated' | 'shortage' | 'surplus'>('all');
@@ -137,8 +177,13 @@ export const PhysicalReconciliationPreviewModal: React.FC<PhysicalReconciliation
   };
 
   const handleResetToOfficialDefaults = () => {
-    setCustomCounts({ ...OFFICIAL_MARCO_ZERO_COUNTS });
-    onNotify?.('Valores restaurados para a contagem oficial de 21/08/2026.', 'info');
+    setCustomCounts({ ...defaultCounts });
+    onNotify?.(
+      isDml
+        ? 'Valores restaurados para o Marco Zero Oficial do DML (volumes zerados).'
+        : 'Valores restaurados para a contagem oficial de 21/08/2026.',
+      'info'
+    );
   };
 
   // Safe Execution Handler (ONLY triggered if user explicitly confirms)
@@ -157,8 +202,8 @@ export const PhysicalReconciliationPreviewModal: React.FC<PhysicalReconciliation
     setExecutionErrors([]);
     setExecutionProgress('Iniciando conciliação transacional...');
 
-    const today = new Date().toISOString().split('T')[0];
-    const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const today = isDml ? '2026-09-21' : new Date().toISOString().split('T')[0];
+    const nowTime = isDml ? '08:00' : new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const errors: string[] = [];
     let successCount = 0;
 
@@ -167,7 +212,9 @@ export const PhysicalReconciliationPreviewModal: React.FC<PhysicalReconciliation
       setExecutionProgress(`Gravando item ${index + 1} de ${needsAdjustmentItems.length}: ${item.product.name}...`);
 
       try {
-        const clientRequestId = `req-reconcile-${item.product.id}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        const clientRequestId = isDml
+          ? `adj-marco-zero-dml-20260921-${item.product.id}`
+          : `req-reconcile-${item.product.id}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         await executeInventoryAdjustmentTransaction(
           item.product.id,
           item.physicalStock,
@@ -190,6 +237,7 @@ export const PhysicalReconciliationPreviewModal: React.FC<PhysicalReconciliation
     // Save session record if at least one item was adjusted or if full inventory was completed
     try {
       await saveInventorySessionToFirestore({
+        id: isDml ? 'marco-zero-dml-20260921' : undefined,
         date: today,
         time: nowTime,
         responsible: currentUserName || currentUserEmail || 'Marconi Castro',
@@ -197,7 +245,9 @@ export const PhysicalReconciliationPreviewModal: React.FC<PhysicalReconciliation
         checkedCount: totalProducts,
         divergentCount: needsAdjustmentItems.length,
         adjustedCount: successCount,
-        notes: `Marco Zero Oficial: ${adjustmentReason} (${successCount} itens ajustados com sucesso).`,
+        notes: isDml
+          ? `Marco Zero Oficial DML: ${adjustmentReason} (${successCount} itens conciliados).`
+          : `Marco Zero Oficial: ${adjustmentReason} (${successCount} itens ajustados com sucesso).`,
         userEmail: currentUserEmail,
       });
     } catch (err) {
@@ -211,7 +261,12 @@ export const PhysicalReconciliationPreviewModal: React.FC<PhysicalReconciliation
       setExecutionErrors(errors);
       onNotify?.(`Conciliação concluída com ${errors.length} alertas. Verifique os detalhes.`, 'warning');
     } else {
-      onNotify?.(`Marco Zero estabelecido com sucesso para ${successCount} produtos!`, 'success');
+      onNotify?.(
+        isDml
+          ? `Marco Zero do DML estabelecido com sucesso para ${successCount} produtos!`
+          : `Marco Zero estabelecido com sucesso para ${successCount} produtos!`,
+        'success'
+      );
       setShowConfirmStep(false);
       onClose();
     }
@@ -233,14 +288,16 @@ export const PhysicalReconciliationPreviewModal: React.FC<PhysicalReconciliation
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  Prévia da Conciliação Física
+                  {isDml ? 'Prévia do Marco Zero & Conciliação — DML' : 'Prévia da Conciliação Física — Alimentação'}
                 </h2>
                 <span className="px-3 py-0.5 rounded-full text-xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
                   PRÉVIA — NÃO GRAVADO (100% SOMENTE LEITURA)
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-300 mt-1">
-                Conferência comparativa dos 14 produtos do estoque físico real vs. saldo no Firestore
+                {isDml
+                  ? 'Conferência física e implantação dos 17 produtos de Higiene e Limpeza (DML) com volumes zerados'
+                  : 'Conferência comparativa dos 14 produtos do estoque físico real vs. saldo no Firestore'}
               </p>
             </div>
           </div>

@@ -3,7 +3,7 @@ import { INITIAL_PRODUCTS, INITIAL_MOVEMENTS, DEFAULT_DAILY_KIT, INITIAL_MISSION
 import { INITIAL_DML_PRODUCTS } from '../data/initialDmlData';
 import { normalizeProductDepartment, isDmlProduct } from './departmentUtils';
 
-const PRODUCTS_KEY = 'cristolandia_products_v54';
+const PRODUCTS_KEY = 'cristolandia_products_v55';
 const MOVEMENTS_KEY = 'cristolandia_movements_v53';
 const DAILY_KIT_KEY = 'cristolandia_daily_kit_v54';
 const MISSIONARIES_KEY = 'cristolandia_missionaries_v5';

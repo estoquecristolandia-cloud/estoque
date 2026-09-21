@@ -86,9 +86,12 @@ async function runTests() {
     return lower === 'estoquecristolandia@gmail.com' || lower === 'admin@app.local';
   };
 
-  const isMarcoZeroSession = (sessionId: string) => sessionId === 'marco-zero-20260821';
+  const isMarcoZeroSession = (sessionId: string) =>
+    sessionId === 'marco-zero-20260821' || sessionId === 'marco-zero-dml-20260921';
   const isMarcoZeroRecord = (id: string) =>
-    /^adj-marco-zero-20260821-.*$/.test(id) || /^adj-20260821-.*$/.test(id);
+    /^adj-marco-zero-20260821-.*$/.test(id) ||
+    /^adj-20260821-.*$/.test(id) ||
+    /^adj-marco-zero-dml-20260921-.*$/.test(id);
 
   const simulateUserCreateRule = (
     auth: { uid: string; email: string | null } | null,

@@ -22,7 +22,34 @@ export const OFFICIAL_MARCO_ZERO: Record<string, { stock: number; unit: string; 
   'prod-suco': { stock: 13, unit: 'pacote', name: 'Suco em Pó (250g)' },
 };
 
+/**
+ * 17 PRODUTOS OFICIAIS DO MARCO ZERO DML (HIGIENE E LIMPEZA) — CRISTOLÂNDIA LEM/BA
+ * Sessão: marco-zero-dml-20260921 | Data: 2026-09-21 | Horário: 08:00 | Resp: Marconi Castro
+ * Implantação oficial com estoques zerados aguardando contagem física presencial.
+ */
+export const OFFICIAL_MARCO_ZERO_DML: Record<string, { stock: number; unit: string; name: string }> = {
+  'dml-sabonete': { stock: 0, unit: 'unidade', name: 'Sabonete em Barra 90g' },
+  'dml-creme-dental': { stock: 0, unit: 'unidade', name: 'Creme Dental / Pasta de Dente 90g' },
+  'dml-escova-dente': { stock: 0, unit: 'unidade', name: 'Escova de Dentes Macia/Média' },
+  'dml-lamina-barbear': { stock: 0, unit: 'unidade', name: 'Aparelho / Lâmina de Barbear Descartável' },
+  'dml-papel-higienico': { stock: 0, unit: 'rolo', name: 'Papel Higiênico Folha Dupla (Rolos)' },
+  'dml-desodorante': { stock: 0, unit: 'frasco', name: 'Desodorante Roll-On Neutro' },
+  'dml-agua-sanitaria': { stock: 0, unit: 'galão', name: 'Água Sanitária / Cloro 5 Litros' },
+  'dml-desinfetante': { stock: 0, unit: 'galão', name: 'Desinfetante Perfumado 5 Litros' },
+  'dml-detergente': { stock: 0, unit: 'frasco', name: 'Detergente Líquido Neutro 500ml' },
+  'dml-sabao-po': { stock: 0, unit: 'kg', name: 'Sabão em Pó para Roupas (kg)' },
+  'dml-sabao-barra': { stock: 0, unit: 'barra', name: 'Sabão em Barra Glicerinado / Neutro' },
+  'dml-desengordurante': { stock: 0, unit: 'frasco', name: 'Desengordurante de Fogão e Cozinha 500ml' },
+  'dml-saco-lixo-100l': { stock: 0, unit: 'pacote', name: 'Saco de Lixo Reforçado 100L (Pacote c/ 100)' },
+  'dml-saco-lixo-30l': { stock: 0, unit: 'pacote', name: 'Saco de Lixo para Banheiro 30L (Pacote c/ 100)' },
+  'dml-esponja': { stock: 0, unit: 'unidade', name: 'Esponja Dupla Face Lava-Louças' },
+  'dml-palha-aco': { stock: 0, unit: 'pacote', name: 'Palha de Aço / Bombril (Pacote)' },
+  'dml-pano-chao': { stock: 0, unit: 'unidade', name: 'Pano de Chão Alvejado Grande' },
+};
+
 export const MARCO_ZERO_TIMESTAMP_STR = '2026-08-21 17:30';
+export const MARCO_ZERO_DML_TIMESTAMP_STR = '2026-09-21 08:00';
+export const MARCO_ZERO_DML_DATE_STR = '2026-09-21';
 export const FLOAT_TOLERANCE = 0.001;
 
 export function round2(val: number): number {
@@ -350,16 +377,21 @@ export function runStockMathematicalAudit(
     // -------------------------------------------------------------
     // 3.1 Identificação do Marco Zero Oficial do Produto
     // -------------------------------------------------------------
-    const officialMZ = OFFICIAL_MARCO_ZERO[product.id];
+    const isDml = product.department === 'dml' || product.id.startsWith('dml-');
+    const officialMZ = isDml ? OFFICIAL_MARCO_ZERO_DML[product.id] : OFFICIAL_MARCO_ZERO[product.id];
+    const defaultAnchorDate = isDml ? MARCO_ZERO_DML_DATE_STR : '2026-08-21';
+    const defaultAnchorTime = isDml ? '08:00' : '17:30';
+
     const mzMovement = prodMovements.find(
       (m) =>
         m.id.startsWith('adj-marco-zero-') ||
         m.id.startsWith('adj-20260821-') ||
+        m.id.startsWith('adj-marco-zero-dml-') ||
         m.id === 'op-marco-zero' ||
         m.id.startsWith('op-marco-zero-') ||
         (m.type === 'ajuste' &&
           (m.reason?.includes('Marco Zero') ||
-            (m.date === '2026-08-21' && (m.time === '17:30' || m.id.includes('20260821')))))
+            (m.date === defaultAnchorDate && (m.time === defaultAnchorTime || m.id.includes('marco-zero')))))
     );
 
     const mzAudit = inventoryAudits.find(
@@ -367,16 +399,17 @@ export function runStockMathematicalAudit(
         a.productId === product.id &&
         (a.id.startsWith('adj-marco-zero-') ||
           a.id.startsWith('adj-20260821-') ||
+          a.id.startsWith('adj-marco-zero-dml-') ||
           a.id === 'op-marco-zero' ||
           a.id.startsWith('op-marco-zero-') ||
-          (a.date === '2026-08-21' && a.time === '17:30') ||
+          (a.date === defaultAnchorDate && a.time === defaultAnchorTime) ||
           a.reason?.includes('Marco Zero'))
     );
 
     const hasMarcoZero = Boolean(officialMZ || mzAudit || mzMovement);
     let marcoZeroStock: number | undefined = undefined;
-    let anchorDate = '2026-08-21';
-    let anchorTime = '17:30';
+    let anchorDate = defaultAnchorDate;
+    let anchorTime = defaultAnchorTime;
 
     if (hasMarcoZero) {
       if (mzMovement) {
@@ -413,6 +446,7 @@ export function runStockMathematicalAudit(
         (mzMovement && m.id === mzMovement.id) ||
         m.id.startsWith('adj-marco-zero-') ||
         m.id.startsWith('adj-20260821-') ||
+        m.id.startsWith('adj-marco-zero-dml-') ||
         (m.type === 'ajuste' &&
           m.date === anchorDate &&
           (m.time === anchorTime || m.reason?.includes('Marco Zero')));

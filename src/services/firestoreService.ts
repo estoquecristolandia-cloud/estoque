@@ -23,7 +23,8 @@ const USERS_COLLECTION = 'users';
 const MEALS_COLLECTION = 'meals';
 const INVENTORY_AUDITS_COLLECTION = 'inventory_audits';
 const INVENTORY_SESSIONS_COLLECTION = 'inventory_sessions';
-const MARCO_ZERO_SESSION_ID = 'marco-zero-20260821';
+export const MARCO_ZERO_SESSION_ID = 'marco-zero-20260821';
+export const MARCO_ZERO_DML_SESSION_ID = 'marco-zero-dml-20260921';
 
 function cleanForFirestore<T extends Record<string, any>>(obj: T): Record<string, any> {
   const cleaned: Record<string, any> = {};
@@ -428,6 +429,99 @@ export async function syncInitialFirestoreData(): Promise<void> {
     baselineWrites++;
 
     if (baselineWrites > 0) await baselineBatch.commit();
+  }
+
+  // Ensure DML Marco Zero (2026-09-21 08:00) with 0 current stock for all 17 DML products is synced to Firestore
+  const marcoZeroDmlRef = doc(db, INVENTORY_SESSIONS_COLLECTION, MARCO_ZERO_DML_SESSION_ID);
+  const marcoZeroDmlSnap = await getDoc(marcoZeroDmlRef);
+  if (!marcoZeroDmlSnap.exists()) {
+    const currentProductsSnap = await getDocs(collection(db, PRODUCTS_COLLECTION));
+    const currentById = new Map(currentProductsSnap.docs.map((d) => [d.id, d.data() as Product]));
+    const dmlBatch = writeBatch(db);
+    const now = new Date().toISOString();
+    const auditDate = '2026-09-21';
+    const auditTime = '08:00';
+    let dmlWrites = 0;
+
+    for (const dmlProduct of INITIAL_DML_PRODUCTS) {
+      const currentProduct = currentById.get(dmlProduct.id) || dmlProduct;
+      const previousStock = round2(Number(currentProduct.currentStock || 0));
+      const physicalStock = 0;
+      const difference = round2(physicalStock - previousStock);
+      const opId = `adj-marco-zero-dml-20260921-${dmlProduct.id}`;
+      const reason = 'Marco Zero Oficial DML — Implantação e Zeramento aguardando conferência física presencial.';
+
+      const movement: StockMovement = {
+        id: opId,
+        operationId: opId,
+        productId: dmlProduct.id,
+        productName: dmlProduct.name,
+        unit: dmlProduct.unit,
+        department: 'dml',
+        type: 'ajuste',
+        quantity: Math.abs(difference),
+        date: auditDate,
+        time: auditTime,
+        responsible: 'Marconi Castro (Gestor do Estoque)',
+        reason,
+        previousStock,
+        physicalStock,
+        difference,
+        notes: `[Marco Zero DML]: Saldo inicial estabelecido em 0 ${dmlProduct.unit}. ${reason}`,
+        createdAt: now,
+      };
+
+      const audit: InventoryAudit = {
+        id: opId,
+        productId: dmlProduct.id,
+        productName: dmlProduct.name,
+        unit: dmlProduct.unit,
+        previousStock,
+        physicalStock,
+        difference,
+        reason,
+        responsible: 'Marconi Castro (Gestor do Estoque)',
+        date: auditDate,
+        time: auditTime,
+        createdAt: now,
+        notes: `Ajuste auditado de Marco Zero DML: ${previousStock} -> 0 ${dmlProduct.unit}.`,
+      };
+
+      dmlBatch.set(
+        doc(db, PRODUCTS_COLLECTION, dmlProduct.id),
+        cleanForFirestore({
+          ...dmlProduct,
+          currentStock: 0,
+          department: 'dml',
+          lastUpdated: now,
+          lastOperationId: opId,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      );
+      dmlBatch.set(doc(db, MOVEMENTS_COLLECTION, opId), cleanForFirestore(movement));
+      dmlBatch.set(doc(db, INVENTORY_AUDITS_COLLECTION, opId), cleanForFirestore(audit));
+      dmlWrites += 3;
+    }
+
+    const dmlSession: InventorySessionSummary = {
+      id: MARCO_ZERO_DML_SESSION_ID,
+      date: auditDate,
+      time: auditTime,
+      responsible: 'Marconi Castro (Gestor do Estoque)',
+      totalProducts: INITIAL_DML_PRODUCTS.length,
+      checkedCount: INITIAL_DML_PRODUCTS.length,
+      divergentCount: 0,
+      adjustedCount: INITIAL_DML_PRODUCTS.length,
+      notes: 'Marco Zero oficial de implantação do setor DML (Higiene e Limpeza Predial). Estoque inicial estabelecido em 0 unidades aguardando contagem física presencial.',
+      createdAt: now,
+      userEmail: 'estoquecristolandia@gmail.com',
+    };
+
+    dmlBatch.set(doc(db, INVENTORY_SESSIONS_COLLECTION, MARCO_ZERO_DML_SESSION_ID), cleanForFirestore(dmlSession));
+    dmlWrites++;
+
+    if (dmlWrites > 0) await dmlBatch.commit();
   }
 
   // Ensure 24/08-31/08 Leite Reconciliation (Entrada 60L, Saídas 51L, Ajuste +2L -> Saldo 11L) is synced to Firestore
@@ -1054,7 +1148,28 @@ export async function executeInventoryAdjustmentTransaction(
     const now = new Date().toISOString();
     const formattedTime = time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const formattedDate = date || new Date().toISOString().split('T')[0];
-    const movement: StockMovement = { id: opId, operationId: opId, clientRequestId: clientRequestId || opId, productId: product.id, productName: product.name, unit: product.unit, type: 'ajuste', quantity: Math.abs(difference), date: formattedDate, time: formattedTime, responsible: registeredBy || 'Administrador', reason: cleanedReason, previousStock: current, physicalStock: targetStock, difference, notes: `[Ajuste de Inventário / Marco Zero]: De ${current} ${product.unit} para ${targetStock} ${product.unit} (${difference > 0 ? '+' : ''}${difference} ${product.unit}). Motivo: ${cleanedReason}`, createdAt: now, userUid, userEmail };
+    const movement: StockMovement = {
+      id: opId,
+      operationId: opId,
+      clientRequestId: clientRequestId || opId,
+      productId: product.id,
+      productName: product.name,
+      unit: product.unit,
+      department: product.department || (product.id.startsWith('dml-') ? 'dml' : 'alimentacao'),
+      type: 'ajuste',
+      quantity: Math.abs(difference),
+      date: formattedDate,
+      time: formattedTime,
+      responsible: registeredBy || 'Administrador',
+      reason: cleanedReason,
+      previousStock: current,
+      physicalStock: targetStock,
+      difference,
+      notes: `[Ajuste de Inventário / Marco Zero]: De ${current} ${product.unit} para ${targetStock} ${product.unit} (${difference > 0 ? '+' : ''}${difference} ${product.unit}). Motivo: ${cleanedReason}`,
+      createdAt: now,
+      userUid,
+      userEmail,
+    };
     const audit: InventoryAudit = { id: opId, productId: product.id, productName: product.name, unit: product.unit, previousStock: current, physicalStock: targetStock, difference, reason: cleanedReason, responsible: registeredBy || 'Administrador', date: formattedDate, time: formattedTime, createdAt: now, timestamp: serverTimestamp(), userUid, userEmail, notes: `Ajuste auditado: De ${current} para ${targetStock} ${product.unit}. Motivo: ${cleanedReason}` };
     const updatedProduct = { ...product, currentStock: targetStock, lastUpdated: now, lastOperationId: opId, updatedAt: serverTimestamp() } as Product;
     tx.set(productRef, cleanForFirestore(updatedProduct), { merge: true });
@@ -1064,8 +1179,10 @@ export async function executeInventoryAdjustmentTransaction(
   });
 }
 
-export async function saveInventorySessionToFirestore(sessionData: Omit<InventorySessionSummary, 'id' | 'createdAt'>): Promise<InventorySessionSummary> {
-  const id = operationId('inv-session');
+export async function saveInventorySessionToFirestore(
+  sessionData: Omit<InventorySessionSummary, 'id' | 'createdAt'> & { id?: string }
+): Promise<InventorySessionSummary> {
+  const id = sessionData.id || operationId('inv-session');
   const now = new Date().toISOString();
   const session: InventorySessionSummary = { ...sessionData, id, createdAt: now };
   await setDoc(doc(db, INVENTORY_SESSIONS_COLLECTION, id), cleanForFirestore(session));

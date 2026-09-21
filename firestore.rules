@@ -12,14 +12,14 @@ service cloud.firestore {
       );
     }
 
-    // Proteção Cirúrgica do Marco Zero (21/08/2026):
+    // Proteção Cirúrgica do Marco Zero (21/08/2026 Alimentação e 21/09/2026 DML):
     // Impede alteração e exclusão da sessão oficial, auditorias e movimentações de implantação vinculadas.
     function isMarcoZeroSession(sessionId) {
-      return sessionId == 'marco-zero-20260821';
+      return sessionId == 'marco-zero-20260821' || sessionId == 'marco-zero-dml-20260921';
     }
 
     function isMarcoZeroRecord(id) {
-      return id.matches('^adj-marco-zero-20260821-.*') || id.matches('^adj-20260821-.*');
+      return id.matches('^adj-marco-zero-20260821-.*') || id.matches('^adj-20260821-.*') || id.matches('^adj-marco-zero-dml-20260921-.*');
     }
 
     function isSelf(userId) {
