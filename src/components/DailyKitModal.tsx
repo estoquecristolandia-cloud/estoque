@@ -24,7 +24,7 @@ import {
   User,
   Loader2,
 } from 'lucide-react';
-import { Product, DailyKit, KitItem, Missionary, KitchenShift } from '../types';
+import { Product, DailyKit, KitItem, Missionary, KitchenShift, Department } from '../types';
 import { UserRole } from '../firebase';
 import { DEFAULT_DAILY_KIT } from '../data/initialData';
 import { getTodayDateString, getNowTimeString } from '../utils/storage';
@@ -34,6 +34,7 @@ interface DailyKitModalProps {
   kit: DailyKit;
   missionaries?: Missionary[];
   userRole?: UserRole;
+  activeDepartment?: Department;
   onClose: () => void;
   onSubmitKit: (
     kit: DailyKit,
@@ -53,25 +54,38 @@ const KITCHEN_SHIFTS: KitchenShift[] = [
   'Ceia / Lanche',
 ];
 
+const DML_SHIFTS = [
+  'Manhã (Distribuição)',
+  'Tarde (Reposição)',
+  'Rotina Semanal',
+  'Extraordinário',
+];
+
 export const DailyKitModal: React.FC<DailyKitModalProps> = ({
   products,
   kit,
   missionaries = [],
   userRole = 'admin',
+  activeDepartment = 'alimentacao',
   onClose,
   onSubmitKit,
 }) => {
+  const isDml = activeDepartment === 'dml';
   const isAdmin = userRole === 'admin';
-  const [retrievedBy, setRetrievedBy] = useState<string>(kit.defaultRetriever || 'Equipe 1 (Equipe Cozinha)');
+  const [retrievedBy, setRetrievedBy] = useState<string>(
+    kit.defaultRetriever || (isDml ? 'Equipe DML / Higiene' : 'Equipe 1 (Equipe Cozinha)')
+  );
   const [deliveredBy, setDeliveredBy] = useState<string>(kit.defaultDeliverer || 'Marconi Castro (Gestor do Estoque)');
-  const [selectedShift, setSelectedShift] = useState<KitchenShift>('Almoço');
+  const [selectedShift, setSelectedShift] = useState<string>(isDml ? 'Manhã (Distribuição)' : 'Almoço');
   const [date, setDate] = useState<string>(getTodayDateString());
   const [time, setTime] = useState<string>(getNowTimeString());
 
-  const kitchenMissionaries = missionaries.filter((m) => m.sector === 'Cozinha');
+  const kitchenMissionaries = missionaries.filter((m) =>
+    isDml ? m.sector === 'DML' || m.sector === 'Manutenção' || m.sector === 'Geral' : m.sector === 'Cozinha'
+  );
 
   // People / Portion Scaler
-  const [peopleCount, setPeopleCount] = useState<number>(100);
+  const [peopleCount, setPeopleCount] = useState<number>(isDml ? 50 : 100);
 
   // Kit Items State
   const [kitItems, setKitItems] = useState<KitItem[]>(kit.items);
@@ -251,7 +265,7 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
   const handleProceedToConfirmation = (e: React.FormEvent) => {
     e.preventDefault();
     if (kitItems.length === 0) {
-      alert('Adicione ao menos um produto para compor o Kit da Cozinha.');
+      alert(isDml ? 'Adicione ao menos um produto para compor o Kit de Higiene.' : 'Adicione ao menos um produto para compor o Kit da Cozinha.');
       return;
     }
     setCurrentStep('confirm');
@@ -280,7 +294,7 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
       await onSubmitKit(updatedKit, retrievedBy, deliveredBy, date, time, saveAsDefault, clientRequestId);
       onClose();
     } catch (err: any) {
-      alert(err?.message || 'Erro ao baixar o Kit Diário no estoque.');
+      alert(err?.message || (isDml ? 'Erro ao baixar o Kit de Higiene no estoque.' : 'Erro ao baixar o Kit Diário no estoque.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -297,16 +311,20 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 sm:p-3 rounded-2xl bg-amber-500 text-slate-950 shadow-md">
-              <Utensils className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className={`p-2.5 sm:p-3 rounded-2xl shadow-md ${isDml ? 'bg-purple-600 text-white' : 'bg-amber-500 text-slate-950'}`}>
+              {isDml ? <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" /> : <Utensils className="w-5 h-5 sm:w-6 sm:h-6 text-slate-950" />}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
-                  {kit.name || 'Kit Cozinha Diário'}
+                  {kit.name || (isDml ? 'Kit Higiene Acolhidos' : 'Kit Cozinha Diário')}
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                  {kit.sector || 'Cozinha'}
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase border ${
+                  isDml
+                    ? 'bg-purple-100 text-purple-900 dark:bg-purple-950 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                    : 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                }`}>
+                  {kit.sector || (isDml ? 'DML / Higiene' : 'Cozinha')}
                 </span>
                 {!isAdmin && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -316,8 +334,8 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {currentStep === 'confirm'
-                  ? 'Confirmação detalhada da baixa de estoque para a cozinha'
-                  : 'Composição de mantimentos e conferência de disponibilidade de estoque'}
+                  ? (isDml ? 'Confirmação detalhada da distribuição de kits para os acolhidos' : 'Confirmação detalhada da baixa de estoque para a cozinha')
+                  : (isDml ? 'Composição de itens de higiene/limpeza e conferência de saldos físicos' : 'Composição de mantimentos e conferência de disponibilidade de estoque')}
               </p>
             </div>
           </div>
@@ -352,13 +370,13 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                    Estimativa de Refeições / Pessoas:
+                    {isDml ? 'Estimativa de Acolhidos Atendidos:' : 'Estimativa de Refeições / Pessoas:'}
                   </span>
                 </div>
 
                 {isAdmin && (
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {[60, 80, 100, 120, 150, 200].map((num) => (
+                    {(isDml ? [20, 30, 40, 50, 60, 80] : [60, 80, 100, 120, 150, 200]).map((num) => (
                       <button
                         key={num}
                         type="button"
@@ -379,7 +397,7 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
                 <div className="w-full sm:w-48">
                   <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">
-                    Número de Pessoas Atendidas
+                    {isDml ? 'Número de Acolhidos' : 'Número de Pessoas Atendidas'}
                   </label>
                   <input
                     type="number"
@@ -395,7 +413,9 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
                   />
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 flex-1 leading-tight">
-                  💡 O Kit Cozinha calcula as quantidades ideais proporcionalmente para o número de acolhidos e missionários na Cristolândia.
+                  {isDml
+                    ? '💡 O Kit Higiene calcula as quantidades de sabonetes, papel higiênico, escovas e desinfetantes proporcionalmente aos acolhidos atendidos.'
+                    : '💡 O Kit Cozinha calcula as quantidades ideais proporcionalmente para o número de acolhidos e missionários na Cristolândia.'}
                 </div>
               </div>
             </div>
@@ -406,21 +426,21 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                   <span className="text-xs font-black text-amber-900 dark:text-amber-200">
-                    Turno da Refeição:
+                    {isDml ? 'Turno / Horário:' : 'Turno da Refeição:'}
                   </span>
                 </div>
                 {isAdmin ? (
                   <select
                     value={selectedShift}
                     onChange={(e) => {
-                      const shift = e.target.value as KitchenShift;
+                      const shift = e.target.value;
                       setSelectedShift(shift);
                       const matched = kitchenMissionaries.find((m) => m.shift === shift);
                       if (matched) setRetrievedBy(matched.name);
                     }}
                     className="bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:border-amber-500 w-full sm:w-auto"
                   >
-                    {KITCHEN_SHIFTS.map((s) => (
+                    {(isDml ? DML_SHIFTS : KITCHEN_SHIFTS).map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
@@ -433,7 +453,7 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Retirado Por (Responsável da Cozinha)
+                  {isDml ? 'Retirado Por (Responsável / Equipe Higiene)' : 'Retirado Por (Responsável da Cozinha)'}
                 </label>
                 <input
                   type="text"
@@ -731,7 +751,8 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
                   </span>
                 ) : (
                   <span>
-                    O estoque será deduzido e alocado para o setor <strong className="text-slate-800 dark:text-slate-200">Cozinha</strong>.
+                    O estoque será deduzido e alocado para o setor{' '}
+                    <strong className="text-slate-800 dark:text-slate-200">{isDml ? 'DML / Higiene' : 'Cozinha'}</strong>.
                   </span>
                 )}
               </span>
@@ -752,10 +773,12 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
                     className={`flex-1 sm:flex-none px-6 py-2.5 rounded-2xl font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 ${
                       hasInsufficientStock
                         ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                        : isDml
+                        ? 'bg-purple-600 hover:bg-purple-500 text-white'
                         : 'bg-emerald-600 hover:bg-emerald-500 text-white'
                     }`}
                   >
-                    <span>Baixar Kit Cozinha</span>
+                    <span>{isDml ? 'Distribuir Kit Higiene' : 'Baixar Kit Cozinha'}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (

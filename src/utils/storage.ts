@@ -1,5 +1,7 @@
 import { Product, StockMovement, DailyKit, AuditReport, EntryType, Missionary, DailyMealRecord } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_MOVEMENTS, DEFAULT_DAILY_KIT, INITIAL_MISSIONARIES, INITIAL_MEAL_RECORDS } from '../data/initialData';
+import { INITIAL_DML_PRODUCTS } from '../data/initialDmlData';
+import { normalizeProductDepartment, isDmlProduct } from './departmentUtils';
 
 const PRODUCTS_KEY = 'cristolandia_products_v54';
 const MOVEMENTS_KEY = 'cristolandia_movements_v53';
@@ -33,8 +35,47 @@ export function getStoredMissionaries(): Missionary[] {
   }
 }
 export function saveMissionaries(missionaries: Missionary[]): void { try { localStorage.setItem(MISSIONARIES_KEY, JSON.stringify(missionaries)); } catch (err) { console.error('Error saving missionaries:', err); } }
-export function getStoredProducts(): Product[] { try { const data = localStorage.getItem(PRODUCTS_KEY); if (!data) return INITIAL_PRODUCTS; const parsed = JSON.parse(data) as Product[]; if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_PRODUCTS; return parsed.map((p) => { const normId = (p.id || '').toLowerCase(); const normName = (p.name || '').toLowerCase(); if (normId.includes('flocao') || normName.includes('flocão')) { return { ...p, usageFrequency: 'Somente Quartas e Domingos (20 pacotes/preparo)', dailyAvgConsumption: 5.71, minStock: Math.max(p.minStock || 0, 40), idealStock: Math.max(p.idealStock || 0, 80) }; } return p; }); } catch { return INITIAL_PRODUCTS; } }
-export function saveProducts(products: Product[]): void { try { localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products)); } catch (err) { console.error('Error saving products:', err); } }
+export function getStoredProducts(): Product[] {
+  try {
+    const data = localStorage.getItem(PRODUCTS_KEY);
+    let list: Product[] = [];
+    if (!data) {
+      list = [...INITIAL_PRODUCTS, ...INITIAL_DML_PRODUCTS];
+    } else {
+      const parsed = JSON.parse(data) as Product[];
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        list = [...INITIAL_PRODUCTS, ...INITIAL_DML_PRODUCTS];
+      } else {
+        const hasDml = parsed.some((p) => isDmlProduct(p));
+        list = hasDml ? parsed : [...parsed, ...INITIAL_DML_PRODUCTS];
+      }
+    }
+    return list.map((p) => {
+      const norm = normalizeProductDepartment(p);
+      const normId = (norm.id || '').toLowerCase();
+      const normName = (norm.name || '').toLowerCase();
+      if (normId.includes('flocao') || normName.includes('flocão')) {
+        return {
+          ...norm,
+          usageFrequency: 'Somente Quartas e Domingos (20 pacotes/preparo)',
+          dailyAvgConsumption: 5.71,
+          minStock: Math.max(norm.minStock || 0, 40),
+          idealStock: Math.max(norm.idealStock || 0, 80),
+        };
+      }
+      return norm;
+    });
+  } catch {
+    return [...INITIAL_PRODUCTS, ...INITIAL_DML_PRODUCTS].map(normalizeProductDepartment);
+  }
+}
+export function saveProducts(products: Product[]): void {
+  try {
+    localStorage.setItem(PRODUCTS_KEY, JSON.stringify(products.map(normalizeProductDepartment)));
+  } catch (err) {
+    console.error('Error saving products:', err);
+  }
+}
 export function getStoredMovements(): StockMovement[] {
   try {
     const data = localStorage.getItem(MOVEMENTS_KEY);

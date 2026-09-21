@@ -41,6 +41,11 @@ interface ExitModalProps {
 
 const SECTORS: Sector[] = [
   'Cozinha',
+  'Padaria',
+  'Dormitórios / Alojamentos',
+  'Baterias de Banheiros',
+  'Lavanderia',
+  'Kit Pessoal Acolhidos',
   'Casa Missionária Masculina',
   'Casa Missionária Feminina',
   'Administração',
@@ -48,7 +53,6 @@ const SECTORS: Sector[] = [
   'Casa Lana & Joabe (Cesta Básica)',
   'Casa Marcos & Fabíola (Cesta Básica)',
   'Casa Tainã (Cesta Básica)',
-  'Padaria',
   'Eventos',
   'Outros',
 ];

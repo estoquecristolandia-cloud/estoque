@@ -29,8 +29,10 @@ import { PhysicalReconciliationPreviewModal } from './components/PhysicalReconci
 import { LoginScreen } from './components/LoginScreen';
 import { ToastContainer } from './components/ToastContainer';
 import { toast } from './utils/toast';
+import { DEFAULT_DML_KIT } from './data/initialDmlData';
+import { filterProductsByDepartment, filterMovementsByDepartment } from './utils/departmentUtils';
 import { motion, AnimatePresence } from 'motion/react';
-import { Utensils } from 'lucide-react';
+import { Utensils, Sparkles } from 'lucide-react';
 
 export default function App() {
   // 1. Sessão e Autenticação
@@ -47,6 +49,8 @@ export default function App() {
   const {
     activeTab,
     setActiveTab,
+    activeDepartment,
+    setActiveDepartment,
     isDarkMode,
     toggleDarkMode,
   } = useAppNavigation();
@@ -72,6 +76,22 @@ export default function App() {
     handleDeleteMealRecord,
     handleSaveMissionaries,
   } = useInventoryData(currentUser);
+
+  // Isolamento seguro, profissional e estrito por Departamento (Alimentação vs DML & Limpeza)
+  const departmentProducts = React.useMemo(() => {
+    return filterProductsByDepartment(products, activeDepartment);
+  }, [products, activeDepartment]);
+
+  const departmentMovements = React.useMemo(() => {
+    return filterMovementsByDepartment(movements, departmentProducts, activeDepartment);
+  }, [movements, departmentProducts, activeDepartment]);
+
+  const activeKit = React.useMemo(() => {
+    if (activeDepartment === 'dml') {
+      return DEFAULT_DML_KIT;
+    }
+    return dailyKit;
+  }, [activeDepartment, dailyKit]);
 
   // 4. Controle de Modais e Seleções
   const {
@@ -144,11 +164,17 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex flex-col md:flex-row selection:bg-indigo-600 selection:text-white transition-colors duration-200">
+    <div
+      id="app-root"
+      data-theme={isDarkMode ? 'dark' : 'light'}
+      className={`min-h-screen ${isDarkMode ? 'dark' : ''} bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex flex-col md:flex-row selection:bg-indigo-600 selection:text-white transition-colors duration-200`}
+    >
       <ToastContainer />
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        activeDepartment={activeDepartment}
+        onSelectDepartment={setActiveDepartment}
         onOpenKitModal={() => setIsKitModalOpen(true)}
         onOpenPhysicalInventory={() => setIsPhysicalInventoryOpen(true)}
         onOpenReconciliationPreview={() => setIsReconciliationPreviewOpen(true)}
@@ -166,9 +192,10 @@ export default function App() {
           {activeTab === 'dashboard' && (
             <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
               <HeroAlertBanner
-                products={products}
-                dailyKit={dailyKit}
+                products={departmentProducts}
+                dailyKit={activeKit}
                 userRole={currentUser.role}
+                activeDepartment={activeDepartment}
                 onOpenEntryModal={(p) => handleOpenEntryModal(p || null)}
                 onOpenExitModal={(p) => handleOpenExitModal(p || null)}
                 onOpenKitModal={() => setIsKitModalOpen(true)}
@@ -178,11 +205,12 @@ export default function App() {
               />
 
               <KpiCards
-                products={products}
-                movements={movements}
-                dailyKit={dailyKit}
+                products={departmentProducts}
+                movements={departmentMovements}
+                dailyKit={activeKit}
                 meals={meals}
                 userRole={currentUser.role}
+                activeDepartment={activeDepartment}
                 onNavigateTab={(tab) => setActiveTab(tab)}
                 onOpenEntryModal={() => handleOpenEntryModal(null)}
                 onOpenExitModal={() => handleOpenExitModal(null)}
@@ -191,45 +219,45 @@ export default function App() {
               />
 
               <ReplenishmentAlertSection
-                products={products}
+                products={departmentProducts}
                 userRole={currentUser.role}
                 onOpenEntry={(p) => handleOpenEntryModal(p)}
                 onViewAllProducts={() => setActiveTab('products')}
               />
 
               <RecentMovementsSection
-                movements={movements}
-                products={products}
+                movements={departmentMovements}
+                products={departmentProducts}
                 userRole={currentUser.role}
                 onViewAllMovements={() => setActiveTab('entries')}
-                onOpenProductTimeline={(id) => handleOpenTimelineById(id, products)}
+                onOpenProductTimeline={(id) => handleOpenTimelineById(id, departmentProducts)}
               />
 
               <CurrentStockOverview
-                products={products}
-                movements={movements}
+                products={departmentProducts}
+                movements={departmentMovements}
                 inventoryAudits={inventoryAudits}
                 userRole={currentUser.role}
                 userEmail={currentUser.email}
                 onOpenEntry={(p) => handleOpenEntryModal(p)}
                 onOpenExit={(p) => handleOpenExitModal(p)}
-                onOpenTimeline={(id) => handleOpenTimelineById(id, products)}
+                onOpenTimeline={(id) => handleOpenTimelineById(id, departmentProducts)}
                 onOpenPhysicalInventory={() => setIsPhysicalInventoryOpen(true)}
                 onOpenReconciliationPreview={() => setIsReconciliationPreviewOpen(true)}
                 onForceSyncPhysicalStock={handleForceSyncPhysicalInventory}
               />
 
-              <DashboardCharts products={products} movements={movements} />
+              <DashboardCharts products={departmentProducts} movements={departmentMovements} />
             </motion.div>
           )}
 
           {activeTab === 'ai_assistant' && (
             <motion.div key="ai_assistant" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <AiAssistantView
-                products={products}
-                movements={movements}
+                products={departmentProducts}
+                movements={departmentMovements}
                 meals={meals}
-                dailyKit={dailyKit}
+                dailyKit={activeKit}
                 missionaries={missionaries}
                 inventoryAudits={inventoryAudits}
                 inventorySessions={inventorySessions}
@@ -240,23 +268,32 @@ export default function App() {
 
           {activeTab === 'products' && (
             <ProductManager
-              products={products}
+              products={departmentProducts}
               onOpenTimeline={handleOpenTimeline}
               onOpenEntry={handleOpenEntryModal}
               onOpenExit={handleOpenExitModal}
               onSaveProduct={handleSaveProduct}
-              onAddProduct={handleAddProduct}
+              onAddProduct={(p) => handleAddProduct({ ...p, department: activeDepartment })}
               userRole={currentUser.role}
               onOpenReconciliationPreview={() => setIsReconciliationPreviewOpen(true)}
+              activeDepartment={activeDepartment}
             />
           )}
 
           {activeTab === 'entries' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+              <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Entradas no Estoque (Compras e Doações)</h2>
-                  <p className="text-xs text-slate-500">Rastreio de todos os mantimentos recebidos na Cristolândia</p>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                    {activeDepartment === 'dml'
+                      ? 'Entradas no DML (Compras e Doações de Limpeza & Higiene)'
+                      : 'Entradas no Estoque (Compras e Doações de Alimentos)'}
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {activeDepartment === 'dml'
+                      ? 'Rastreio de produtos químicos, descartáveis e itens de higiene recebidos'
+                      : 'Rastreio de todos os mantimentos alimentícios recebidos na Cristolândia'}
+                  </p>
                 </div>
                 {currentUser.role === 'admin' && (
                   <button
@@ -268,10 +305,10 @@ export default function App() {
                 )}
               </div>
               <MovementsHistory
-                movements={movements.filter((m) => m.type === 'entrada')}
-                products={products}
+                movements={departmentMovements.filter((m) => m.type === 'entrada')}
+                products={departmentProducts}
                 userRole={currentUser.role}
-                onOpenProductTimeline={(id) => handleOpenTimelineById(id, products)}
+                onOpenProductTimeline={(id) => handleOpenTimelineById(id, departmentProducts)}
                 onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)}
                 onOpenExitForDate={(d) => handleOpenExitModal(null, d)}
                 onUpdateMovement={handleUpdateMovement}
@@ -282,23 +319,39 @@ export default function App() {
 
           {activeTab === 'exits' && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Saídas do Estoque por Setor</h2>
-                  <p className="text-xs text-slate-500">Entrega de mantimentos para a Cozinha, Casa Masculina, Casa Feminina e Eventos</p>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+                    {activeDepartment === 'dml'
+                      ? 'Saídas do DML por Destino (Limpeza & Kits)'
+                      : 'Saídas do Estoque por Setor (Cozinha & Casas)'}
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {activeDepartment === 'dml'
+                      ? 'Distribuição para Dormitórios, Banheiros, Lavanderia, Cozinha e Kits Acolhidos'
+                      : 'Entrega de mantimentos para a Cozinha, Casa Masculina, Casa Feminina e Eventos'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsKitModalOpen(true)}
-                    className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer flex items-center gap-2"
+                    className={`px-5 py-3 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer flex items-center gap-2 ${
+                      activeDepartment === 'dml'
+                        ? 'bg-cyan-600 hover:bg-cyan-500'
+                        : 'bg-blue-600 hover:bg-blue-500'
+                    }`}
                   >
-                    <Utensils className="w-4 h-4" />
-                    <span>{currentUser.role === 'admin' ? '+ Kit Cozinha Diário' : 'Visualizar Kit Cozinha'}</span>
+                    {activeDepartment === 'dml' ? <Sparkles className="w-4 h-4" /> : <Utensils className="w-4 h-4" />}
+                    <span>
+                      {currentUser.role === 'admin'
+                        ? activeDepartment === 'dml' ? '+ Kit Higiene Acolhidos' : '+ Kit Cozinha Diário'
+                        : activeDepartment === 'dml' ? 'Visualizar Kit Higiene' : 'Visualizar Kit Cozinha'}
+                    </span>
                   </button>
                   {currentUser.role === 'admin' && (
                     <button
                       onClick={() => handleOpenExitModal(null)}
-                      className="px-5 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer"
+                      className="px-5 py-3 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-sm cursor-pointer"
                     >
                       Nova Saída
                     </button>
@@ -306,10 +359,10 @@ export default function App() {
                 </div>
               </div>
               <MovementsHistory
-                movements={movements.filter((m) => m.type === 'saida')}
-                products={products}
+                movements={departmentMovements.filter((m) => m.type === 'saida')}
+                products={departmentProducts}
                 userRole={currentUser.role}
-                onOpenProductTimeline={(id) => handleOpenTimelineById(id, products)}
+                onOpenProductTimeline={(id) => handleOpenTimelineById(id, departmentProducts)}
                 onOpenEntryForDate={(d) => handleOpenEntryModal(null, d)}
                 onOpenExitForDate={(d) => handleOpenExitModal(null, d)}
                 onUpdateMovement={handleUpdateMovement}
@@ -333,12 +386,13 @@ export default function App() {
           {activeTab === 'reports' && (
             currentUser.role === 'admin' ? (
               <ReportsView
-                products={products}
-                movements={movements}
+                products={departmentProducts}
+                movements={departmentMovements}
                 inventoryAudits={inventoryAudits}
                 userRole={currentUser.role}
                 userName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'}
                 userEmail={currentUser.email}
+                activeDepartment={activeDepartment}
               />
             ) : (
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm space-y-4">
@@ -376,7 +430,7 @@ export default function App() {
 
       {isEntryModalOpen && currentUser.role === 'admin' && (
         <EntryModal
-          products={products}
+          products={departmentProducts}
           selectedProduct={selectedProductForAction}
           initialDate={actionInitialDate || undefined}
           onClose={() => {
@@ -390,7 +444,7 @@ export default function App() {
 
       {isExitModalOpen && currentUser.role === 'admin' && (
         <ExitModal
-          products={products}
+          products={departmentProducts}
           selectedProduct={selectedProductForAction}
           initialDate={actionInitialDate || undefined}
           missionaries={missionaries}
@@ -406,10 +460,11 @@ export default function App() {
 
       {isKitModalOpen && (
         <DailyKitModal
-          products={products}
-          kit={dailyKit}
+          products={departmentProducts}
+          kit={activeKit}
           missionaries={missionaries}
           userRole={currentUser.role}
+          activeDepartment={activeDepartment}
           onClose={() => setIsKitModalOpen(false)}
           onSubmitKit={handleDeliverKit}
         />
@@ -428,14 +483,14 @@ export default function App() {
         <WhatsAppAlertModal
           isOpen={isWhatsAppModalOpen}
           onClose={() => setIsWhatsAppModalOpen(false)}
-          products={products}
+          products={departmentProducts}
         />
       )}
 
       {isPhysicalInventoryOpen && currentUser.role === 'admin' && (
         <PhysicalInventoryModal
           isOpen={isPhysicalInventoryOpen}
-          products={products}
+          products={departmentProducts}
           userRole={currentUser.role}
           currentUserName={currentUser.displayName || 'Marconi Castro'}
           currentUserEmail={currentUser.email}
@@ -454,7 +509,7 @@ export default function App() {
       {isReconciliationPreviewOpen && currentUser.role === 'admin' && (
         <PhysicalReconciliationPreviewModal
           isOpen={isReconciliationPreviewOpen}
-          products={products}
+          products={departmentProducts}
           userRole={currentUser.role}
           currentUserName={currentUser.displayName || 'Marconi Castro'}
           currentUserEmail={currentUser.email}

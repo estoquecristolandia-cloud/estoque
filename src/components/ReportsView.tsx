@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Product, StockMovement, Sector } from '../types';
+import { Product, StockMovement, Sector, Department } from '../types';
 import { UserRole } from '../firebase';
 import { calculateDaysRemaining, verifyProductAudit, getTodayDateString } from '../utils/storage';
 import { generateInventoryPDF, generateMovementsDetailedPDF } from '../utils/pdfExport';
@@ -30,6 +30,7 @@ import {
   ShieldCheck,
   AlertTriangle,
   Database,
+  Sparkles,
 } from 'lucide-react';
 import { FirestoreLiveAuditReport } from './FirestoreLiveAuditReport';
 
@@ -40,6 +41,7 @@ interface ReportsViewProps {
   userRole?: UserRole;
   userName?: string;
   userEmail?: string;
+  activeDepartment?: Department;
 }
 
 interface ProductInSector {
@@ -65,7 +67,16 @@ interface SectorDetails {
   responsibles: Record<string, ResponsibleInSector>;
 }
 
-export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, inventoryAudits = [], userRole, userName, userEmail }) => {
+export const ReportsView: React.FC<ReportsViewProps> = ({
+  products,
+  movements,
+  inventoryAudits = [],
+  userRole,
+  userName,
+  userEmail,
+  activeDepartment = 'alimentacao',
+}) => {
+  const isDml = activeDepartment === 'dml';
   const [activeReportTab, setActiveReportTab] = useState<'daily_ledger' | 'product' | 'sector' | 'person' | 'shopping' | 'audit' | 'live_audit'>('daily_ledger');
   const [bufferDays, setBufferDays] = useState<number>(30); // Target buffer days e.g. 15 or 30 days
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<string>('todos');
@@ -202,9 +213,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
     .sort((a, b) => a.daysRemaining - b.daysRemaining);
 
   const handleCopyWhatsAppText = () => {
-    let msg = `*CRISTOLÂNDIA - PEDIDO DE DOAÇÕES DE ALIMENTOS*\n`;
+    let msg = isDml
+      ? `*CRISTOLÂNDIA - PEDIDO DE DOAÇÕES DE ITENS DML (HIGIENE E LIMPEZA)*\n`
+      : `*CRISTOLÂNDIA - PEDIDO DE DOAÇÕES DE ALIMENTOS*\n`;
     msg += `*Meta de Abastecimento:* ${bufferDays} dias\n\n`;
-    msg += `Paz do Senhor! Para mantermos a cozinha e padaria da Cristolândia supridas, compartilhamos nossa lista de necessidades:\n\n`;
+    msg += isDml
+      ? `Paz do Senhor! Para mantermos o DML e a higienização dos acolhidos e da unidade Cristolândia supridos, compartilhamos nossa lista de necessidades:\n\n`
+      : `Paz do Senhor! Para mantermos a cozinha e padaria da Cristolândia supridas, compartilhamos nossa lista de necessidades:\n\n`;
 
     const criticals = shoppingList.filter((item) => item.daysRemaining <= 5);
     const warnings = shoppingList.filter((item) => item.daysRemaining > 5);
@@ -225,7 +240,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
       msg += `\n`;
     }
 
-    msg += `📍 *Local de Recebimento:* Cristolândia - Central de Abastecimento\n`;
+    msg += `📍 *Local de Recebimento:* Cristolândia - Central de Abastecimento (${isDml ? 'DML / Higiene' : 'Almoxarifado Geral'})\n`;
     msg += `Agradecemos pelo apoio e generosidade com a obra missionária! 🙏✨`;
 
     navigator.clipboard.writeText(msg);
@@ -234,22 +249,26 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
   };
 
   const handleDirectWhatsAppChefeMarcos = () => {
-    const feijao = products.find((p) => p.id === 'prod-feijao');
     const criticals = shoppingList.filter((item) => item.daysRemaining <= 5);
+    const mainCritical = isDml
+      ? (criticals[0] ? products.find(p => p.name === criticals[0].name) : products[0])
+      : products.find((p) => p.id === 'prod-feijao');
 
     let msg = `🏛️ *JUNTA DE MISSÕES NACIONAIS - CRISTOLÂNDIA (LEM/BA)*\n`;
-    msg += `📋 *ALERTA OFICIAL DE ESTOQUE & COMPRAS*\n\n`;
-    msg += `Prezado *Chefe Marcos*,\n`;
+    msg += `📋 *ALERTA OFICIAL DE ESTOQUE & COMPRAS (${isDml ? 'DML / HIGIENE' : 'ALIMENTAÇÃO'})*\n\n`;
+    msg += isDml
+      ? `Prezados *Pastor Huberto e Missª Débora* (Coordenação),\n`
+      : `Prezado *Chefe Marcos*,\n`;
     msg += `Segue o comunicado oficial do Almoxarifado / Estoque:\n\n`;
 
     msg += `🚨 *ITEM EM NÍVEL CRÍTICO DE REPOSIÇÃO:*\n`;
-    if (feijao) {
-      const daily = feijao.dailyAvgConsumption || 8;
-      const days = (feijao.currentStock / daily).toFixed(1);
-      msg += `• *Produto:* Feijão Carioca\n`;
-      msg += `• *Estoque Físico Atual:* *${feijao.currentStock} kg*\n`;
-      msg += `• *Estoque Mínimo:* ${feijao.minStock} kg\n`;
-      msg += `• *Consumo Médio:* ${daily} kg/dia\n`;
+    if (mainCritical) {
+      const daily = mainCritical.dailyAvgConsumption || 1;
+      const days = (mainCritical.currentStock / daily).toFixed(1);
+      msg += `• *Produto:* ${mainCritical.name}\n`;
+      msg += `• *Estoque Físico Atual:* *${mainCritical.currentStock} ${mainCritical.unit}*\n`;
+      msg += `• *Estoque Mínimo:* ${mainCritical.minStock} ${mainCritical.unit}\n`;
+      msg += `• *Consumo Médio:* ${daily} ${mainCritical.unit}/dia\n`;
       msg += `• *Autonomia Estimada:* *~${days} dias*\n\n`;
     }
 
@@ -262,15 +281,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
     }
 
     msg += `💡 *Recomendação Operacional:*\n`;
-    msg += `Programar a compra/reabastecimento prioritário de Feijão Carioca para as próximas 48 horas para assegurar as refeições da unidade.\n\n`;
+    msg += isDml
+      ? `Programar a compra/reabastecimento prioritário dos itens de Higiene e Limpeza para as próximas 48 horas para assegurar as rotinas da unidade.\n\n`
+      : `Programar a compra/reabastecimento prioritário de Feijão Carioca para as próximas 48 horas para assegurar as refeições da unidade.\n\n`;
     msg += `👤 *Gestor Responsável:* Marconi Castro\n`;
-    msg += `📍 *Unidade:* Cristolândia LEM/BA\n`;
+    msg += `📍 *Unidade:* Cristolândia LEM/BA (${isDml ? 'DML' : 'Alimentos'})\n`;
     msg += `📅 *Emitido em:* ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
     })}`;
 
-    const url = `https://api.whatsapp.com/send?phone=5562999746823&text=${encodeURIComponent(msg)}`;
+    const phone = isDml ? '5562999746823' : '5562999746823';
+    const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
   };
 
@@ -857,6 +879,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ products, movements, i
           userRole={userRole}
           userName={userName}
           currentUserEmail={userEmail}
+          activeDepartment={activeDepartment}
         />
       )}
 

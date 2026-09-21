@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Product, StockMovement, Category, InventoryAudit } from "../types";
+import { Product, StockMovement, Category, InventoryAudit, Department } from "../types";
 import { UserRole } from "../firebase";
 import {
   calculatePurchaseForecast,
@@ -46,9 +46,10 @@ interface PurchaseForecastReportProps {
   userRole?: UserRole;
   userName?: string;
   currentUserEmail?: string;
+  activeDepartment?: Department;
 }
 
-const CATEGORIES: Category[] = [
+const FOOD_CATEGORIES: Category[] = [
   "Grãos e Cereais",
   "Óleos e Condimentos",
   "Matinais e Bebidas",
@@ -59,9 +60,29 @@ const CATEGORIES: Category[] = [
   "Outros",
 ];
 
-// Helper to identify multi-sector items with decentralized unnotified usage (Cozinha, Padaria, Casas Missionárias e Adm)
-export const isMultiSectorItem = (name: string): boolean => {
+const DML_CATEGORIES: (Category | string)[] = [
+  "Higiene Pessoal (Acolhidos)",
+  "Limpeza Predial & Conservação",
+  "Descartáveis e Acessórios",
+  "Higiene e Limpeza",
+  "Outros",
+];
+
+// Helper to identify multi-sector items with decentralized unnotified usage
+export const isMultiSectorItem = (name: string, isDml: boolean = false): boolean => {
   const norm = name.toLowerCase();
+  if (isDml) {
+    return (
+      norm.includes("detergente") ||
+      norm.includes("água sanitária") ||
+      norm.includes("agua sanitaria") ||
+      norm.includes("desinfetante") ||
+      norm.includes("papel higiênico") ||
+      norm.includes("papel higienico") ||
+      norm.includes("saco de lixo") ||
+      norm.includes("sabonete")
+    );
+  }
   return (
     norm.includes("sal") ||
     norm.includes("leite") ||
@@ -79,7 +100,11 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   userRole = "admin",
   userName = "Marconi Castro (Gestor do Estoque)",
   currentUserEmail = "",
+  activeDepartment = "alimentacao",
 }) => {
+  const isDml = activeDepartment === "dml";
+  const availableCategories = isDml ? DML_CATEGORIES : FOOD_CATEGORIES;
+
   // Apenas o usuário oficial de gestão (estoquecristolandia@gmail.com) tem permissão de visualizar e disparar os blocos de e-mail
   const canManageEmails = Boolean(
     currentUserEmail &&
@@ -161,6 +186,38 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
       unit: string,
     ) => {
       const norm = name.toLowerCase();
+
+      if (isDml) {
+        if (norm.includes("detergente")) {
+          return "Item multissetorial de uso contínuo (Cozinha/Refeitório, Alojamentos e Copa). Demanda estoque de segurança para garantir a lavagem constante de louças e utensílios.";
+        }
+        if (norm.includes("água sanitária") || norm.includes("agua sanitaria")) {
+          return "Desinfetante clorado prioritário para asseio de banheiros, sanitização de pisos e áreas comuns. Alto giro em dias de faxina geral.";
+        }
+        if (norm.includes("desinfetante")) {
+          return "Item essencial para higienização e aromatização diária dos alojamentos, salas de aula e dependências administrativas.";
+        }
+        if (norm.includes("papel higiênico") || norm.includes("papel higienico")) {
+          return "Suprimento de primeira necessidade com distribuição controlada diária nos banheiros coletivos e alojamentos.";
+        }
+        if (norm.includes("saco de lixo") || norm.includes("sacos de lixo")) {
+          return "Essencial para o recolhimento sanitário diário de resíduos em todas as frentes da Cristolândia.";
+        }
+        if (norm.includes("sabonete")) {
+          return "Higiene individual dos acolhidos. Distribuído nos kits diários/semanais de banho.";
+        }
+        if (norm.includes("creme dental") || norm.includes("pasta de dente") || norm.includes("escova")) {
+          return "Item de higiene bucal individual dos acolhidos. Abastecido nos kits de acolhimento e rotina.";
+        }
+        if (norm.includes("sabão em pó") || norm.includes("sabao em po") || norm.includes("amaciante")) {
+          return "Uso intensivo na Lavanderia para higienização de roupas de cama, toalhas e vestuário dos acolhidos.";
+        }
+        if (norm.includes("esponja")) {
+          return "Material de apoio para lavagem manual em refeitório e sanitários.";
+        }
+        return "Estoque conferido e devidamente armazenado no Almoxarifado DML / Higiene.";
+      }
+
       if (norm.includes("sal refinado") || norm === "sal") {
         return "Item multissetorial (Cozinha, Padaria de Fernando Pates, Casas Missionárias e Adm). Sujeito a retiradas sem aviso prévio. Com a entrada de 8 kg, o saldo de 11 kg garante 11 dias de pães e refeições, mas requer margem redobrada contra desfalques.";
       }
@@ -250,18 +307,28 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     // MODE 1: ATUALIZAÇÃO GERAL DO ESTOQUE PÓS-COMPRAS (NOVAS ENTRADAS + QUADRO GERAL)
     // =========================================================================
     if (emailReportType === "post_purchase") {
-      const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Atualização Geral do Estoque & Pós-Compras (${today}) — Painel: ${APP_DOMAIN}`;
+      const defaultSubject = isDml
+        ? `[DML / HIGIENE CRISTOLÂNDIA] Atualização Geral do Estoque & Pós-Compras (${today}) — Painel: ${APP_DOMAIN}`
+        : `[ESTOQUE CRISTOLÂNDIA] Atualização Geral do Estoque & Pós-Compras (${today}) — Painel: ${APP_DOMAIN}`;
 
       // 1. Plain Text Version for Post-Purchase Update
-      let body = `A/C: Pastor Huberto, Missª. Débora (Coordenação) e Chefe Marcos\n`;
-      body += `Cc: Marconi Castro (Almoxarifado / Estoque)\n`;
+      let body = isDml
+        ? `A/C: Pastor Huberto e Missª. Débora (Coordenação Geral)\n`
+        : `A/C: Pastor Huberto, Missª. Débora (Coordenação) e Chefe Marcos\n`;
+      body += `Cc: Marconi Castro (Almoxarifado / Estoque ${isDml ? "DML" : ""})\n`;
       body += `Data da Emissão: ${today}\n`;
       body += `Painel Online Oficial: ${APP_URL}\n\n`;
 
-      body += `Prezados Pastor Huberto, Missª. Débora e Chefe Marcos,\n\n`;
+      body += isDml
+        ? `Prezados Pastor Huberto e Missª. Débora,\n\n`
+        : `Prezados Pastor Huberto, Missª. Débora e Chefe Marcos,\n\n`;
       body += `Graça e paz!\n\n`;
-      body += `Comunicamos a conclusão do recebimento das novas compras, conferência física e regularização geral do Almoxarifado da Cristolândia (LEM/BA).\n\n`;
-      body += `Com as novas entradas físicas integradas ao estoque, todos os itens que se encontravam em nível crítico foram plenamente reabastecidos. O estoque da Cozinha e da Padaria (sob a liderança de Fernando Pates) opera agora com 100% de segurança e zero risco de ruptura.\n\n`;
+      body += isDml
+        ? `Comunicamos a conclusão do recebimento das novas compras, conferência física e regularização do Almoxarifado DML (Higiene e Limpeza) da Cristolândia (LEM/BA).\n\n`
+        : `Comunicamos a conclusão do recebimento das novas compras, conferência física e regularização geral do Almoxarifado da Cristolândia (LEM/BA).\n\n`;
+      body += isDml
+        ? `Com as novas entradas físicas integradas ao estoque, todos os itens que se encontravam em nível crítico foram plenamente reabastecidos. O estoque de higiene pessoal, lavanderia e limpeza institucional opera agora com 100% de segurança e zero risco de ruptura.\n\n`
+        : `Com as novas entradas físicas integradas ao estoque, todos os itens que se encontravam em nível crítico foram plenamente reabastecidos. O estoque da Cozinha e da Padaria (sob a liderança de Fernando Pates) opera agora com 100% de segurança e zero risco de ruptura.\n\n`;
 
       body += `📱 ACESSO AO SISTEMA ONLINE EM TEMPO REAL:\n`;
       body += `Para consultar o estoque completo, auditorias, extratos diários e relatórios detalhados a qualquer momento pelo celular ou computador, acesse:\n`;
@@ -417,9 +484,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
           const isWarning = item.status === "ATENCAO";
           const isCritical = item.status === "CRITICO";
           const isFull = item.daysAutonomy != null && item.daysAutonomy >= 10;
-          const isMultiSector = isMultiSectorItem(item.name);
+          const isMultiSector = isMultiSectorItem(item.name, isDml);
           const multiSectorBadge = isMultiSector
-            ? `<div style="margin-top: 3px;"><span style="display: inline-block; background-color: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-weight: 800; font-size: 9.5px; padding: 1px 6px; border-radius: 4px;">⚠️ Multissetorial (Cozinha, Padaria, Casas & Adm)</span></div>`
+            ? `<div style="margin-top: 3px;"><span style="display: inline-block; background-color: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-weight: 800; font-size: 9.5px; padding: 1px 6px; border-radius: 4px;">⚠️ Multissetorial (${isDml ? "Aloj./Banh./Lav./Adm" : "Cozinha, Padaria, Casas & Adm"})</span></div>`
             : "";
 
           const statusBg = isCritical
@@ -479,7 +546,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
           <!-- Header Executivo -->
           <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 14px; margin-bottom: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <div style="font-size: 11px; color: #0284c7; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Missão Cristolândia &bull; LEM/BA &bull; Almoxarifado Central</div>
+              <div style="font-size: 11px; color: #0284c7; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Missão Cristolândia &bull; LEM/BA &bull; ${isDml ? "Almoxarifado DML (Higiene e Limpeza)" : "Almoxarifado Central (Alimentos)"}</div>
               <div style="font-size: 11px; font-weight: 800; color: #059669;">
                 <a href="${APP_URL}" target="_blank" style="color: #059669; text-decoration: none;">🌐 ${APP_DOMAIN}</a>
               </div>
@@ -488,8 +555,12 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <div style="font-size: 12px; color: #475569; margin-top: 4px;">Data de Conferência e Entrada: <strong>${today}</strong> &bull; Ciclo Operacional: <strong>${forecast.baseDateFormatted} a ${forecast.endDateFormatted}</strong></div>
           </div>
 
-          <p style="margin: 0 0 10px 0;">Prezados Pastor Huberto, Missª. Débora e Chefe Marcos, graça e paz!</p>
-          <p style="margin: 0 0 16px 0;">Confirmamos o recebimento, conferência física e regularização dos estoques no Almoxarifado da Cristolândia. Com as novas entradas integradas, todos os itens em nível de atenção foram restabelecidos, garantindo a autonomia operacional plena da Cozinha e da Padaria (liderada por <strong>Fernando Pates</strong>), com zero risco de ruptura:</p>
+          <p style="margin: 0 0 10px 0;">${isDml ? "Prezados Pastor Huberto e Missª. Débora, graça e paz!" : "Prezados Pastor Huberto, Missª. Débora e Chefe Marcos, graça e paz!"}</p>
+          <p style="margin: 0 0 16px 0;">${
+            isDml
+              ? `Confirmamos o recebimento, conferência física e regularização dos estoques no Almoxarifado DML da Cristolândia. Com as novas entradas integradas, todos os itens de higiene e limpeza foram restabelecidos, garantindo a autonomia operacional plena dos Alojamentos, Banheiros, Cozinha e Lavanderia, com zero risco de ruptura sanitária:`
+              : `Confirmamos o recebimento, conferência física e regularização dos estoques no Almoxarifado da Cristolândia. Com as novas entradas integradas, todos os itens em nível de atenção foram restabelecidos, garantindo a autonomia operacional plena da Cozinha e da Padaria (liderada por <strong>Fernando Pates</strong>), com zero risco de ruptura:`
+          }</p>
 
           <!-- Banner Oficial de Acesso ao Sistema Web -->
           <div style="background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%); border: 2px solid #86efac; border-radius: 12px; padding: 14px 18px; margin: 16px 0; text-align: center;">
@@ -593,10 +664,19 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
           <!-- Observações Operacionais Destacadas -->
           <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; font-size: 12px;">
-            <strong style="color: #b45309;">⚠️ Destaques da Operação (Padaria & Cozinha):</strong>
+            <strong style="color: #b45309;">${isDml ? "⚠️ Destaques da Operação (DML & Higiene):" : "⚠️ Destaques da Operação (Padaria & Cozinha):"}</strong>
             <div style="color: #92400e; margin-top: 5px; line-height: 1.5;">
-              <div>&bull; <strong>Padaria (Fernando Pates) & Cozinha:</strong> Com o recebimento de <strong>+8 kg</strong> de Sal Refinado e estoque seguro de Farinha de Trigo, a confecção diária de pães e os preparos gerais estão 100% garantidos sem qualquer restrição.</div>
-              <div style="margin-top: 4px;">&bull; <strong>Flocão de Milho:</strong> O consumo ocorre exclusivamente às quartas e domingos (20 pacotes por preparo). O saldo de <strong>52 pacotes</strong> cobre com segurança o ciclo semanal, com previsão de reposição programada para a próxima terça-feira.</div>
+              ${
+                isDml
+                  ? `
+                <div>&bull; <strong>Higiene Pessoal & Acolhimento:</strong> Sabonetes, cremes dentais e escovas regularizados para a montagem dos kits diários/semanais dos acolhidos.</div>
+                <div style="margin-top: 4px;">&bull; <strong>Lavanderia & Limpeza Predial:</strong> Suprimento de sabão em pó, água sanitária e detergente assegura os ciclos contínuos de lavagem de roupas e desinfecção geral.</div>
+              `
+                  : `
+                <div>&bull; <strong>Padaria (Fernando Pates) & Cozinha:</strong> Com o recebimento de <strong>+8 kg</strong> de Sal Refinado e estoque seguro de Farinha de Trigo, a confecção diária de pães e os preparos gerais estão 100% garantidos sem qualquer restrição.</div>
+                <div style="margin-top: 4px;">&bull; <strong>Flocão de Milho:</strong> O consumo ocorre exclusivamente às quartas e domingos (20 pacotes por preparo). O saldo de <strong>52 pacotes</strong> cobre com segurança o ciclo semanal, com previsão de reposição programada para a próxima terça-feira.</div>
+              `
+              }
             </div>
           </div>
 
@@ -631,25 +711,35 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     // MODE 2: QUADRO GERAL DE TODO O ESTOQUE (14 PRODUTOS) + PREVISÃO DE COMPRAS
     // =========================================================================
     if (emailReportType === "all_items") {
-      const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Quadro Geral de Estoque & Previsão de Compras (${periodDays} Dias) — Emissão: ${today}`;
+      const defaultSubject = isDml
+        ? `[DML / HIGIENE CRISTOLÂNDIA] Quadro Geral de Estoque & Previsão de Compras (${periodDays} Dias) — Emissão: ${today}`
+        : `[ESTOQUE CRISTOLÂNDIA] Quadro Geral de Estoque & Previsão de Compras (${periodDays} Dias) — Emissão: ${today}`;
 
-      let body = `A/C: Pastor Huberto, Missª. Débora (Coordenação) e Chefe Marcos\n`;
-      body += `Cc: Marconi Castro (Almoxarifado / Estoque)\n`;
+      let body = isDml
+        ? `A/C: Pastor Huberto e Missª. Débora (Coordenação Geral)\n`
+        : `A/C: Pastor Huberto, Missª. Débora (Coordenação) e Chefe Marcos\n`;
+      body += `Cc: Marconi Castro (Almoxarifado / Estoque ${isDml ? "DML" : ""})\n`;
       body += `Data da Emissão: ${today}\n`;
       body += `Horizonte de Planejamento: ${periodDays} dias (${forecast.baseDateFormatted} a ${forecast.endDateFormatted})\n`;
       body += `Painel Online Oficial: ${APP_URL}\n\n`;
 
-      body += `Prezados Pastor Huberto, Missª. Débora e Chefe Marcos,\n\n`;
+      body += isDml
+        ? `Prezados Pastor Huberto e Missª. Débora,\n\n`
+        : `Prezados Pastor Huberto, Missª. Débora e Chefe Marcos,\n\n`;
       body += `Graça e paz!\n\n`;
-      body += `Apresentamos o Quadro Geral de Estoque e Previsão de Compras do Almoxarifado da Cristolândia (LEM/BA) projetado para os próximos ${periodDays} dias.\n`;
-      body += `Este relatório consolida a posição física oficial de todos os ${forecast.allItems.length} produtos alimentícios cadastrados, seus consumos médios, autonomias atuais e a necessidade exata de compra calculada para garantir abastecimento contínuo e 100% seguro durante o período de viagem da liderança e rotina da unidade.\n\n`;
+      body += isDml
+        ? `Apresentamos o Quadro Geral de Estoque e Previsão de Compras do Almoxarifado DML (Higiene e Limpeza) da Cristolândia (LEM/BA) projetado para os próximos ${periodDays} dias.\n`
+        : `Apresentamos o Quadro Geral de Estoque e Previsão de Compras do Almoxarifado da Cristolândia (LEM/BA) projetado para os próximos ${periodDays} dias.\n`;
+      body += isDml
+        ? `Este relatório consolida a posição física oficial de todos os ${forecast.allItems.length} produtos de higiene, lavanderia e limpeza cadastrados, seus consumos médios, autonomias atuais e a necessidade exata de compra calculada para garantir abastecimento contínuo e 100% seguro durante a rotina da unidade.\n\n`
+        : `Este relatório consolida a posição física oficial de todos os ${forecast.allItems.length} produtos alimentícios cadastrados, seus consumos médios, autonomias atuais e a necessidade exata de compra calculada para garantir abastecimento contínuo e 100% seguro durante o período de viagem da liderança e rotina da unidade.\n\n`;
 
       body += `📱 ACESSO AO SISTEMA ONLINE EM TEMPO REAL:\n`;
       body += `Para consultar o painel completo, movimentações e relatórios em tempo real:\n`;
       body += `👉 ${APP_URL}\n\n`;
 
       body += `RESUMO DO QUADRO GERAL & PLANEJAMENTO (${periodDays} DIAS):\n`;
-      body += `• Total de Produtos Alimentícios: ${forecast.allItems.length} itens cadastrados\n`;
+      body += `• Total de Produtos Cadastrados: ${forecast.allItems.length} itens (${isDml ? "DML / Higiene" : "Alimentos"})\n`;
       body += `• Itens com Necessidade de Compra (${periodDays}d): ${forecast.purchasesList.length} itens (${forecast.totalSuggestedPurchaseUnits} un/kg no total)\n`;
       body += `• Itens com Estoque Seguro para o Período: ${forecast.allItems.length - forecast.purchasesList.length} itens\n`;
       body += `• Autonomia Média da Unidade: 11 dias de cobertura operacional garantida\n\n`;
@@ -716,18 +806,20 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
       body += `────────────────────────────────────────────────────────────────────────\n`;
       body += `⚠️ ALERTA OPERACIONAL: ITENS DE CONSUMO MULTISSETORIAL\n`;
-      body += `(Cozinha + Padaria + Casas Missionárias + Administração)\n`;
+      body += isDml
+        ? `(Alojamentos + Banheiros Coletivos + Lavanderia + Cozinha + Administração)\n`
+        : `(Cozinha + Padaria + Casas Missionárias + Administração)\n`;
       body += `────────────────────────────────────────────────────────────────────────\n`;
-      body += `• Itens Envolvidos: Leite, Manteiga/Margarina, Óleo e Sal.\n`;
-      body += `• Diagnóstico da Gestão: Diferente da Cozinha Geral (onde o cardápio é planejado e as porções são controladas), estes 4 insumos atendem simultaneamente Cozinha, Padaria (Fernando Pates), Casas Missionárias e Administração.\n`;
-      body += `• Fator de Risco: Podem ser retirados sem aviso prévio por esses outros setores onde não há controle de pesagem diária como na cozinha, desfalcando o estoque de surpresa.\n`;
-      body += `• Medida Adotada no Almoxarifado: Mantemos margem de segurança técnica redobrada no sistema para blindar a operação contra desfalques e solicitamos aos setores que informem qualquer saída avulsa.\n\n`;
+      body += isDml
+        ? `• Itens Envolvidos: Detergente, Água Sanitária, Desinfetante e Sabonete.\n• Diagnóstico da Gestão: Estes insumos atendem a todas as frentes de higienização da unidade Cristolândia, com saídas contínuas para manutenção predial e asseio dos acolhidos.\n• Medida Adotada no Almoxarifado DML: Margem preventiva reforçada no sistema para evitar desabastecimento sanitário.\n\n`
+        : `• Itens Envolvidos: Leite, Manteiga/Margarina, Óleo e Sal.\n• Diagnóstico da Gestão: Diferente da Cozinha Geral (onde o cardápio é planejado e as porções são controladas), estes 4 insumos atendem simultaneamente Cozinha, Padaria (Fernando Pates), Casas Missionárias e Administração.\n• Fator de Risco: Podem ser retirados sem aviso prévio por esses outros setores onde não há controle de pesagem diária como na cozinha, desfalcando o estoque de surpresa.\n• Medida Adotada no Almoxarifado: Mantemos margem de segurança técnica redobrada no sistema para blindar a operação contra desfalques e solicitamos aos setores que informem qualquer saída avulsa.\n\n`;
 
       body += `────────────────────────────────────────────────────────────────────────\n`;
       body += `DESTAQUES OPERACIONAIS DA UNIDADE:\n`;
       body += `────────────────────────────────────────────────────────────────────────\n`;
-      body += `• Padaria (Fernando Pates): Farinha de trigo e sal refinado com estoques regularizados para a produção contínua de pães.\n`;
-      body += `• Flocão de Milho: Consumo exclusivo às quartas e domingos (20 pct por preparo). Saldo cobre a rotina; planejar compra com antecedência conforme calendário.\n\n`;
+      body += isDml
+        ? `• Higiene Pessoal: Sabonetes e kits de banho controlados para atendimento contínuo dos acolhidos.\n• Lavanderia: Suprimentos de lavagem de roupas de cama e uniformes com estoque físico em dia.\n\n`
+        : `• Padaria (Fernando Pates): Farinha de trigo e sal refinado com estoques regularizados para a produção contínua de pães.\n• Flocão de Milho: Consumo exclusivo às quartas e domingos (20 pct por preparo). Saldo cobre a rotina; planejar compra com antecedência conforme calendário.\n\n`;
 
       if (customEmailNote.trim()) {
         body += `────────────────────────────────────────────────────────────────────────\n`;
@@ -762,9 +854,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
           const isWarning = item.status === "ATENCAO";
           const isCritical = item.status === "CRITICO";
           const isFull = item.daysAutonomy != null && item.daysAutonomy >= 10;
-          const isMultiSector = isMultiSectorItem(item.name);
+          const isMultiSector = isMultiSectorItem(item.name, isDml);
           const multiSectorBadge = isMultiSector
-            ? `<div style="margin-top: 3px;"><span style="display: inline-block; background-color: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-weight: 800; font-size: 9.5px; padding: 1px 6px; border-radius: 4px;">⚠️ Multissetorial (Cozinha, Padaria, Casas & Adm)</span></div>`
+            ? `<div style="margin-top: 3px;"><span style="display: inline-block; background-color: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; font-weight: 800; font-size: 9.5px; padding: 1px 6px; border-radius: 4px;">⚠️ Multissetorial (${isDml ? "Aloj./Banh./Lav./Adm" : "Cozinha, Padaria, Casas & Adm"})</span></div>`
             : "";
 
           const statusBg = isCritical
@@ -949,18 +1041,34 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
           <!-- Alerta Estratégico: Consumo Multissetorial sem Aviso Prévio -->
           <div style="background-color: #fff7ed; border: 2px solid #fed7aa; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; font-size: 12px;">
             <div style="font-weight: 900; color: #c2410c; font-size: 13px; display: flex; align-items: center; gap: 6px;">
-              <span>⚠️ ALERTA OPERACIONAL: ITENS MULTISSETORIAIS COM RISCO DE DESFALQUE SEM AVISO PRÉVIO</span>
+              <span>⚠️ ${isDml ? "ALERTA OPERACIONAL: ITENS DE DML COM ALTA ROTATIVIDADE" : "ALERTA OPERACIONAL: ITENS MULTISSETORIAIS COM RISCO DE DESFALQUE SEM AVISO PRÉVIO"}</span>
             </div>
             <div style="color: #9a3412; margin-top: 6px; line-height: 1.55;">
-              <p style="margin: 0 0 6px 0;">
-                Atenção prioritária aos itens: <strong>Leite, Manteiga/Margarina, Óleo e Sal</strong>.
-              </p>
-              <p style="margin: 0 0 6px 0;">
-                Estes insumos atendem simultaneamente à <strong>Cozinha Geral</strong>, à <strong>Padaria (Fernando Pates)</strong>, às <strong>Casas Missionárias</strong> e à <strong>Administração</strong>.
-              </p>
-              <p style="margin: 0; font-weight: 600;">
-                Como ocorrem retiradas pontuais sem aviso prévio nesses outros setores (onde não há rotina centralizada de pesagem diária como na cozinha), eles representam o maior potencial de desfalque invisível no saldo físico. Por essa razão, a gestão técnica aplica <strong>margem de segurança preventiva redobrada</strong> no sistema, garantindo a continuidade do suprimento.
-              </p>
+              ${
+                isDml
+                  ? `
+                <p style="margin: 0 0 6px 0;">
+                  Atenção prioritária aos itens de alta rotatividade sanitária: <strong>Detergente, Água Sanitária, Desinfetante e Sabonete</strong>.
+                </p>
+                <p style="margin: 0 0 6px 0;">
+                  Estes insumos atendem simultaneamente à <strong>Lavanderia Geral</strong>, aos <strong>Banheiros dos Acolhidos</strong>, à <strong>Cozinha</strong> e à <strong>Administração</strong>.
+                </p>
+                <p style="margin: 0; font-weight: 600;">
+                  Para assegurar que as rotinas de asseio pessoal e desinfecção ambiental nunca sejam interrompidas, o almoxarifado DML opera com <strong>margem de reserva preventiva reforçada</strong>.
+                </p>
+              `
+                  : `
+                <p style="margin: 0 0 6px 0;">
+                  Atenção prioritária aos itens: <strong>Leite, Manteiga/Margarina, Óleo e Sal</strong>.
+                </p>
+                <p style="margin: 0 0 6px 0;">
+                  Estes insumos atendem simultaneamente à <strong>Cozinha Geral</strong>, à <strong>Padaria (Fernando Pates)</strong>, às <strong>Casas Missionárias</strong> e à <strong>Administração</strong>.
+                </p>
+                <p style="margin: 0; font-weight: 600;">
+                  Como ocorrem retiradas pontuais sem aviso prévio nesses outros setores (onde não há rotina centralizada de pesagem diária como na cozinha), eles representam o maior potencial de desfalque invisível no saldo físico. Por essa razão, a gestão técnica aplica <strong>margem de segurança preventiva redobrada</strong> no sistema, garantindo a continuidade do suprimento.
+                </p>
+              `
+              }
             </div>
           </div>
 
@@ -1659,7 +1767,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="all">Todas as Categorias</option>
-              {CATEGORIES.map((cat) => (
+              {availableCategories.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
@@ -1691,7 +1799,11 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
               <input
                 type="text"
-                placeholder="Ex: Arroz, Feijão, Frango..."
+                placeholder={
+                  isDml
+                    ? "Ex: Sabão em Pó, Detergente, Desinfetante..."
+                    : "Ex: Arroz, Feijão, Frango..."
+                }
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -1774,25 +1886,40 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             <div className="space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-sm font-black text-amber-950 dark:text-amber-100">
-                  Atenção Operacional: Itens de Consumo Multissetorial (Leite,
-                  Manteiga, Óleo e Sal)
+                  {isDml
+                    ? "Atenção Operacional: Itens de Higiene e Limpeza com Alta Rotatividade (Detergente, Água Sanitária, Desinfetante e Sabonete)"
+                    : "Atenção Operacional: Itens de Consumo Multissetorial (Leite, Manteiga, Óleo e Sal)"}
                 </h4>
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-amber-200 dark:bg-amber-900 text-amber-900 dark:text-amber-200 uppercase tracking-wide">
-                  Risco de Saída sem Aviso Prévio
+                  {isDml ? "Demanda Contínua" : "Risco de Saída sem Aviso Prévio"}
                 </span>
               </div>
               <p className="text-xs text-amber-900/90 dark:text-amber-200/90 leading-relaxed max-w-5xl">
-                Diferente da <strong>Cozinha Geral</strong> (com cardápio fixo e
-                porções controladas), estes 4 itens atendem simultaneamente à{" "}
-                <strong>Padaria (Fernando Pates)</strong>, às{" "}
-                <strong>Casas Missionárias</strong> e à{" "}
-                <strong>Administração</strong>. Por estarem sujeitos a retiradas
-                sem aviso prévio nesses outros setores sem controle diário
-                centralizado, o sistema aplica uma{" "}
-                <strong>
-                  margem de segurança preventiva redobrada (+4 dias)
-                </strong>{" "}
-                para blindar o estoque físico contra desfalques imprevistos.
+                {isDml ? (
+                  <>
+                    Estes insumos atendem simultaneamente à{" "}
+                    <strong>Lavanderia Geral</strong>, aos{" "}
+                    <strong>Banheiros dos Acolhidos</strong>, à{" "}
+                    <strong>Cozinha</strong> e aos setores administrativos. Para assegurar que as
+                    rotinas de asseio pessoal e desinfecção ambiental nunca sofram interrupções,
+                    o sistema do DML aplica uma{" "}
+                    <strong>margem de segurança preventiva reforçada</strong> contra desabastecimento.
+                  </>
+                ) : (
+                  <>
+                    Diferente da <strong>Cozinha Geral</strong> (com cardápio fixo e
+                    porções controladas), estes 4 itens atendem simultaneamente à{" "}
+                    <strong>Padaria (Fernando Pates)</strong>, às{" "}
+                    <strong>Casas Missionárias</strong> e à{" "}
+                    <strong>Administração</strong>. Por estarem sujeitos a retiradas
+                    sem aviso prévio nesses outros setores sem controle diário
+                    centralizado, o sistema aplica uma{" "}
+                    <strong>
+                      margem de segurança preventiva redobrada (+4 dias)
+                    </strong>{" "}
+                    para blindar o estoque físico contra desfalques imprevistos.
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -1877,12 +2004,16 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                       <td className="py-3.5 px-3">
                         <div className="font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                           {item.name}
-                          {isMultiSectorItem(item.name) && (
+                          {isMultiSectorItem(item.name, isDml) && (
                             <span
                               className="text-[9px] px-1.5 py-0.5 rounded font-black bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60"
-                              title="Item de uso compartilhado na Cozinha, Padaria (Fernando Pates), Casas Missionárias e Adm — sujeito a retiradas sem aviso prévio"
+                              title={
+                                isDml
+                                  ? "Item de uso contínuo em múltiplos setores (Alojamentos, Banheiros, Lavanderia, Cozinha e Adm)"
+                                  : "Item de uso compartilhado na Cozinha, Padaria (Fernando Pates), Casas Missionárias e Adm — sujeito a retiradas sem aviso prévio"
+                              }
                             >
-                              Multissetorial (Cozinha/Padaria/Casas/Adm)
+                              {isDml ? "Multissetorial (Aloj/Banh/Lav/Adm)" : "Multissetorial (Cozinha/Padaria/Casas/Adm)"}
                             </span>
                           )}
                           {item.inventoryStatus === "DIVERGENTE" && (
@@ -2083,12 +2214,16 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                     <td className="py-3.5 px-3 font-extrabold text-slate-900 dark:text-white">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {item.name}
-                        {isMultiSectorItem(item.name) && (
+                        {isMultiSectorItem(item.name, isDml) && (
                           <span
                             className="text-[9px] px-1.5 py-0.5 rounded font-black bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60"
-                            title="Item de uso compartilhado na Cozinha, Padaria (Fernando Pates), Casas Missionárias e Adm — sujeito a retiradas sem aviso prévio"
+                            title={
+                              isDml
+                                ? "Item de uso contínuo em múltiplos setores (Alojamentos, Banheiros, Lavanderia, Cozinha e Adm)"
+                                : "Item de uso compartilhado na Cozinha, Padaria (Fernando Pates), Casas Missionárias e Adm — sujeito a retiradas sem aviso prévio"
+                            }
                           >
-                            Multissetorial (Cozinha/Padaria/Casas/Adm)
+                            {isDml ? "Multissetorial (Aloj/Banh/Lav/Adm)" : "Multissetorial (Cozinha/Padaria/Casas/Adm)"}
                           </span>
                         )}
                         {item.inventoryStatus === "DIVERGENTE" && (

@@ -9,6 +9,7 @@ import {
   InventorySessionSummary,
   AiAssistantResponse,
   AiQueryAuditLog,
+  Department,
 } from '../types';
 import { askGeminiAiAssistant, getAiAuditLogs } from '../services/aiAssistantService';
 import {
@@ -60,9 +61,10 @@ interface AiAssistantViewProps {
   inventoryAudits: InventoryAudit[];
   inventorySessions: InventorySessionSummary[];
   currentUser: { displayName?: string; email?: string; role?: string } | null;
+  activeDepartment?: Department;
 }
 
-const QUICK_SUGGESTIONS = [
+const ALIMENTACAO_QUICK_SUGGESTIONS = [
   { label: '📋 Situação Geral do Estoque', query: 'Como está a situação geral do nosso estoque hoje?' },
   { label: '🚚 Entradas e Compras Recentes', query: 'Quais foram as últimas entradas e compras recebidas no almoxarifado?' },
   { label: '🌽 Flocão de Milho (Cuscuz)', query: 'Qual o estoque e autonomia do flocão de milho para os preparos de quarta e domingo?' },
@@ -75,6 +77,18 @@ const QUICK_SUGGESTIONS = [
   { label: '👤 Retiradas do Pr. Marconi', query: 'Quais produtos o Pr. Marconi retirou este mês?' },
 ];
 
+const DML_QUICK_SUGGESTIONS = [
+  { label: '📋 Situação Geral DML', query: 'Como está a situação geral do estoque de higiene e limpeza hoje?' },
+  { label: '🧼 Sabão em Pó & Lavanderia', query: 'Qual o estoque e autonomia do sabão em pó para a lavanderia?' },
+  { label: '💧 Água Sanitária & Cloro', query: 'Qual o saldo atual de água sanitária e cloro no DML?' },
+  { label: '🧴 Kits de Higiene dos Acolhidos', query: 'Quantos kits de higiene foram distribuídos para os acolhidos recentemente?' },
+  { label: '🧻 Papel Higiênico & Sabonete', query: 'Como está o saldo de papel higiênico e sabonetes no DML?' },
+  { label: '⚠️ Abaixo do Mínimo no DML', query: 'Quais produtos de higiene e limpeza estão abaixo do estoque mínimo?' },
+  { label: '🚚 Entradas e Doações de Limpeza', query: 'Quais foram as últimas entradas de produtos de limpeza no almoxarifado?' },
+  { label: '🧹 Desinfetante & Asseio Predial', query: 'Quanto temos de desinfetante e sacos de lixo em estoque?' },
+  { label: '👤 Retiradas por Responsável', query: 'Quais produtos de limpeza foram retirados pelos missionários este mês?' },
+];
+
 export const AiAssistantView: React.FC<AiAssistantViewProps> = ({
   products,
   movements,
@@ -84,7 +98,10 @@ export const AiAssistantView: React.FC<AiAssistantViewProps> = ({
   inventoryAudits,
   inventorySessions,
   currentUser,
+  activeDepartment = 'alimentacao',
 }) => {
+  const isDml = activeDepartment === 'dml';
+  const quickSuggestions = isDml ? DML_QUICK_SUGGESTIONS : ALIMENTACAO_QUICK_SUGGESTIONS;
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentResponse, setCurrentResponse] = useState<AiAssistantResponse | null>(null);
@@ -380,8 +397,14 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
     try {
       const doc = new jsPDF();
       doc.setFontSize(16);
-      doc.setTextColor(22, 101, 52); // green
-      doc.text('ESTOQUE CRISTOLÂNDIA — LEM / BA', 14, 18);
+      doc.setTextColor(isDml ? 14 : 22, isDml ? 116 : 101, isDml ? 144 : 52);
+      doc.text(
+        isDml
+          ? 'ESTOQUE CRISTOLÂNDIA — DML & HIGIENE (LEM / BA)'
+          : 'ESTOQUE CRISTOLÂNDIA — ALIMENTAÇÃO (LEM / BA)',
+        14,
+        18
+      );
 
       doc.setFontSize(10);
       doc.setTextColor(100, 116, 139);
@@ -403,7 +426,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
       let yPos = 52 + splitSummary.length * 6 + 6;
 
       doc.setFontSize(11);
-      doc.setTextColor(22, 101, 52);
+      doc.setTextColor(isDml ? 14 : 22, isDml ? 116 : 144, isDml ? 144 : 52);
       doc.text('Base de Cálculo & Rastreabilidade:', 14, yPos);
       yPos += 6;
 
@@ -471,19 +494,31 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
     <div className="space-y-6">
       {/* HEADER SECTION (PADRÃO BENTO GRID CLARO & INSTITUCIONAL) */}
       <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-50 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+        <div className={`absolute top-0 right-0 w-80 h-80 ${isDml ? 'bg-cyan-50' : 'bg-emerald-50'} rounded-full blur-3xl pointer-events-none -mr-20 -mt-20`} />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Gemini 3.8 Flash • Somente Leitura • Entrada por Voz</span>
+            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${
+              isDml
+                ? 'bg-cyan-50 text-cyan-700 border border-cyan-200'
+                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            } text-xs font-black uppercase tracking-wider`}>
+              <Sparkles className={`w-3.5 h-3.5 ${isDml ? 'text-cyan-600' : 'text-emerald-600'}`} />
+              <span>
+                {isDml
+                  ? 'Gemini 3.8 Flash • DML & Limpeza • Entrada por Voz'
+                  : 'Gemini 3.8 Flash • Somente Leitura • Entrada por Voz'}
+              </span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
-              <Bot className="w-8 h-8 text-emerald-600" />
-              <span>Assistente Inteligente de Estoque</span>
+              <Bot className={`w-8 h-8 ${isDml ? 'text-cyan-600' : 'text-emerald-600'}`} />
+              <span>
+                {isDml ? 'Assistente Inteligente DML & Higiene' : 'Assistente Inteligente de Estoque'}
+              </span>
             </h1>
             <p className="text-sm text-slate-600 max-w-2xl leading-relaxed">
-              Faça perguntas por texto ou por voz sobre o estoque da Cristolândia (LEM/BA), consumo por missionário/setor e refeições com rastreabilidade auditada.
+              {isDml
+                ? 'Faça perguntas por texto ou por voz sobre o estoque de produtos de limpeza, higiene dos acolhidos, rotinas da lavanderia e asseio predial da Cristolândia (LEM/BA).'
+                : 'Faça perguntas por texto ou por voz sobre o estoque da Cristolândia (LEM/BA), consumo por missionário/setor e refeições com rastreabilidade auditada.'}
             </p>
           </div>
 
@@ -660,7 +695,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
             <span>Sugestões de Perguntas Rápidas:</span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {QUICK_SUGGESTIONS.map((item, idx) => (
+            {quickSuggestions.map((item, idx) => (
               <button
                 key={idx}
                 onClick={() => handleAsk(item.query)}

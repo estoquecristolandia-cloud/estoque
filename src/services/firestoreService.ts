@@ -13,6 +13,8 @@ import {
 import { db, AppUserProfile, UserRole } from '../firebase';
 import { Product, StockMovement, DailyKit, DailyMealRecord, EntryType, Sector, InventoryAudit, InventorySessionSummary } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_MOVEMENTS, DEFAULT_DAILY_KIT } from '../data/initialData';
+import { INITIAL_DML_PRODUCTS, DEFAULT_DML_KIT } from '../data/initialDmlData';
+import { isDmlProduct } from '../utils/departmentUtils';
 
 const PRODUCTS_COLLECTION = 'products';
 const MOVEMENTS_COLLECTION = 'movements';
@@ -49,7 +51,15 @@ export function subscribeToProducts(onData: (products: Product[]) => void, onErr
     collection(db, PRODUCTS_COLLECTION),
     (snapshot) => {
       const list = snapshot.docs.map((d) => {
-        const prod = d.data() as Product;
+        const raw = d.data();
+        const docId = d.id;
+        const isDml = isDmlProduct({ ...raw, id: docId });
+        const prod: Product = {
+          ...raw,
+          id: docId,
+          department: raw.department || (isDml ? 'dml' : 'alimentacao'),
+        } as Product;
+
         const normId = (prod.id || '').toLowerCase();
         const normName = (prod.name || '').toLowerCase();
         if (normId.includes('flocao') || normName.includes('flocão')) {
@@ -75,7 +85,16 @@ export function subscribeToMovements(onData: (movements: StockMovement[]) => voi
   return onSnapshot(
     collection(db, MOVEMENTS_COLLECTION),
     (snapshot) => {
-      const list = snapshot.docs.map((d) => d.data() as StockMovement).sort((a, b) => {
+      const list = snapshot.docs.map((d) => {
+        const raw = d.data();
+        const docId = d.id;
+        const isDml = raw.department === 'dml' || (raw.productId || '').toLowerCase().startsWith('dml-');
+        return {
+          ...raw,
+          id: docId,
+          department: raw.department || (isDml ? 'dml' : 'alimentacao'),
+        } as StockMovement;
+      }).sort((a, b) => {
         const date = (b.date || '').localeCompare(a.date || '');
         if (date) return date;
         const time = (b.time || '').localeCompare(a.time || '');
@@ -223,9 +242,13 @@ export async function saveProductsAndMovementsInFirestore(products: Product[], m
   const batch = writeBatch(db);
   products.forEach((p) => {
     const { currentStock, lastOperationId, updatedAt, ...catalogData } = p as any;
-    batch.set(doc(db, PRODUCTS_COLLECTION, p.id), cleanForFirestore(catalogData), { merge: true });
+    const dept = p.department || (isDmlProduct(p) ? 'dml' : 'alimentacao');
+    batch.set(doc(db, PRODUCTS_COLLECTION, p.id), cleanForFirestore({ ...catalogData, department: dept }), { merge: true });
   });
-  movements.slice(0, 100).forEach((m) => batch.set(doc(db, MOVEMENTS_COLLECTION, m.id), cleanForFirestore(m), { merge: true }));
+  movements.slice(0, 100).forEach((m) => {
+    const dept = m.department || (m.productId?.startsWith('dml-') ? 'dml' : 'alimentacao');
+    batch.set(doc(db, MOVEMENTS_COLLECTION, m.id), cleanForFirestore({ ...m, department: dept }), { merge: true });
+  });
   await batch.commit();
 }
 
@@ -241,7 +264,20 @@ export async function syncInitialFirestoreData(): Promise<void> {
 
   for (const product of INITIAL_PRODUCTS) {
     if (!existingIds.has(product.id)) {
-      batch.set(doc(db, PRODUCTS_COLLECTION, product.id), cleanForFirestore(product));
+      batch.set(doc(db, PRODUCTS_COLLECTION, product.id), cleanForFirestore({ ...product, department: 'alimentacao' }));
+      writes++;
+    } else {
+      batch.set(doc(db, PRODUCTS_COLLECTION, product.id), { department: 'alimentacao' }, { merge: true });
+      writes++;
+    }
+  }
+
+  for (const dmlProduct of INITIAL_DML_PRODUCTS) {
+    if (!existingIds.has(dmlProduct.id)) {
+      batch.set(doc(db, PRODUCTS_COLLECTION, dmlProduct.id), cleanForFirestore({ ...dmlProduct, department: 'dml' }));
+      writes++;
+    } else {
+      batch.set(doc(db, PRODUCTS_COLLECTION, dmlProduct.id), { department: 'dml' }, { merge: true });
       writes++;
     }
   }

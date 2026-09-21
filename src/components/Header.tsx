@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye, Bot, Sparkles } from 'lucide-react';
+import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye, Bot, Sparkles, Droplets, Layers } from 'lucide-react';
 import { AppUserProfile, ROLE_LABELS } from '../firebase';
+import { Department } from '../types';
 import { CristolandiaLogo } from './CristolandiaLogo';
 
 interface HeaderProps {
   activeTab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports' | 'ai_assistant';
   setActiveTab: (tab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports' | 'ai_assistant') => void;
+  activeDepartment?: Department;
+  onSelectDepartment?: (department: Department) => void;
   onOpenKitModal: () => void;
   onOpenPhysicalInventory?: () => void;
   onOpenReconciliationPreview?: () => void;
@@ -22,6 +25,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
+  activeDepartment = 'alimentacao',
+  onSelectDepartment,
   onOpenKitModal,
   onOpenPhysicalInventory,
   onOpenReconciliationPreview,
@@ -38,54 +43,88 @@ export const Header: React.FC<HeaderProps> = ({
 
   const isAdmin = currentUser?.role === 'admin';
   const roleMeta = ROLE_LABELS[currentUser?.role || 'viewer'];
+  const isDml = activeDepartment === 'dml';
 
-  const baseNavItems = [
-    {
-      id: 'dashboard' as const,
-      label: isAdmin ? 'Painel Principal' : 'Painel de Consulta',
-      icon: LayoutDashboard,
-      activeColor: 'bg-blue-600/20 text-blue-400',
-    },
-    {
-      id: 'ai_assistant' as const,
-      label: '🤖 Assistente IA',
-      icon: Bot,
-      activeColor: 'bg-emerald-600/20 text-emerald-400 font-bold',
-    },
-    {
-      id: 'products' as const,
-      label: 'Produtos & Estoque',
-      icon: Package,
-      activeColor: 'bg-blue-600/20 text-blue-400',
-    },
-    {
-      id: 'entries' as const,
-      label: isAdmin ? 'Entradas' : 'Extrato de Entradas',
-      icon: ArrowDownLeft,
-      activeColor: 'bg-emerald-600/20 text-emerald-400',
-    },
-    {
-      id: 'exits' as const,
-      label: isAdmin ? 'Saídas' : 'Extrato de Saídas',
-      icon: ArrowUpRight,
-      activeColor: 'bg-amber-600/20 text-amber-400',
-    },
-    {
-      id: 'meals' as const,
-      label: isAdmin ? 'Refeições (Café/Alm/Lanch/Jant)' : 'Refeições Servidas',
-      icon: UtensilsCrossed,
-      activeColor: 'bg-amber-500/20 text-amber-400',
-    },
-  ];
+  const baseNavItems = isDml
+    ? [
+        {
+          id: 'dashboard' as const,
+          label: isAdmin ? 'Painel DML & Limpeza' : 'Painel de Consulta DML',
+          icon: LayoutDashboard,
+          activeColor: 'bg-cyan-600/20 text-cyan-400',
+        },
+        {
+          id: 'ai_assistant' as const,
+          label: '🤖 Assistente DML',
+          icon: Bot,
+          activeColor: 'bg-cyan-600/20 text-cyan-400 font-bold',
+        },
+        {
+          id: 'products' as const,
+          label: 'Produtos de Limpeza',
+          icon: Package,
+          activeColor: 'bg-cyan-600/20 text-cyan-400',
+        },
+        {
+          id: 'entries' as const,
+          label: isAdmin ? 'Entradas & Doações' : 'Extrato de Entradas',
+          icon: ArrowDownLeft,
+          activeColor: 'bg-emerald-600/20 text-emerald-400',
+        },
+        {
+          id: 'exits' as const,
+          label: isAdmin ? 'Saídas & Kits Acolhidos' : 'Extrato de Saídas',
+          icon: ArrowUpRight,
+          activeColor: 'bg-cyan-600/20 text-cyan-400',
+        },
+      ]
+    : [
+        {
+          id: 'dashboard' as const,
+          label: isAdmin ? 'Painel Principal' : 'Painel de Consulta',
+          icon: LayoutDashboard,
+          activeColor: 'bg-blue-600/20 text-blue-400',
+        },
+        {
+          id: 'ai_assistant' as const,
+          label: '🤖 Assistente IA',
+          icon: Bot,
+          activeColor: 'bg-emerald-600/20 text-emerald-400 font-bold',
+        },
+        {
+          id: 'products' as const,
+          label: 'Produtos & Estoque',
+          icon: Package,
+          activeColor: 'bg-blue-600/20 text-blue-400',
+        },
+        {
+          id: 'entries' as const,
+          label: isAdmin ? 'Entradas' : 'Extrato de Entradas',
+          icon: ArrowDownLeft,
+          activeColor: 'bg-emerald-600/20 text-emerald-400',
+        },
+        {
+          id: 'exits' as const,
+          label: isAdmin ? 'Saídas' : 'Extrato de Saídas',
+          icon: ArrowUpRight,
+          activeColor: 'bg-amber-600/20 text-amber-400',
+        },
+        {
+          id: 'meals' as const,
+          label: isAdmin ? 'Refeições (Café/Alm/Lanch/Jant)' : 'Refeições Servidas',
+          icon: UtensilsCrossed,
+          activeColor: 'bg-amber-500/20 text-amber-400',
+        },
+      ];
 
   const navItems = isAdmin
     ? [
         ...baseNavItems,
         {
           id: 'reports' as const,
-          label: 'Relatórios & Auditoria',
+          label: isDml ? 'Previsão & Relatórios DML' : 'Relatórios & Auditoria',
           icon: FileText,
-          activeColor: 'bg-indigo-600/20 text-indigo-400',
+          activeColor: isDml ? 'bg-cyan-600/20 text-cyan-400' : 'bg-indigo-600/20 text-indigo-400',
         },
       ]
     : baseNavItems;
@@ -117,7 +156,7 @@ export const Header: React.FC<HeaderProps> = ({
           {onToggleDarkMode && (
             <button
               onClick={onToggleDarkMode}
-              className="p-2 text-slate-300 hover:text-white rounded-lg bg-slate-800 transition-colors"
+              className="p-2 text-slate-300 hover:text-white rounded-xl bg-slate-900 border border-slate-700/80 hover:bg-slate-800 transition-all cursor-pointer shadow-xs active:scale-95"
               title={isDarkMode ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro'}
             >
               {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
@@ -133,10 +172,15 @@ export const Header: React.FC<HeaderProps> = ({
           {isAdmin && (
             <button
               onClick={onOpenKitModal}
-              className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-lg text-xs font-black flex items-center gap-1 shadow-sm cursor-pointer"
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-black flex items-center gap-1 shadow-sm cursor-pointer ${
+                isDml
+                  ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-slate-950'
+                  : 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950'
+              }`}
+              title={isDml ? 'Kit Higiene Acolhidos' : 'Kit Diário da Cozinha'}
             >
-              <Utensils className="w-3.5 h-3.5" />
-              <span>Kit</span>
+              {isDml ? <Sparkles className="w-3.5 h-3.5" /> : <Utensils className="w-3.5 h-3.5" />}
+              <span>{isDml ? 'Kit DML' : 'Kit'}</span>
             </button>
           )}
           {onLogout && (
@@ -157,20 +201,79 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
+      {/* MOBILE DEPT SWITCHER BAR */}
+      <div className="md:hidden bg-slate-900 border-b border-slate-800 px-3 py-1.5 flex items-center justify-between gap-2">
+        <span className="text-[10px] font-black tracking-wider uppercase text-slate-400 shrink-0">
+          Módulo:
+        </span>
+        <div className="grid grid-cols-2 gap-1.5 flex-1 max-w-xs">
+          <button
+            onClick={() => onSelectDepartment?.('alimentacao')}
+            className={`py-1 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              !isDml
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            <Utensils className="w-3 h-3" />
+            <span>Alimentação</span>
+          </button>
+          <button
+            onClick={() => onSelectDepartment?.('dml')}
+            className={`py-1 px-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              isDml
+                ? 'bg-cyan-600 text-white shadow-sm'
+                : 'bg-slate-800 text-slate-400 hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-3 h-3" />
+            <span>DML</span>
+          </button>
+        </div>
+      </div>
+
       {/* MOBILE DRAWER */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-30 bg-slate-950/80 backdrop-blur-sm pt-16 p-4">
+        <div className="md:hidden fixed inset-0 z-30 bg-slate-950/80 backdrop-blur-sm pt-24 p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2 text-white">
-            <div className="p-3 bg-blue-950/60 border border-blue-800/60 rounded-xl mb-3">
+            <div className="p-3 bg-blue-950/60 border border-blue-800/60 rounded-xl mb-2">
               <p className="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest">
-                Junta de Missões Nacionais
+                JMN • CBB — LEM / BA
               </p>
               <p className="text-xs font-bold text-white">
-                Centro de Formação e Assistência Social Cristolândia
+                SIG-Cristolândia
               </p>
               <p className="text-[10px] italic text-slate-300 mt-0.5">
                 "Transformando Vidas pelo Amor de Cristo"
               </p>
+            </div>
+
+            {/* Mobile Drawer Department Selector */}
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800 mb-3">
+              <button
+                onClick={() => {
+                  onSelectDepartment?.('alimentacao');
+                  setMobileMenuOpen(false);
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 ${
+                  !isDml ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Utensils className="w-3.5 h-3.5" />
+                <span>Alimentação</span>
+              </button>
+              <button
+                onClick={() => {
+                  onSelectDepartment?.('dml');
+                  setMobileMenuOpen(false);
+                }}
+                className={`py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 ${
+                  isDml ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>DML & Limpeza</span>
+              </button>
             </div>
 
             {navItems.map((item) => {
@@ -245,6 +348,24 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>Missionários & Turnos</span>
                 </button>
               )}
+
+              {onToggleDarkMode && (
+                <button
+                  onClick={() => {
+                    onToggleDarkMode();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full py-2.5 bg-slate-900 border border-slate-800 text-slate-200 rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors flex items-center justify-between px-3 cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    {isDarkMode ? <Moon className="w-4 h-4 text-indigo-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
+                    <span>Tema: <strong>{isDarkMode ? 'Escuro' : 'Claro'}</strong></span>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-slate-800 text-amber-300">
+                    Alternar
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -304,6 +425,42 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <User className="w-4 h-4 text-slate-400 group-hover:text-amber-400 transition-colors shrink-0" />
           </button>
+
+          {/* DEPARTAMENTOS DO SIG-CRISTOLÂNDIA */}
+          <div className="bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 shadow-inner space-y-1">
+            <div className="flex items-center justify-between px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
+              <span>Módulo Ativo</span>
+              <span className={isDml ? 'text-cyan-400' : 'text-emerald-400'}>
+                {isDml ? 'DML & Limpeza' : 'Alimentação'}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
+              <button
+                onClick={() => onSelectDepartment?.('alimentacao')}
+                className={`py-2 px-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  !isDml
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+                title="Módulo de Cozinha, Padaria e Mantimentos Alimentícios"
+              >
+                <Utensils className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Alimentação</span>
+              </button>
+              <button
+                onClick={() => onSelectDepartment?.('dml')}
+                className={`py-2 px-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  isDml
+                    ? 'bg-cyan-600 text-white shadow-md shadow-cyan-950/40'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+                title="Módulo DML, Higiene Pessoal dos Acolhidos e Limpeza Predial"
+              >
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">DML</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Navigation */}
@@ -386,19 +543,22 @@ export const Header: React.FC<HeaderProps> = ({
           {onToggleDarkMode && (
             <button
               onClick={onToggleDarkMode}
-              className="w-full py-2.5 bg-slate-900 border border-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-2.5 px-3 bg-slate-900 border border-slate-800 text-slate-200 hover:text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all flex items-center justify-between gap-2 cursor-pointer group shadow-xs"
+              title={isDarkMode ? 'Clique para alternar para o Modo Claro' : 'Clique para alternar para o Modo Escuro'}
             >
-              {isDarkMode ? (
-                <>
-                  <Sun className="w-4 h-4 text-amber-400" />
-                  <span>Modo Claro</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-4 h-4 text-indigo-400" />
-                  <span>Modo Escuro</span>
-                </>
-              )}
+              <div className="flex items-center gap-2">
+                {isDarkMode ? (
+                  <Moon className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+                ) : (
+                  <Sun className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                )}
+                <span>Tema: <strong>{isDarkMode ? 'Escuro' : 'Claro'}</strong></span>
+              </div>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase transition-colors ${
+                isDarkMode ? 'bg-indigo-950 text-indigo-300 border border-indigo-800/80' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+              }`}>
+                {isDarkMode ? '🌙 Escuro' : '☀️ Claro'}
+              </span>
             </button>
           )}
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Product, Category, Unit } from "../types";
+import { Product, Category, Unit, Department } from "../types";
 import { UserRole } from "../firebase";
 import {
   calculateDaysRemaining,
@@ -82,14 +82,35 @@ interface ProductManagerProps {
   onAddProduct: (product: Omit<Product, "id" | "lastUpdated">) => void;
   userRole?: UserRole;
   onOpenReconciliationPreview?: () => void;
+  activeDepartment?: Department;
 }
 
-const CATEGORIES: Category[] = [
+const FOOD_CATEGORIES: Category[] = [
   "Grãos e Cereais",
   "Óleos e Condimentos",
   "Matinais e Bebidas",
   "Proteínas e Carnes",
   "Laticínios e Massas",
+  "Outros",
+];
+
+const DML_CATEGORIES: Category[] = [
+  "Higiene Pessoal (Acolhidos)",
+  "Limpeza Predial & Conservação",
+  "Descartáveis e Acessórios",
+  "Higiene e Limpeza",
+  "Outros",
+];
+
+const ALL_CATEGORIES: Category[] = [
+  "Grãos e Cereais",
+  "Óleos e Condimentos",
+  "Matinais e Bebidas",
+  "Proteínas e Carnes",
+  "Laticínios e Massas",
+  "Higiene Pessoal (Acolhidos)",
+  "Limpeza Predial & Conservação",
+  "Descartáveis e Acessórios",
   "Higiene e Limpeza",
   "Outros",
 ];
@@ -102,6 +123,12 @@ const UNITS: Unit[] = [
   "unidade",
   "lata",
   "g",
+  "balde",
+  "frasco",
+  "galão",
+  "rolo",
+  "fardo",
+  "barra",
 ];
 
 export const ProductManager: React.FC<ProductManagerProps> = ({
@@ -113,7 +140,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   onAddProduct,
   userRole = "admin",
   onOpenReconciliationPreview,
+  activeDepartment = "alimentacao",
 }) => {
+  const isDml = activeDepartment === "dml";
+  const CATEGORIES = isDml ? DML_CATEGORIES : FOOD_CATEGORIES;
   // Only admin (Marconi Castro) can edit/add/delete products or register entries/exits
   const isAdmin = userRole === "admin";
   const canRegisterMovements = userRole === "admin";
@@ -173,14 +203,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
   const openNewProductModal = (initialBarcode = "") => {
     setEditingProd(null);
     setName("");
-    setCategory("Grãos e Cereais");
-    setUnit("kg");
+    setCategory(isDml ? "Higiene Pessoal (Acolhidos)" : "Grãos e Cereais");
+    setUnit(isDml ? "unidade" : "kg");
     setCurrentStock("0");
     setDailyAvgConsumption("1");
     setAlertDays("3");
     setMinStock("3");
     setUsageFrequency("Diário");
-    setLocation("Depósito Principal");
+    setLocation(isDml ? "Almoxarifado DML" : "Depósito Principal");
     setBarcode(initialBarcode);
     setIsModalOpen(true);
   };
@@ -892,11 +922,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
             <form onSubmit={handleFormSubmit} className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Nome do Alimento / Item
+                  {isDml ? "Nome do Item DML / Higiene" : "Nome do Alimento / Item"}
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: Arroz Tipo 1 ou Leite Integral"
+                  placeholder={isDml ? "Ex: Sabonete 90g, Desinfetante 5L ou Papel Higiênico" : "Ex: Arroz Tipo 1 ou Leite Integral"}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
@@ -1066,7 +1096,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: Depósito Principal"
+                    placeholder={isDml ? "Ex: Almoxarifado DML / Prateleira H1" : "Ex: Depósito Principal / Prateleira A1"}
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500"

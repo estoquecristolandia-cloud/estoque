@@ -16,7 +16,7 @@ import {
   Eye,
   MessageCircle,
 } from 'lucide-react';
-import { Product, DailyKit } from '../types';
+import { Product, DailyKit, Department } from '../types';
 import { UserRole } from '../firebase';
 import { getProductStockStatus } from '../utils/storage';
 
@@ -24,6 +24,7 @@ interface HeroAlertBannerProps {
   products: Product[];
   dailyKit?: DailyKit;
   userRole?: UserRole;
+  activeDepartment?: Department;
   onOpenEntryModal: (product?: Product) => void;
   onOpenExitModal: (product?: Product) => void;
   onOpenKitModal: () => void;
@@ -36,6 +37,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
   products,
   dailyKit,
   userRole = 'admin',
+  activeDepartment = 'alimentacao',
   onOpenEntryModal,
   onOpenExitModal,
   onOpenKitModal,
@@ -43,6 +45,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
   onOpenMeals,
   onOpenWhatsAppAlert,
 }) => {
+  const isDml = activeDepartment === 'dml';
   const isAdmin = userRole === 'admin';
   const [viewTab, setViewTab] = useState<'alerts' | 'staples' | 'all'>('alerts');
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -87,7 +90,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
     .sort((a, b) => a.days - b.days);
 
   // Key staples IDs
-  const stapleIds = new Set([
+  const foodStapleIds = new Set([
     'prod-arroz',
     'prod-feijao',
     'prod-macarrao',
@@ -104,8 +107,21 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
     'prod-molho',
   ]);
 
+  const dmlStapleIds = new Set([
+    'dml-agua-sanitaria',
+    'dml-desinfetante',
+    'dml-sabao-po',
+    'dml-detergente',
+    'dml-sabonete',
+    'dml-creme-dental',
+    'dml-papel-higienico',
+    'dml-saco-lixo-100l',
+    'dml-esponja-dupla',
+    'dml-amaciante',
+  ]);
+
   const stapleProducts = productsWithAutonomy.filter((item) =>
-    stapleIds.has(item.product.id)
+    (isDml ? dmlStapleIds.has(item.product.id) : foodStapleIds.has(item.product.id))
   );
 
   const displayedList = (
@@ -124,33 +140,34 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
   );
 
   const handleSendWhatsAppAlert = () => {
-    const feijao = products.find((p) => p.id === 'prod-feijao');
     const alertItems = products.filter((p) => {
       const daily = p.dailyAvgConsumption > 0 ? p.dailyAvgConsumption : 1;
       const days = p.currentStock / daily;
       return days <= 5 || p.currentStock <= p.minStock;
     });
 
+    const topCritical = alertItems[0];
+
     let msg = `🏛️ *JUNTA DE MISSÕES NACIONAIS - CRISTOLÂNDIA (LEM/BA)*\n`;
-    msg += `📋 *ALERTA OFICIAL DE ESTOQUE & SUPRIMENTOS*\n\n`;
-    msg += `Prezado *Chefe Marcos*,\n`;
-    msg += `Segue o comunicado oficial do Almoxarifado / Estoque da unidade:\n\n`;
+    msg += `📋 *ALERTA OFICIAL DE ESTOQUE — ${isDml ? 'DML & HIGIENE' : 'ALIMENTAÇÃO'}*\n\n`;
+    msg += `Prezado(a) *${isDml ? 'Coordenação / Almoxarifado' : 'Chefe Marcos'}*,\n`;
+    msg += `Segue o comunicado oficial do setor de ${isDml ? 'DML, Limpeza Predial e Higiene dos Acolhidos' : 'Alimentação e Cozinha'}:\n\n`;
 
     msg += `🚨 *ITEM EM NÍVEL CRÍTICO DE REPOSIÇÃO:*\n`;
-    if (feijao) {
-      const daily = feijao.dailyAvgConsumption || 8;
-      const days = (feijao.currentStock / daily).toFixed(1);
-      msg += `• *Produto:* Feijão Carioca\n`;
-      msg += `• *Estoque Físico Atual:* *${feijao.currentStock} kg*\n`;
-      msg += `• *Estoque Mínimo de Segurança:* ${feijao.minStock} kg\n`;
-      msg += `• *Consumo Diário Médio:* ${daily} kg/dia\n`;
-      msg += `• *Autonomia Estimada:* *~${days} dias* (Previsão de término em breve)\n\n`;
+    if (topCritical) {
+      const daily = topCritical.dailyAvgConsumption || 1;
+      const days = (topCritical.currentStock / daily).toFixed(1);
+      msg += `• *Produto:* ${topCritical.name}\n`;
+      msg += `• *Estoque Físico Atual:* *${topCritical.currentStock} ${topCritical.unit}*\n`;
+      msg += `• *Estoque Mínimo de Segurança:* ${topCritical.minStock} ${topCritical.unit}\n`;
+      msg += `• *Consumo Médio:* ${daily} ${topCritical.unit}/dia\n`;
+      msg += `• *Autonomia Estimada:* *~${days} dias* (Necessita reposição)\n\n`;
     }
 
     if (alertItems.length > 1) {
       msg += `📌 *Outros itens com atenção para compra/reposição:*\n`;
       alertItems
-        .filter((p) => p.id !== 'prod-feijao')
+        .filter((p) => p.id !== topCritical?.id)
         .forEach((p) => {
           const daily = p.dailyAvgConsumption || 1;
           const days = (p.currentStock / daily).toFixed(1);
@@ -160,7 +177,9 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
     }
 
     msg += `💡 *Recomendação Operacional:*\n`;
-    msg += `Programar a compra/reabastecimento prioritário de Feijão Carioca para as próximas 48 horas para assegurar as refeições da unidade.\n\n`;
+    msg += isDml
+      ? `Programar a compra/reposição de materiais de limpeza e kits de higiene para manter a conservação dos dormitórios, banheiros e acolhidos.\n\n`
+      : `Programar a compra/reabastecimento prioritário para assegurar as refeições da unidade sem interrupções.\n\n`;
     msg += `👤 *Gestor Responsável:* Marconi Castro\n`;
     msg += `📍 *Unidade:* Cristolândia LEM/BA\n`;
     msg += `📅 *Emitido em:* ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', {
@@ -187,7 +206,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                Visão de Autonomia de Alimentos por Item
+                {isDml ? 'Visão de Autonomia de Produtos DML & Higiene' : 'Visão de Autonomia de Alimentos por Item'}
               </h2>
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 ({products.length} itens cadastrados)
@@ -234,10 +253,10 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
               }
             }}
             className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
-            title="Enviar Alerta Oficial de Feijão / Estoque para Chefe Marcos (+55 62 99974-6823)"
+            title={isDml ? 'Enviar Alerta WhatsApp de DML / Limpeza' : 'Enviar Alerta Oficial de Feijão / Estoque para Chefe Marcos (+55 62 99974-6823)'}
           >
             <MessageCircle className="w-3.5 h-3.5" />
-            <span>Alerta WhatsApp (Chefe Marcos)</span>
+            <span>{isDml ? 'Alerta WhatsApp (DML)' : 'Alerta WhatsApp (Chefe Marcos)'}</span>
           </button>
 
           <button
@@ -245,10 +264,10 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
             className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs shadow-xs transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
           >
             <Utensils className="w-3.5 h-3.5" />
-            <span>{isAdmin ? 'Kit Cozinha' : 'Ver Kit Cozinha'}</span>
+            <span>{isDml ? (isAdmin ? 'Kit Higiene' : 'Ver Kit Higiene') : (isAdmin ? 'Kit Cozinha' : 'Ver Kit Cozinha')}</span>
           </button>
 
-          {onOpenMeals && (
+          {!isDml && onOpenMeals && (
             <button
               onClick={onOpenMeals}
               className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer"
@@ -293,7 +312,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
               }`}
             >
               <Package className="w-3.5 h-3.5 text-amber-500" />
-              <span>Kit Cozinha Diário</span>
+              <span>{isDml ? 'Kit Higiene Acolhidos' : 'Kit Cozinha Diário'}</span>
             </button>
 
             <button

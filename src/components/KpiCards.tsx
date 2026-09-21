@@ -12,8 +12,10 @@ import {
   PlusCircle,
   TrendingDown,
   Layers,
+  Sparkles,
+  Bath,
 } from 'lucide-react';
-import { Product, StockMovement, DailyKit, DailyMealRecord } from '../types';
+import { Product, StockMovement, DailyKit, DailyMealRecord, Department } from '../types';
 import { UserRole } from '../firebase';
 import { getProductStockStatus } from '../utils/storage';
 
@@ -23,6 +25,7 @@ interface KpiCardsProps {
   dailyKit?: DailyKit;
   meals: DailyMealRecord[];
   userRole?: UserRole;
+  activeDepartment?: Department;
   onNavigateTab: (tab: 'products' | 'entries' | 'exits' | 'meals' | 'reports') => void;
   onOpenEntryModal?: () => void;
   onOpenExitModal?: () => void;
@@ -36,11 +39,13 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
   dailyKit,
   meals,
   userRole = 'viewer',
+  activeDepartment = 'alimentacao',
   onNavigateTab,
   onOpenEntryModal,
   onOpenExitModal,
   onOpenKitModal,
 }) => {
+  const isDml = activeDepartment === 'dml';
   const isAdmin = userRole === 'admin';
 
   // 1. Total de Produtos & Categorias
@@ -111,12 +116,20 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
         <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-3xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-white shrink-0">
-              <ChefHat className="w-5 h-5 text-amber-400" />
+              {isDml ? (
+                <Sparkles className="w-5 h-5 text-amber-400" />
+              ) : (
+                <ChefHat className="w-5 h-5 text-amber-400" />
+              )}
             </div>
             <div>
-              <h4 className="text-sm font-black tracking-tight">Atalhos Operacionais Rápidos</h4>
+              <h4 className="text-sm font-black tracking-tight">
+                {isDml ? 'Atalhos Operacionais DML & Higiene' : 'Atalhos Operacionais Rápidos'}
+              </h4>
               <p className="text-xs text-blue-200">
-                Ações imediatas de entrada, saída e baixa do Kit Diário da Cozinha
+                {isDml
+                  ? 'Ações imediatas de entrada, saída e distribuição do Kit Higiene dos Acolhidos'
+                  : 'Ações imediatas de entrada, saída e baixa do Kit Diário da Cozinha'}
               </p>
             </div>
           </div>
@@ -142,8 +155,8 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
               onClick={onOpenKitModal}
               className="w-full sm:w-auto px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <ChefHat className="w-4 h-4" />
-              <span>⚡ Baixar Kit Cozinha</span>
+              {isDml ? <Sparkles className="w-4 h-4" /> : <ChefHat className="w-4 h-4" />}
+              <span>{isDml ? '⚡ Distribuir Kit Higiene' : '⚡ Baixar Kit Cozinha'}</span>
             </button>
           </div>
         </div>
@@ -283,51 +296,84 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
           </div>
         </div>
 
-        {/* KPI 4: Refeições do Dia */}
-        <div
-          onClick={() => onNavigateTab('meals')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer flex flex-col justify-between group"
-        >
-          <div className="flex items-center justify-between">
-            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <UtensilsCrossed className="w-5 h-5" />
+        {/* KPI 4: Refeições do Dia (Alimentação) OU Distribuição por Setores (DML) */}
+        {isDml ? (
+          <div
+            onClick={() => onNavigateTab('exits')}
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer flex flex-col justify-between group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <Bath className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300">
+                Setores Atendidos
+              </span>
             </div>
-            <span
-              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                isMealFromToday
-                  ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-              }`}
-            >
-              {isMealFromToday ? 'Hoje' : 'Último Registro'}
-            </span>
-          </div>
 
-          <div className="my-3">
-            <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              {totalMealsCount}
-            </span>
-            <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
-              Refeições Servidas
-            </p>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-              {activeMealRecord ? (
-                <>
-                  Café: {activeMealRecord.breakfast || 0} | Almoço: {activeMealRecord.lunch || 0} | Jantar: {activeMealRecord.dinner || 0}
-                </>
-              ) : (
-                'Nenhum registro ainda'
-              )}
-            </p>
-          </div>
+            <div className="my-3">
+              <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+                {movements.filter((m) => m.type === 'saida').length}
+              </span>
+              <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
+                Saídas DML Registradas
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                Banheiros, Dormitórios, Lavanderia e Kits
+              </p>
+            </div>
 
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:underline">
-            <span>Gestão de Refeições</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:underline">
+              <span>Extrato de Saídas DML</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div
+            onClick={() => onNavigateTab('meals')}
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer flex flex-col justify-between group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <UtensilsCrossed className="w-5 h-5" />
+              </div>
+              <span
+                className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                  isMealFromToday
+                    ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                {isMealFromToday ? 'Hoje' : 'Último Registro'}
+              </span>
+            </div>
 
-        {/* KPI 5: Kit Cozinha Diário */}
+            <div className="my-3">
+              <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
+                {totalMealsCount}
+              </span>
+              <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
+                Refeições Servidas
+              </p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                {activeMealRecord ? (
+                  <>
+                    Café: {activeMealRecord.breakfast || 0} | Almoço: {activeMealRecord.lunch || 0} | Jantar: {activeMealRecord.dinner || 0}
+                  </>
+                ) : (
+                  'Nenhum registro ainda'
+                )}
+              </p>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:underline">
+              <span>Gestão de Refeições</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </div>
+          </div>
+        )}
+
+        {/* KPI 5: Kit Cozinha Diário (Alimentação) OU Kit Higiene Acolhidos (DML) */}
         <div
           onClick={() => {
             if (onOpenKitModal) onOpenKitModal();
@@ -351,7 +397,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
                   : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
               }`}
             >
-              <ChefHat className="w-5 h-5" />
+              {isDml ? <Sparkles className="w-5 h-5" /> : <ChefHat className="w-5 h-5" />}
             </div>
             <span
               className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
@@ -383,7 +429,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
               {kitStatus === 'disponivel' ? '100% Pronto' : kitStatus === 'atencao' ? 'Saldo Mínimo' : 'Faltam Itens'}
             </span>
             <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
-              Kit Cozinha Diário
+              {isDml ? 'Kit Higiene Acolhidos' : 'Kit Cozinha Diário'}
             </p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
               {kitItems.length} itens essenciais no modelo
@@ -399,7 +445,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
                 : 'text-rose-600 dark:text-rose-400'
             }`}
           >
-            <span>{isAdmin ? 'Baixar / Editar Kit' : 'Visualizar Kit'}</span>
+            <span>{isAdmin ? (isDml ? 'Distribuir / Editar Kit' : 'Baixar / Editar Kit') : 'Visualizar Kit'}</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
           </div>
         </div>
