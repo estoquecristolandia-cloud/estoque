@@ -252,7 +252,7 @@ export default function App() {
     <div
       id="app-root"
       data-theme={isDarkMode ? 'dark' : 'light'}
-      className={`min-h-screen ${isDarkMode ? 'dark' : ''} bg-slate-100 dark:bg-[#070913] text-slate-900 dark:text-slate-100 font-sans flex flex-col md:flex-row selection:bg-indigo-600 selection:text-white transition-colors duration-200 relative overflow-x-hidden`}
+      className={`min-h-screen ${isDarkMode ? 'dark' : ''} bg-slate-100 dark:bg-[#070913] text-slate-900 dark:text-slate-100 font-sans flex flex-col md:flex-row selection:bg-indigo-600 selection:text-white transition-colors duration-200 relative md:h-screen md:overflow-hidden`}
     >
       {/* Ambient background glow for high-end SaaS feel */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 opacity-30 dark:opacity-100 transition-opacity">
@@ -285,8 +285,9 @@ export default function App() {
         onToggleDarkMode={toggleDarkMode}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
       />
-      <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden relative z-10">
-        <AnimatePresence mode="wait">
+      <main className="flex-1 md:h-screen md:overflow-y-auto overflow-x-hidden relative z-10 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800">
+        <div className="p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
+          <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
             <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
               <HeroAlertBanner
@@ -522,6 +523,7 @@ export default function App() {
             )
           )}
         </AnimatePresence>
+        </div>
       </main>
 
       {timelineProduct && (
@@ -637,6 +639,8 @@ export default function App() {
           products={departmentProducts}
           onClose={() => setIsBarcodeScannerOpen(false)}
           onScanProduct={handleBarcodeDetected}
+          onOpenEntry={(p) => handleOpenEntryModal(p)}
+          onOpenExit={(p) => handleOpenExitModal(p)}
         />
       )}
 

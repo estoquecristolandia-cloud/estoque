@@ -927,13 +927,15 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
         </div>
       )}
 
-      {/* Barcode Scanner Modal */}
-      <BarcodeScannerModal
-        isOpen={isScannerOpen}
-        onClose={() => setIsScannerOpen(false)}
-        onScanSuccess={handleScanSuccess}
-        products={products}
-      />
+      {/* Barcode Scanner Modal (only opened when explicitly clicking to scan a barcode) */}
+      {isScannerOpen && (
+        <BarcodeScannerModal
+          isOpen={isScannerOpen}
+          onClose={() => setIsScannerOpen(false)}
+          onScanSuccess={handleScanSuccess}
+          products={products}
+        />
+      )}
 
       {/* New/Edit Product Modal */}
       {isModalOpen && (

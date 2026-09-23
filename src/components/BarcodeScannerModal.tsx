@@ -6,20 +6,28 @@ import { X, Camera, Barcode, CheckCircle2, AlertCircle, ArrowDownLeft, ArrowUpRi
 interface BarcodeScannerModalProps {
   products: Product[];
   onClose: () => void;
-  onOpenEntry: (product: Product) => void;
-  onOpenExit: (product: Product) => void;
+  isOpen?: boolean;
+  onOpenEntry?: (product: Product) => void;
+  onOpenExit?: (product: Product) => void;
   onLinkBarcode?: (productId: string, barcode: string) => void;
   onAddNewWithBarcode?: (barcode: string) => void;
+  onScanProduct?: (code: string) => void;
+  onScanSuccess?: (code: string, matchedProduct?: Product) => void;
 }
 
 export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   products,
   onClose,
+  isOpen = true,
   onOpenEntry,
   onOpenExit,
   onLinkBarcode,
   onAddNewWithBarcode,
+  onScanProduct,
+  onScanSuccess,
 }) => {
+  if (!isOpen) return null;
+
   const [scannedCode, setScannedCode] = useState<string | null>(null);
   const [matchedProduct, setMatchedProduct] = useState<Product | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -68,6 +76,13 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
       setMatchedProduct(found);
     } else {
       setMatchedProduct(null);
+    }
+
+    if (onScanProduct) {
+      onScanProduct(decodedText);
+    }
+    if (onScanSuccess) {
+      onScanSuccess(decodedText, found);
     }
   };
 

@@ -443,7 +443,7 @@ export const Header: React.FC<HeaderProps> = ({
       )}
 
       {/* DESKTOP BENTO SIDEBAR */}
-      <aside className="hidden md:flex w-64 bg-slate-950 h-screen sticky top-0 p-3.5 flex-col border-r border-slate-800 shrink-0 overflow-y-auto overflow-x-hidden select-none scrollbar-thin scrollbar-thumb-slate-800 hover:scrollbar-thumb-slate-700">
+      <aside className="hidden md:flex w-64 bg-slate-950 h-screen sticky top-0 p-3.5 flex-col border-r border-slate-800 shrink-0 overflow-y-auto overflow-x-hidden select-none scrollbar-thin scrollbar-thumb-slate-800 hover:scrollbar-thumb-slate-700 z-30">
         <div className="mb-3 space-y-2.5 shrink-0">
           {/* Institutional Badge */}
           <div className="bg-gradient-to-r from-blue-950 to-slate-900 p-2.5 rounded-2xl border border-blue-800/40 space-y-1 shadow-inner">
