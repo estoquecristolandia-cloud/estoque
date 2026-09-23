@@ -235,30 +235,31 @@ export const ExitModal: React.FC<ExitModalProps> = ({
         products={products}
       />
 
-      <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-900">
+      <div className="bg-slate-900 border border-slate-800 text-white rounded-2xl sm:rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+        {/* Header - Sticky */}
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-800 bg-slate-900 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-600/20 border border-amber-500/30 text-amber-400">
-              <ArrowUpRight className="w-6 h-6" />
+            <div className="p-2 sm:p-2.5 rounded-xl bg-amber-600/20 border border-amber-500/30 text-amber-400">
+              <ArrowUpRight className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Nova Saída do Estoque</h3>
-              <p className="text-xs text-slate-400">
-                Registrar saída de <strong>um ou mais produtos</strong> para o setor de destino
+              <h3 className="text-base sm:text-lg font-bold text-white">Nova Saída do Estoque</h3>
+              <p className="text-[11px] sm:text-xs text-slate-400">
+                Registrar saída de <strong>um ou mais produtos</strong> para o setor
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center"
+            aria-label="Fechar modal"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+        {/* Form Body - Scrollable */}
+        <form id="exit-form" onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 scrollbar-thin">
           {error && (
             <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
@@ -410,13 +411,13 @@ export const ExitModal: React.FC<ExitModalProps> = ({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                       {/* Product Dropdown */}
                       <div className="flex-1 min-w-0">
                         <select
                           value={rowItem.productId}
                           onChange={(e) => handleUpdateItem(rowItem.rowId, 'productId', e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 sm:py-2 text-sm sm:text-xs text-white focus:outline-none focus:border-amber-500"
                         >
                           {products.map((p) => (
                             <option key={p.id} value={p.id} disabled={p.currentStock <= 0}>
@@ -426,48 +427,51 @@ export const ExitModal: React.FC<ExitModalProps> = ({
                         </select>
                       </div>
 
-                      {/* Quantity Input */}
-                      <div className="w-32 shrink-0">
-                        <div className="relative">
-                          <input
-                            type="number"
-                            step="any"
-                            placeholder="Qtd"
-                            value={rowItem.quantity}
-                            onChange={(e) => handleUpdateItem(rowItem.rowId, 'quantity', e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-bold focus:outline-none focus:border-amber-500 pr-8"
-                            required
-                          />
-                          <span className="absolute right-2.5 top-2 text-[10px] font-bold text-slate-400 pointer-events-none">
-                            {selectedProd?.unit || ''}
-                          </span>
+                      {/* Quantity & Actions Bar */}
+                      <div className="flex items-center gap-2">
+                        {/* Quantity Input */}
+                        <div className="flex-1 sm:w-32 shrink-0">
+                          <div className="relative">
+                            <input
+                              type="number"
+                              step="any"
+                              placeholder="Qtd"
+                              value={rowItem.quantity}
+                              onChange={(e) => handleUpdateItem(rowItem.rowId, 'quantity', e.target.value)}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 sm:py-2 text-sm sm:text-xs text-white font-bold focus:outline-none focus:border-amber-500 pr-10"
+                              required
+                            />
+                            <span className="absolute right-2.5 top-2.5 sm:top-2 text-[11px] sm:text-[10px] font-bold text-slate-400 pointer-events-none">
+                              {selectedProd?.unit || ''}
+                            </span>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Scan Row Button */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveScanningRowId(rowItem.rowId);
-                          setIsScannerOpen(true);
-                        }}
-                        title="Bipar código de barras para este item"
-                        className="p-2 rounded-xl bg-slate-900 hover:bg-slate-700 border border-slate-700 text-amber-400 transition-colors cursor-pointer"
-                      >
-                        <Camera className="w-3.5 h-3.5" />
-                      </button>
-
-                      {/* Remove Row Button */}
-                      {items.length > 1 && (
+                        {/* Scan Row Button */}
                         <button
                           type="button"
-                          onClick={() => handleRemoveItemRow(rowItem.rowId)}
-                          className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-colors cursor-pointer"
-                          title="Remover este item"
+                          onClick={() => {
+                            setActiveScanningRowId(rowItem.rowId);
+                            setIsScannerOpen(true);
+                          }}
+                          title="Bipar código de barras para este item"
+                          className="p-2.5 sm:p-2 rounded-xl bg-slate-900 hover:bg-slate-700 border border-slate-700 text-amber-400 transition-colors cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-95"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Camera className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                         </button>
-                      )}
+
+                        {/* Remove Row Button */}
+                        {items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItemRow(rowItem.rowId)}
+                            className="p-2.5 sm:p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-colors cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center active:scale-95"
+                            title="Remover este item"
+                          >
+                            <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -532,40 +536,44 @@ export const ExitModal: React.FC<ExitModalProps> = ({
             />
           </div>
 
-          {/* Footer buttons */}
-          <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-800">
-            <span className="text-xs text-slate-400">
-              Total: <strong>{items.length}</strong> produto(s)
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg shadow-amber-600/30 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Processando Baixa...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Confirmar Saída ({items.length} item{items.length > 1 ? 's' : ''})</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+          {/* Spacer */}
+          <div className="h-2" />
         </form>
+
+        {/* Footer buttons - Sticky thumb area */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 sm:p-5 border-t border-slate-800 bg-slate-900/95 backdrop-blur-md shrink-0">
+          <span className="text-xs text-slate-400 self-start sm:self-center">
+            Total: <strong className="text-amber-400">{items.length}</strong> produto(s)
+          </span>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="flex-1 sm:flex-none px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer disabled:opacity-50 transition-colors text-center"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              form="exit-form"
+              disabled={isSubmitting}
+              className="flex-2 sm:flex-none px-6 py-3 sm:py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-lg shadow-amber-600/30 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 transition-all active:scale-98"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Processando...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Confirmar Saída ({items.length})</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

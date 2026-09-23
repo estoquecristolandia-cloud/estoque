@@ -48,7 +48,9 @@ export function useAppNavigation() {
   const toggleDarkMode = useCallback(() => {
     setIsDarkMode((prev) => {
       const next = !prev;
-      toast.success(next ? '🌙 Modo Escuro ativado' : '☀️ Modo Claro ativado');
+      setTimeout(() => {
+        toast.success(next ? '🌙 Modo Escuro ativado' : '☀️ Modo Claro ativado');
+      }, 0);
       return next;
     });
   }, []);

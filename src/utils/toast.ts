@@ -8,21 +8,33 @@ export interface ToastMessage {
   duration?: number;
 }
 
-type ToastListener = (toasts: ToastMessage[]) => void;
+export type ToastListener = () => void;
 
 let toasts: ToastMessage[] = [];
 const listeners: Set<ToastListener> = new Set();
 
+export function getToastsSnapshot(): ToastMessage[] {
+  return toasts;
+}
+
 export function subscribeToast(listener: ToastListener): () => void {
   listeners.add(listener);
-  listener(toasts);
   return () => {
     listeners.delete(listener);
   };
 }
 
 function notify() {
-  listeners.forEach((listener) => listener([...toasts]));
+  // Microtask ensures state updates never fire synchronously inside another component's render
+  queueMicrotask(() => {
+    listeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (e) {
+        console.error('Toast listener error:', e);
+      }
+    });
+  });
 }
 
 export function showToast(

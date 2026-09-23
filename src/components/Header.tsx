@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye, Bot, Sparkles, Droplets, Layers, ScanBarcode, Camera, Save, Smartphone, Search, Volume2, VolumeX } from 'lucide-react';
+import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye, Bot, Sparkles, Droplets, Layers, ScanBarcode, Camera, Save, Smartphone, Search, Volume2, VolumeX, BookOpen, HelpCircle } from 'lucide-react';
 import { AppUserProfile, ROLE_LABELS } from '../firebase';
 import { Department } from '../types';
 import { CristolandiaLogo } from './CristolandiaLogo';
@@ -27,6 +27,7 @@ interface HeaderProps {
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
   onOpenCommandPalette?: () => void;
+  onOpenQuickGuide?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -51,6 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
   isDarkMode = true,
   onToggleDarkMode,
   onOpenCommandPalette,
+  onOpenQuickGuide,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(() => soundFeedback.isEnabled());
@@ -171,6 +173,18 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onOpenQuickGuide && (
+            <button
+              onClick={() => {
+                soundFeedback.play('click');
+                onOpenQuickGuide();
+              }}
+              className="p-2 text-amber-400 hover:text-amber-300 rounded-xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Guia Rápido de Operação (Manual)"
+            >
+              <HelpCircle className="w-4 h-4 text-amber-400" />
+            </button>
+          )}
           {onOpenCommandPalette && (
             <button
               onClick={() => {
@@ -404,6 +418,19 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   <MessageCircle className="w-4 h-4 text-emerald-400" />
                   <span>📲 WhatsApp Chefe Marcos</span>
+                </button>
+              )}
+
+              {onOpenQuickGuide && (
+                <button
+                  onClick={() => {
+                    onOpenQuickGuide();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full py-2.5 bg-amber-500/10 border border-amber-500/30 text-amber-300 rounded-xl text-xs font-bold hover:bg-amber-500/20 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <BookOpen className="w-4 h-4 text-amber-400" />
+                  <span>📖 Guia Rápido de Uso (Manual)</span>
                 </button>
               )}
 
@@ -688,6 +715,20 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Utensils className="w-3.5 h-3.5" />
               <span>+ Kit Cozinha Diário</span>
+            </button>
+          )}
+
+          {onOpenQuickGuide && (
+            <button
+              onClick={() => {
+                soundFeedback.play('click');
+                onOpenQuickGuide();
+              }}
+              className="w-full py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              title="Abrir Manual de Operação e Guia Rápido (PVPS & Kit Cozinha)"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+              <span>📖 Guia Rápido de Uso</span>
             </button>
           )}
 

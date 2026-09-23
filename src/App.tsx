@@ -30,6 +30,7 @@ import { BarcodeScannerModal } from './components/BarcodeScannerModal';
 import { ReceiptScannerModal } from './components/ReceiptScannerModal';
 import { PvpsRunwayBanner } from './components/PvpsRunwayBanner';
 import { CommandPalette } from './components/CommandPalette';
+import { QuickGuideModal } from './components/QuickGuideModal';
 import { usePwaInstall } from './hooks/usePwaInstall';
 import { exportFullSystemJSON, exportExcelCompatibleCSV } from './utils/backupExport';
 import { LoginScreen } from './components/LoginScreen';
@@ -133,6 +134,7 @@ export default function App() {
   const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = React.useState(false);
   const [isReceiptScannerOpen, setIsReceiptScannerOpen] = React.useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = React.useState(false);
+  const [isQuickGuideOpen, setIsQuickGuideOpen] = React.useState(false);
   const { canInstall, triggerInstall } = usePwaInstall();
 
   // Atalho Global Spotlight: Ctrl + K ou Cmd + K
@@ -284,6 +286,7 @@ export default function App() {
         isDarkMode={isDarkMode}
         onToggleDarkMode={toggleDarkMode}
         onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+        onOpenQuickGuide={() => setIsQuickGuideOpen(true)}
       />
       <main className="flex-1 md:h-screen md:overflow-y-auto overflow-x-hidden relative z-10 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800">
         <div className="p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
@@ -593,6 +596,17 @@ export default function App() {
           isOpen={isWhatsAppModalOpen}
           onClose={() => setIsWhatsAppModalOpen(false)}
           products={departmentProducts}
+          meals={meals}
+          movements={departmentMovements}
+        />
+      )}
+
+      {isQuickGuideOpen && (
+        <QuickGuideModal
+          isOpen={isQuickGuideOpen}
+          onClose={() => setIsQuickGuideOpen(false)}
+          onOpenKitModal={() => setIsKitModalOpen(true)}
+          onOpenReports={() => setActiveTab('reports')}
         />
       )}
 
@@ -672,31 +686,25 @@ export default function App() {
         onClose={() => setIsCommandPaletteOpen(false)}
         products={departmentProducts}
         activeDepartment={activeDepartment}
-        onSelectProduct={(product) => {
-          handleOpenTimeline(product);
-        }}
-        onNavigate={(tab) => {
+        onSelectDepartment={setActiveDepartment}
+        onNavigateTab={(tab) => {
           setActiveTab(tab);
         }}
-        onQuickEntry={() => {
+        onOpenEntryModal={() => {
           handleOpenEntryModal(null);
         }}
-        onQuickExit={() => {
-          handleOpenExitModal(null);
+        onOpenExitModal={(product) => {
+          handleOpenExitModal(product || null);
         }}
-        onOpenKit={() => {
+        onOpenBarcodeScanner={() => setIsBarcodeScannerOpen(true)}
+        onOpenReceiptScanner={() => setIsReceiptScannerOpen(true)}
+        onOpenJmnPdf={() => setActiveTab('reports')}
+        onOpenDonationReceipt={() => setActiveTab('reports')}
+        onOpenKitModal={() => {
           setIsKitModalOpen(true);
         }}
-        onOpenPhysicalInventory={() => {
-          setIsPhysicalInventoryOpen(true);
-        }}
-        onOpenReports={() => {
-          setActiveTab('reports');
-        }}
-        onOpenAi={() => {
-          setActiveTab('ai_assistant');
-        }}
-        onToggleDarkMode={toggleDarkMode}
+        onBackupData={handleBackupData}
+        onOpenQuickGuide={() => setIsQuickGuideOpen(true)}
       />
     </div>
   );

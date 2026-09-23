@@ -1,14 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, AlertTriangle, XCircle, Info, X } from 'lucide-react';
-import { ToastMessage, subscribeToast, removeToast } from '../utils/toast';
+import { getToastsSnapshot, subscribeToast, removeToast } from '../utils/toast';
+
+const EMPTY_TOASTS: any[] = [];
 
 export const ToastContainer: React.FC = () => {
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-
-  useEffect(() => {
-    return subscribeToast(setToasts);
-  }, []);
+  const toasts = useSyncExternalStore(subscribeToast, getToastsSnapshot, () => EMPTY_TOASTS);
 
   if (toasts.length === 0) return null;
 

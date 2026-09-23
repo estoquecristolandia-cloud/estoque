@@ -18,6 +18,7 @@ import {
   History,
   X,
   Command,
+  BookOpen,
 } from 'lucide-react';
 import { Product, Department } from '../types';
 import { soundFeedback } from '../utils/audioFeedback';
@@ -48,6 +49,7 @@ interface CommandPaletteProps {
   onOpenDonationReceipt: () => void;
   onOpenKitModal: () => void;
   onBackupData: () => void;
+  onOpenQuickGuide?: () => void;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -65,6 +67,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onOpenDonationReceipt,
   onOpenKitModal,
   onBackupData,
+  onOpenQuickGuide,
 }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -176,6 +179,23 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
         onBackupData();
       },
     },
+    ...(onOpenQuickGuide
+      ? [
+          {
+            id: 'quick-guide',
+            title: 'Manual de Uso & Guia Rápido (PVPS & Kit Diário)',
+            subtitle: 'Como operar o SIG-Cristolândia em 3 passos práticos',
+            category: 'Ações Rápidas' as const,
+            icon: <BookOpen className="w-4 h-4 text-amber-400" />,
+            onSelect: () => {
+              onClose();
+              onOpenQuickGuide();
+            },
+            badge: 'Tutorial',
+            badgeVariant: 'warning' as const,
+          },
+        ]
+      : []),
 
     // Navegação de Módulos
     {
