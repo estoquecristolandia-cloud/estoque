@@ -10,6 +10,7 @@ import {
 } from "../utils/storage";
 import { BarcodeScannerModal } from "./BarcodeScannerModal";
 import { ShelfLabelsModal } from "./ShelfLabelsModal";
+import { soundFeedback } from "../utils/audioFeedback";
 import {
   Search,
   Plus,
@@ -338,8 +339,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
           {/* Camera Scanner Button */}
           <button
-            onClick={() => setIsScannerOpen(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all cursor-pointer whitespace-nowrap"
+            onClick={() => {
+              soundFeedback.play('click');
+              setIsScannerOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md active:scale-95 transition-all cursor-pointer whitespace-nowrap"
             title="Bipar código de barras pela câmera do celular"
           >
             <Camera className="w-4 h-4" />
@@ -347,7 +351,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
           </button>
 
           <button
-            onClick={() => setStatusFilter("all")}
+            onClick={() => {
+              soundFeedback.play('click');
+              setStatusFilter("all");
+            }}
             className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer whitespace-nowrap transition-all ${
               statusFilter === "all"
                 ? "bg-slate-950 text-white dark:bg-blue-600 shadow-sm"
@@ -358,7 +365,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
           </button>
 
           <button
-            onClick={() => setStatusFilter("critical")}
+            onClick={() => {
+              soundFeedback.play('click');
+              setStatusFilter("critical");
+            }}
             className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer whitespace-nowrap transition-all ${
               statusFilter === "critical"
                 ? "bg-rose-600 text-white shadow-sm"
@@ -374,7 +384,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
           </button>
 
           <button
-            onClick={() => setStatusFilter("warning")}
+            onClick={() => {
+              soundFeedback.play('click');
+              setStatusFilter("warning");
+            }}
             className={`px-3 py-2 rounded-xl text-xs font-semibold cursor-pointer whitespace-nowrap transition-all ${
               statusFilter === "warning"
                 ? "bg-amber-600 text-white shadow-sm"
@@ -391,10 +404,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
           <button
             onClick={() => {
+              soundFeedback.play('click');
               setSelectedLabelProductId(undefined);
               setIsShelfLabelsModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shadow-sm cursor-pointer border border-slate-700 transition-all whitespace-nowrap"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shadow-sm cursor-pointer border border-slate-700 active:scale-95 transition-all whitespace-nowrap"
             title="Gerar e imprimir etiquetas de prateleira e paletes com código de barras em folha A4"
           >
             <Barcode className="w-4 h-4 text-blue-400" />
@@ -403,8 +417,11 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
 
           {isAdmin ? (
             <button
-              onClick={() => openNewProductModal()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 cursor-pointer whitespace-nowrap"
+              onClick={() => {
+                soundFeedback.play('click');
+                openNewProductModal();
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-600/20 active:scale-95 cursor-pointer whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
               <span>Novo Produto</span>
@@ -422,7 +439,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-none">
           <button
-            onClick={() => setSelectedCategory("all")}
+            onClick={() => {
+              soundFeedback.play('click');
+              setSelectedCategory("all");
+            }}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
               selectedCategory === "all"
                 ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
@@ -434,7 +454,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
-              onClick={() => setSelectedCategory(cat)}
+              onClick={() => {
+                soundFeedback.play('click');
+                setSelectedCategory(cat);
+              }}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                 selectedCategory === cat
                   ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
@@ -449,7 +472,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
         {/* View Switcher: Cards vs Executive Table */}
         <div className="flex items-center bg-slate-200 dark:bg-slate-800 p-1 rounded-xl shrink-0 self-start sm:self-auto">
           <button
-            onClick={() => setViewMode("grid")}
+            onClick={() => {
+              soundFeedback.play('click');
+              setViewMode("grid");
+            }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === "grid"
                 ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm"
@@ -460,7 +486,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
             <span>Cards</span>
           </button>
           <button
-            onClick={() => setViewMode("table")}
+            onClick={() => {
+              soundFeedback.play('click');
+              setViewMode("table");
+            }}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               viewMode === "table"
                 ? "bg-blue-600 text-white shadow-sm"
@@ -483,27 +512,30 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
             const alertDaysNum = getProductAlertDays(p);
             const detailedNote = getDetailedStockNote(p);
 
-            let borderClass = "border-slate-200 dark:border-slate-800";
+            let borderClass = "border-slate-200/80 dark:border-slate-800/80";
             let statusBadge = (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                🟢 Normal ({days}d)
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                <span className="tabular-nums">Normal ({days}d)</span>
               </span>
             );
 
             if (status === "critical") {
               borderClass =
-                "border-rose-300 dark:border-rose-800 bg-rose-50/20 dark:bg-rose-950/10";
+                "border-rose-300 dark:border-rose-800/80 bg-rose-50/20 dark:bg-rose-950/10";
               statusBadge = (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> 🔴 Crítico ({days}d)
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 animate-pulse" />
+                  <span className="tabular-nums">Crítico ({days}d)</span>
                 </span>
               );
             } else if (status === "warning") {
               borderClass =
-                "border-amber-300 dark:border-amber-800 bg-amber-50/20 dark:bg-amber-950/10";
+                "border-amber-300 dark:border-amber-800/80 bg-amber-50/20 dark:bg-amber-950/10";
               statusBadge = (
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-                  🟡 Repor em breve ({days}d)
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                  <span className="tabular-nums">Repor ({days}d)</span>
                 </span>
               );
             }

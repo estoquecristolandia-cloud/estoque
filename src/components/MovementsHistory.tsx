@@ -3,6 +3,7 @@ import { StockMovement, Product, Sector, EntryType } from '../types';
 import { UserRole } from '../firebase';
 import { getTodayDateString } from '../utils/storage';
 import { toast } from '../utils/toast';
+import { soundFeedback } from '../utils/audioFeedback';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -112,6 +113,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
   }, [searchTerm, typeFilter, sectorFilter, dateFilter, customDate, pageSize]);
 
   const toggleDayCollapse = (dateStr: string) => {
+    soundFeedback.play('click');
     setCollapsedDays((prev) => ({
       ...prev,
       [dateStr]: !prev[dateStr],
@@ -119,6 +121,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
   };
 
   const collapseAllDays = () => {
+    soundFeedback.play('click');
     const newCollapsed: Record<string, boolean> = {};
     groupedMovements.forEach((g) => {
       newCollapsed[g.date] = true;
@@ -127,6 +130,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
   };
 
   const expandAllDays = () => {
+    soundFeedback.play('click');
     setCollapsedDays({});
   };
 
@@ -328,7 +332,10 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
           <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
               <button
-                onClick={() => setTypeFilter('all')}
+                onClick={() => {
+                  soundFeedback.play('click');
+                  setTypeFilter('all');
+                }}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   typeFilter === 'all'
                     ? 'bg-slate-900 text-white dark:bg-slate-700'
@@ -338,7 +345,10 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                 Todos ({movements.length})
               </button>
               <button
-                onClick={() => setTypeFilter('entrada')}
+                onClick={() => {
+                  soundFeedback.play('click');
+                  setTypeFilter('entrada');
+                }}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   typeFilter === 'entrada' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-emerald-600'
                 }`}
@@ -346,7 +356,10 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                 + Entradas
               </button>
               <button
-                onClick={() => setTypeFilter('saida')}
+                onClick={() => {
+                  soundFeedback.play('click');
+                  setTypeFilter('saida');
+                }}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   typeFilter === 'saida' ? 'bg-amber-600 text-white' : 'text-slate-500 hover:text-amber-600'
                 }`}
@@ -354,7 +367,10 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                 - Saídas
               </button>
               <button
-                onClick={() => setTypeFilter('ajuste')}
+                onClick={() => {
+                  soundFeedback.play('click');
+                  setTypeFilter('ajuste');
+                }}
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   typeFilter === 'ajuste' ? 'bg-purple-600 text-white' : 'text-slate-500 hover:text-purple-600'
                 }`}

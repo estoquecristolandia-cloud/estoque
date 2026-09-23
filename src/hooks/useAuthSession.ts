@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, logoutUser, AppUserProfile } from '../firebase';
-import { checkUserAuthorization, subscribeToAuthorizedUsers } from '../services/firestoreService';
+import { checkUserAuthorization, subscribeToAuthorizedUsers, bootstrapOfficialAuthorizedUsers } from '../services/firestoreService';
 import { AuthorizedUser } from '../types';
 
 export function useAuthSession() {
@@ -31,6 +31,10 @@ export function useAuthSession() {
             createdAt: new Date().toISOString(),
           };
           setCurrentUser(adminProfile);
+          // Assegura de forma transparente e resiliente que os 3 acessos oficiais existam no Firestore
+          bootstrapOfficialAuthorizedUsers().catch((err) => {
+            console.warn('Bootstrap de autorizações em segundo plano:', err);
+          });
           return;
         }
 

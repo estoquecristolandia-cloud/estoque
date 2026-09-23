@@ -1244,6 +1244,7 @@ export async function saveAuthorizedUserToFirestore(user: {
   email: string;
   name: string;
   active?: boolean;
+  notes?: string;
 }): Promise<void> {
   const cleanEmail = user.email.toLowerCase().trim();
   const payload: AuthorizedUser = {
@@ -1253,8 +1254,42 @@ export async function saveAuthorizedUserToFirestore(user: {
     active: user.active !== false,
     authorizedBy: 'estoquecristolandia@gmail.com',
     authorizedAt: new Date().toISOString(),
+    ...(user.notes ? { notes: user.notes } : {}),
   };
   await setDoc(doc(db, AUTHORIZED_USERS_COLLECTION, cleanEmail), cleanForFirestore(payload), { merge: true });
+}
+
+export const INITIAL_OFFICIAL_VIEWERS = [
+  {
+    email: 'chefmarcusviniciuses@gmail.com',
+    name: 'Chefe Marcus Vinicius',
+    active: true,
+    notes: 'Acesso oficial de consulta da Cozinha / Estoque',
+  },
+  {
+    email: 'humbertohpp.59@gmail.com',
+    name: 'Pastor Humberto - Acesso 1',
+    active: true,
+    notes: 'Acesso oficial de consulta da Coordenação / Pastoral',
+  },
+  {
+    email: 'humberto.hpp59@gmail.com',
+    name: 'Pastor Humberto - Acesso 2',
+    active: true,
+    notes: 'Acesso oficial alternativo de consulta',
+  },
+];
+
+export async function bootstrapOfficialAuthorizedUsers(): Promise<{ created: number; total: number }> {
+  let created = 0;
+  for (const viewer of INITIAL_OFFICIAL_VIEWERS) {
+    const existing = await checkUserAuthorization(viewer.email);
+    if (!existing) {
+      await saveAuthorizedUserToFirestore(viewer);
+      created++;
+    }
+  }
+  return { created, total: INITIAL_OFFICIAL_VIEWERS.length };
 }
 
 export async function toggleAuthorizedUserActiveInFirestore(email: string, active: boolean): Promise<void> {

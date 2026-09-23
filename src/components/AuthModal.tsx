@@ -5,7 +5,8 @@ import {
   subscribeToAuthorizedUsers,
   saveAuthorizedUserToFirestore,
   toggleAuthorizedUserActiveInFirestore,
-  deleteAuthorizedUserFromFirestore
+  deleteAuthorizedUserFromFirestore,
+  bootstrapOfficialAuthorizedUsers
 } from '../services/firestoreService';
 import { AuthorizedUser } from '../types';
 
@@ -128,6 +129,16 @@ export const AuthModal = ({ isOpen, onClose, currentUser }: AuthModalProps) => {
       setSuccessMsg(`Autorização de ${email} removida.`);
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao excluir autorização.');
+    }
+  };
+
+  const handleBootstrapOfficial = async () => {
+    setErrorMsg('');
+    try {
+      const res = await bootstrapOfficialAuthorizedUsers();
+      setSuccessMsg(`Lista oficial verificada com sucesso! (${res.created} novos adicionados, total de ${res.total} oficiais ativos).`);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Erro ao inicializar visualizadores oficiais.');
     }
   };
 
@@ -291,6 +302,25 @@ export const AuthModal = ({ isOpen, onClose, currentUser }: AuthModalProps) => {
                     👑 Mestre Fixo
                   </span>
                 </div>
+
+                {/* Quick Bootstrap Official Viewers */}
+                <button
+                  type="button"
+                  onClick={handleBootstrapOfficial}
+                  className="w-full py-2.5 px-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center justify-between gap-2 cursor-pointer transition-all text-left"
+                >
+                  <div className="min-w-0">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <span>⚡</span> Garantir os 3 Acessos Oficiais
+                    </p>
+                    <p className="text-[10px] font-normal text-amber-700/80 dark:text-amber-400/80">
+                      Chefe Marcos e Pastor Humberto (2 e-mails)
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-amber-500/20 shrink-0 font-bold">
+                    Sincronizar
+                  </span>
+                </button>
 
                 {/* Authorized viewers from Firestore */}
                 {whitelist.map((u) => (

@@ -1,5 +1,5 @@
 {
-  "name": "Estoque Cristolândia",
+  "name": "SIG-Cristolândia — Sistema Integrado de Gestão",
   "description": "SIG-Cristolândia: Sistema Integrado de Gestão da Missão Cristolândia. Controle de suprimentos, alimentação, DML e governança operacional.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

@@ -373,6 +373,104 @@ REGRAS:
   }
 });
 
+// Endpoint com Gemini Vision para leitura inteligente de Nota Fiscal / Recibo de Doações por Foto
+app.post('/api/ai/parse-receipt', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    const idToken = bearerToken || req.body?.idToken;
+
+    if (!idToken) {
+      return res.status(401).json({ error: 'Autenticação necessária para leitura de notas fiscais.' });
+    }
+
+    const verifiedUser = await verifyFirebaseToken(idToken);
+    if (!verifiedUser) {
+      return res.status(401).json({ error: 'Sessão inválida ou expirada.' });
+    }
+
+    const { imageBase64, mimeType } = req.body;
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      return res.status(400).json({ error: 'Nenhuma imagem recebida.' });
+    }
+
+    const ai = getGeminiClient();
+    if (!ai || !process.env.GEMINI_API_KEY) {
+      return res.status(503).json({ error: 'Serviço de IA não configurado para leitura visual.' });
+    }
+
+    const cleanMime = (mimeType || 'image/jpeg').split(';')[0].trim();
+
+    const prompt = `Você é o leitor inteligente de notas fiscais, cupons e termos de doação do SIG-Cristolândia (Centro de Formação LEM/BA).
+Analise a imagem da nota fiscal, cupom fiscal, recibo ou lista de doação fornecida e extraia rigorosamente os itens de alimentação ou limpeza/DML.
+
+Retorne EXCLUSIVAMENTE um objeto JSON válido (sem tags markdown adicionais ou texto explicativo) com o formato:
+{
+  "donorOrStore": "Nome da empresa, mercado ou doador identificado (ou 'Não identificado')",
+  "date": "YYYY-MM-DD",
+  "type": "compra ou doacao",
+  "items": [
+    {
+      "name": "Nome claro do produto em português (ex: Arroz Branco 5kg)",
+      "quantity": 10.0,
+      "unit": "kg ou un ou pct ou fardo ou cx ou litro",
+      "estimatedUnitPrice": 0.0
+    }
+  ],
+  "totalAmount": 0.0,
+  "confidenceNotes": "Observações sobre a legibilidade ou itens identificados"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              inlineData: {
+                mimeType: cleanMime,
+                data: imageBase64,
+              },
+            },
+            { text: prompt },
+          ],
+        },
+      ],
+      config: {
+        temperature: 0.1,
+      },
+    });
+
+    let rawText = response.text ? response.text.trim() : '{}';
+    if (rawText.startsWith('```')) {
+      rawText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+    }
+
+    let parsedResult;
+    try {
+      parsedResult = JSON.parse(rawText);
+    } catch {
+      parsedResult = {
+        donorOrStore: 'Leitura manual necessária',
+        items: [],
+        confidenceNotes: 'A IA identificou a imagem mas sugeriu conferência dos itens.',
+      };
+    }
+
+    return res.json({
+      success: true,
+      data: parsedResult,
+    });
+  } catch (err: any) {
+    console.error('Erro na extração de nota fiscal com Gemini Vision:', err);
+    return res.status(500).json({
+      error: 'Falha ao processar imagem da nota fiscal.',
+      details: err?.message || String(err),
+    });
+  }
+});
+
 async function startServer() {
   // Servir assets estáticos da pasta public (manifest.json, sw.js, ícones PWA)
   const publicPath = path.join(process.cwd(), 'public');

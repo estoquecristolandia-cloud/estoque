@@ -1,10 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { Product, StockMovement, Sector, Department } from '../types';
+import { Product, StockMovement, Sector, Department, DailyMealRecord, Missionary } from '../types';
 import { UserRole } from '../firebase';
 import { calculateDaysRemaining, verifyProductAudit, getTodayDateString } from '../utils/storage';
-import { generateInventoryPDF, generateMovementsDetailedPDF } from '../utils/pdfExport';
+import { generateInventoryPDF, generateMovementsDetailedPDF, generateExecutiveJmnPDF } from '../utils/pdfExport';
+import { exportFullSystemJSON, exportExcelCompatibleCSV } from '../utils/backupExport';
 import { runStockMathematicalAudit } from '../utils/stockAuditor';
 import { PurchaseForecastReport } from './PurchaseForecastReport';
+import { DonationReceiptModal } from './DonationReceiptModal';
 import {
   FileText,
   Printer,
@@ -31,12 +33,16 @@ import {
   AlertTriangle,
   Database,
   Sparkles,
+  Save,
+  Award,
 } from 'lucide-react';
 import { FirestoreLiveAuditReport } from './FirestoreLiveAuditReport';
 
 interface ReportsViewProps {
   products: Product[];
   movements: StockMovement[];
+  meals?: DailyMealRecord[];
+  missionaries?: Missionary[];
   inventoryAudits?: any[];
   userRole?: UserRole;
   userName?: string;
@@ -70,6 +76,8 @@ interface SectorDetails {
 export const ReportsView: React.FC<ReportsViewProps> = ({
   products,
   movements,
+  meals = [],
+  missionaries = [],
   inventoryAudits = [],
   userRole,
   userName,
@@ -81,6 +89,37 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [bufferDays, setBufferDays] = useState<number>(30); // Target buffer days e.g. 15 or 30 days
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<string>('todos');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
+  const [isDonationReceiptModalOpen, setIsDonationReceiptModalOpen] = useState(false);
+
+  // Geração de Relatório Executivo Oficial JMN
+  const handleGenerateJmnPDF = () => {
+    const currentMonth = todayStr.substring(0, 7);
+    generateExecutiveJmnPDF({
+      products,
+      movements,
+      meals,
+      month: currentMonth,
+      managerName: userName || 'Marconi Castro (Gestor Operacional do Estoque)',
+      pastorName: 'Pr. Humberto (Coordenação Geral & Pastoral)',
+    });
+  };
+
+  // Backup em 1 Clique (JSON completo + Planilha Excel compatível com acentuação)
+  const handleFullBackup = () => {
+    exportFullSystemJSON({
+      products,
+      movements,
+      meals,
+      missionaries,
+      userName,
+      userEmail,
+    });
+    exportExcelCompatibleCSV({
+      products,
+      movements,
+      meals,
+    });
+  };
 
   // Pure Read-Only Mathematical Audit
   const mathematicalAuditReport = useMemo(() => {
@@ -447,12 +486,36 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={handleGenerateJmnPDF}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-600 hover:to-indigo-700 text-white font-black text-xs shadow-md shadow-indigo-900/30 cursor-pointer transition-all hover:scale-[1.02]"
+            title="Gerar Relatório Executivo Oficial de Prestação de Contas para a Junta de Missões Nacionais (JMN)"
+          >
+            <Award className="w-4 h-4 text-amber-400" />
+            <span>🏛️ Prestação de Contas JMN (PDF)</span>
+          </button>
+          <button
+            onClick={() => setIsDonationReceiptModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md shadow-emerald-700/20 cursor-pointer transition-all hover:scale-[1.02]"
+            title="Emitir Recibo Oficial Timbrado de Doação para Igrejas ou Parceiros"
+          >
+            <FileText className="w-4 h-4" />
+            <span>📜 Recibo de Doação</span>
+          </button>
+          <button
+            onClick={handleFullBackup}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-black text-xs border border-amber-500/40 shadow-sm cursor-pointer transition-all"
+            title="Exportar Backup Completo com 1 clique (JSON estruturado + Planilha Excel)"
+          >
+            <Save className="w-4 h-4 text-amber-400" />
+            <span>💾 Backup em 1 Clique</span>
+          </button>
+          <button
             onClick={() => generateMovementsDetailedPDF(filteredMovements, 'Extrato Oficial de Entradas e Saídas (Dia a Dia)', startDate, endDate)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 cursor-pointer transition-all hover:scale-[1.02]"
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 cursor-pointer transition-all hover:scale-[1.02]"
             title="Baixar Extrato Completo com todas as Entradas e Saídas Dia a Dia em PDF"
           >
             <FileText className="w-4 h-4" />
-            <span>📄 Baixar Extrato Dia a Dia (PDF)</span>
+            <span>📄 Extrato Dia a Dia</span>
           </button>
           <button
             onClick={() => generateInventoryPDF(products, movements, 'Relatório Oficial de Auditoria e Controle de Estoque')}
@@ -460,7 +523,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             title="Baixar Relatório de Saldo e Inventário Atual em PDF"
           >
             <PackageCheck className="w-4 h-4 text-indigo-500" />
-            <span>📦 PDF Saldo do Estoque</span>
+            <span>📦 Saldo do Estoque</span>
           </button>
           <button
             onClick={handleExportCSV}
@@ -468,7 +531,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             title="Baixar planilha formatada para Excel com todas as movimentações"
           >
             <Download className="w-4 h-4 text-emerald-600" />
-            <span>Exportar Excel (CSV)</span>
+            <span>Exportar CSV</span>
           </button>
           <button
             onClick={handlePrint}
@@ -1286,6 +1349,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           userEmail={userEmail}
           userName={userName}
           userRole={userRole}
+        />
+      )}
+
+      {/* MODAL OFICIAL DE RECIBO DE DOAÇÃO JMN */}
+      {isDonationReceiptModalOpen && (
+        <DonationReceiptModal
+          products={products}
+          recentDonations={movements.filter((m) => m.type === 'entrada' && (m.category === 'doacao' || m.entryType === 'Doação'))}
+          onClose={() => setIsDonationReceiptModalOpen(false)}
+          managerName={userName || 'Marconi Castro (Almoxarifado Cristolândia)'}
         />
       )}
     </div>

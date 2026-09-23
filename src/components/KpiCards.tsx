@@ -18,6 +18,8 @@ import {
 import { Product, StockMovement, DailyKit, DailyMealRecord, Department } from '../types';
 import { UserRole } from '../firebase';
 import { getProductStockStatus } from '../utils/storage';
+import { AnimatedNumber } from './AnimatedNumber';
+import { soundFeedback } from '../utils/audioFeedback';
 
 interface KpiCardsProps {
   products: Product[];
@@ -111,77 +113,30 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Quick Action Bar for Admin */}
-      {isAdmin && (
-        <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white rounded-3xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-white shrink-0">
-              {isDml ? (
-                <Sparkles className="w-5 h-5 text-amber-400" />
-              ) : (
-                <ChefHat className="w-5 h-5 text-amber-400" />
-              )}
-            </div>
-            <div>
-              <h4 className="text-sm font-black tracking-tight">
-                {isDml ? 'Atalhos Operacionais DML & Higiene' : 'Atalhos Operacionais Rápidos'}
-              </h4>
-              <p className="text-xs text-blue-200">
-                {isDml
-                  ? 'Ações imediatas de entrada, saída e distribuição do Kit Higiene dos Acolhidos'
-                  : 'Ações imediatas de entrada, saída e baixa do Kit Diário da Cozinha'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
-            <button
-              onClick={onOpenEntryModal}
-              className="flex-1 sm:flex-none px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <ArrowDownLeft className="w-4 h-4" />
-              <span>+ Nova Entrada</span>
-            </button>
-
-            <button
-              onClick={onOpenExitModal}
-              className="flex-1 sm:flex-none px-3.5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <ArrowUpRight className="w-4 h-4" />
-              <span>- Nova Saída</span>
-            </button>
-
-            <button
-              onClick={onOpenKitModal}
-              className="w-full sm:w-auto px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              {isDml ? <Sparkles className="w-4 h-4" /> : <ChefHat className="w-4 h-4" />}
-              <span>{isDml ? '⚡ Distribuir Kit Higiene' : '⚡ Baixar Kit Cozinha'}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 5 Main KPIs Grid (Responsive: 1 col on mobile, 2 on sm, 3 on md, 5 on xl) */}
+      {/* 5 Main KPIs Bento Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3.5 sm:gap-4">
         {/* KPI 1: Total de Produtos */}
         <div
-          onClick={() => onNavigateTab('products')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer flex flex-col justify-between group"
+          onClick={() => {
+            soundFeedback.play('click');
+            onNavigateTab('products');
+          }}
+          className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-blue-500/40 dark:hover:border-blue-500/40 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-[0.99]"
         >
           <div className="flex items-center justify-between">
-            <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+            <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition-transform">
               <Package className="w-5 h-5" />
             </div>
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              {activeCategories} Categorias
-            </span>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+              <span>{activeCategories} categorias</span>
+            </div>
           </div>
 
           <div className="my-3">
-            <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              {totalProducts}
-            </span>
+            <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums">
+              <AnimatedNumber value={totalProducts} />
+            </div>
             <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
               Total de Produtos
             </p>
@@ -192,22 +147,25 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
 
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:underline">
             <span>Ver Catálogo Geral</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
+            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
 
         {/* KPI 2: Estoque em Alerta */}
         <div
-          onClick={() => onNavigateTab('products')}
-          className={`border rounded-3xl p-5 shadow-xs transition-all cursor-pointer flex flex-col justify-between group ${
+          onClick={() => {
+            soundFeedback.play('click');
+            onNavigateTab('products');
+          }}
+          className={`border rounded-3xl p-5 shadow-xs transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-[0.99] ${
             alertTotal > 0
-              ? 'bg-gradient-to-br from-rose-50/80 to-white dark:from-rose-950/30 dark:to-slate-900 border-rose-200 dark:border-rose-900/60 hover:border-rose-400'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+              ? 'bg-gradient-to-br from-rose-50/80 to-white dark:from-rose-950/25 dark:to-slate-900 border-rose-200/90 dark:border-rose-900/60 hover:border-rose-400 hover:shadow-lg hover:shadow-rose-500/5'
+              : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
           }`}
         >
           <div className="flex items-center justify-between">
             <div
-              className={`p-2.5 rounded-2xl ${
+              className={`p-2.5 rounded-2xl group-hover:scale-105 transition-transform ${
                 alertTotal > 0
                   ? 'bg-rose-500 text-white shadow-xs'
                   : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
@@ -215,76 +173,90 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
             >
               <AlertTriangle className="w-5 h-5" />
             </div>
-            <span
-              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                zeroStockProducts.length > 0
-                  ? 'bg-rose-600 text-white animate-pulse'
+            <div className="flex items-center gap-1.5 text-xs font-semibold">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  zeroStockProducts.length > 0
+                    ? 'bg-rose-500 animate-ping'
+                    : alertTotal > 0
+                    ? 'bg-amber-500'
+                    : 'bg-emerald-500'
+                }`}
+              />
+              <span
+                className={
+                  zeroStockProducts.length > 0
+                    ? 'text-rose-600 dark:text-rose-400 font-black'
+                    : alertTotal > 0
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-emerald-600 dark:text-emerald-400'
+                }
+              >
+                {zeroStockProducts.length > 0
+                  ? `${zeroStockProducts.length} Zerados`
                   : alertTotal > 0
-                  ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300'
-                  : 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
-              }`}
-            >
-              {zeroStockProducts.length > 0
-                ? `${zeroStockProducts.length} Zerados`
-                : alertTotal > 0
-                ? 'Abaixo do Mín.'
-                : 'Regular'}
-            </span>
+                  ? 'Abaixo do Mín.'
+                  : 'Regular'}
+              </span>
+            </div>
           </div>
 
           <div className="my-3">
-            <span
-              className={`text-3xl sm:text-4xl font-black tracking-tight ${
+            <div
+              className={`text-3xl sm:text-4xl font-black tracking-tight tabular-nums ${
                 alertTotal > 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
               }`}
             >
-              {String(alertTotal).padStart(2, '0')}
-            </span>
+              <AnimatedNumber value={alertTotal} />
+            </div>
             <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
               Estoque em Alerta
             </p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
               {zeroStockProducts.length > 0
-                ? `${zeroStockProducts.length} zerado(s) • ${belowMinProducts.length} abaixo do mín.`
+                ? `${zeroStockProducts.length} zerado(s) · ${belowMinProducts.length} abaixo do mín.`
                 : alertTotal > 0
                 ? `${belowMinProducts.length} abaixo do estoque de segurança`
-                : 'Todos os produtos com saldo OK'}
+                : 'Todos os produtos com saldo regular'}
             </p>
           </div>
 
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-rose-600 dark:text-rose-400 group-hover:underline">
             <span>Ver Itens Críticos</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
+            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
 
         {/* KPI 3: Movimentações de Hoje */}
         <div
-          onClick={() => onNavigateTab('entries')}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer flex flex-col justify-between group"
+          onClick={() => {
+            soundFeedback.play('click');
+            onNavigateTab('entries');
+          }}
+          className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-indigo-500/40 dark:hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-[0.99]"
         >
           <div className="flex items-center justify-between">
-            <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:scale-105 transition-transform">
               <ArrowDownUp className="w-5 h-5" />
             </div>
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Hoje
             </span>
           </div>
 
           <div className="my-3">
-            <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-              {todayMovements.length}
-            </span>
+            <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums">
+              <AnimatedNumber value={todayMovements.length} />
+            </div>
             <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
               Movimentações do Dia
             </p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+            <div className="flex items-center gap-1.5 mt-1 text-[11px] font-bold">
+              <span className="text-emerald-600 dark:text-emerald-400">
                 +{todayEntries.length} Entradas
               </span>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
-              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
+              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <span className="text-blue-600 dark:text-blue-400">
                 -{todayExits.length} Saídas
               </span>
             </div>
@@ -292,29 +264,32 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
 
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-indigo-600 dark:text-indigo-400 group-hover:underline">
             <span>Ver Movimentações</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
+            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
 
         {/* KPI 4: Refeições do Dia (Alimentação) OU Distribuição por Setores (DML) */}
         {isDml ? (
           <div
-            onClick={() => onNavigateTab('exits')}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer flex flex-col justify-between group"
+            onClick={() => {
+              soundFeedback.play('click');
+              onNavigateTab('exits');
+            }}
+            className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-amber-500/40 dark:hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-[0.99]"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform">
                 <Bath className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                 Setores Atendidos
               </span>
             </div>
 
             <div className="my-3">
-              <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-                {movements.filter((m) => m.type === 'saida').length}
-              </span>
+              <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums">
+                <AnimatedNumber value={movements.filter((m) => m.type === 'saida').length} />
+              </div>
               <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
                 Saídas DML Registradas
               </p>
@@ -325,40 +300,40 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
 
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:underline">
               <span>Extrato de Saídas DML</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </div>
         ) : (
           <div
-            onClick={() => onNavigateTab('meals')}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer flex flex-col justify-between group"
+            onClick={() => {
+              soundFeedback.play('click');
+              onNavigateTab('meals');
+            }}
+            className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-5 shadow-xs hover:border-amber-500/40 dark:hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-[0.99]"
           >
             <div className="flex items-center justify-between">
-              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:scale-105 transition-transform">
                 <UtensilsCrossed className="w-5 h-5" />
               </div>
-              <span
-                className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                  isMealFromToday
-                    ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                }`}
-              >
-                {isMealFromToday ? 'Hoje' : 'Último Registro'}
-              </span>
+              <div className="flex items-center gap-1.5 text-xs font-semibold">
+                <span className={`w-1.5 h-1.5 rounded-full ${isMealFromToday ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                <span className={isMealFromToday ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}>
+                  {isMealFromToday ? 'Hoje' : 'Último'}
+                </span>
+              </div>
             </div>
 
             <div className="my-3">
-              <span className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-                {totalMealsCount}
-              </span>
+              <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums">
+                <AnimatedNumber value={totalMealsCount} />
+              </div>
               <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
                 Refeições Servidas
               </p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                 {activeMealRecord ? (
                   <>
-                    Café: {activeMealRecord.breakfast || 0} | Almoço: {activeMealRecord.lunch || 0} | Jantar: {activeMealRecord.dinner || 0}
+                    Café: {activeMealRecord.breakfast || 0} · Almoço: {activeMealRecord.lunch || 0} · Jantar: {activeMealRecord.dinner || 0}
                   </>
                 ) : (
                   'Nenhum registro ainda'
@@ -368,7 +343,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
 
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-amber-600 dark:text-amber-400 group-hover:underline">
               <span>Gestão de Refeições</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </div>
           </div>
         )}
@@ -376,20 +351,21 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
         {/* KPI 5: Kit Cozinha Diário (Alimentação) OU Kit Higiene Acolhidos (DML) */}
         <div
           onClick={() => {
+            soundFeedback.play('click');
             if (onOpenKitModal) onOpenKitModal();
             else onNavigateTab('exits');
           }}
-          className={`border rounded-3xl p-5 shadow-xs transition-all cursor-pointer flex flex-col justify-between group ${
+          className={`border rounded-3xl p-5 shadow-xs transition-all duration-200 cursor-pointer flex flex-col justify-between group active:scale-[0.99] ${
             kitStatus === 'disponivel'
-              ? 'bg-gradient-to-br from-emerald-50/70 to-white dark:from-emerald-950/20 dark:to-slate-900 border-emerald-200 dark:border-emerald-900/60 hover:border-emerald-400'
+              ? 'bg-gradient-to-br from-emerald-50/70 to-white dark:from-emerald-950/20 dark:to-slate-900 border-emerald-200/90 dark:border-emerald-900/60 hover:border-emerald-400 hover:shadow-lg hover:shadow-emerald-500/5'
               : kitStatus === 'atencao'
-              ? 'bg-gradient-to-br from-amber-50/70 to-white dark:from-amber-950/20 dark:to-slate-900 border-amber-200 dark:border-amber-900/60 hover:border-amber-400'
-              : 'bg-gradient-to-br from-rose-50/70 to-white dark:from-rose-950/20 dark:to-slate-900 border-rose-200 dark:border-rose-900/60 hover:border-rose-400'
+              ? 'bg-gradient-to-br from-amber-50/70 to-white dark:from-amber-950/20 dark:to-slate-900 border-amber-200/90 dark:border-amber-900/60 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5'
+              : 'bg-gradient-to-br from-rose-50/70 to-white dark:from-rose-950/20 dark:to-slate-900 border-rose-200/90 dark:border-rose-900/60 hover:border-rose-400 hover:shadow-lg hover:shadow-rose-500/5'
           }`}
         >
           <div className="flex items-center justify-between">
             <div
-              className={`p-2.5 rounded-2xl ${
+              className={`p-2.5 rounded-2xl group-hover:scale-105 transition-transform ${
                 kitStatus === 'disponivel'
                   ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                   : kitStatus === 'atencao'
@@ -399,21 +375,32 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
             >
               {isDml ? <Sparkles className="w-5 h-5" /> : <ChefHat className="w-5 h-5" />}
             </div>
-            <span
-              className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                kitStatus === 'disponivel'
-                  ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
+            <div className="flex items-center gap-1.5 text-xs font-semibold">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  kitStatus === 'disponivel'
+                    ? 'bg-emerald-500'
+                    : kitStatus === 'atencao'
+                    ? 'bg-amber-500'
+                    : 'bg-rose-500'
+                }`}
+              />
+              <span
+                className={
+                  kitStatus === 'disponivel'
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : kitStatus === 'atencao'
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-rose-600 dark:text-rose-400'
+                }
+              >
+                {kitStatus === 'disponivel'
+                  ? 'Disponível'
                   : kitStatus === 'atencao'
-                  ? 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
-                  : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
-              }`}
-            >
-              {kitStatus === 'disponivel'
-                ? 'Disponível'
-                : kitStatus === 'atencao'
-                ? 'Atenção'
-                : 'Indisponível'}
-            </span>
+                  ? 'Atenção'
+                  : 'Indisponível'}
+              </span>
+            </div>
           </div>
 
           <div className="my-3">
@@ -446,7 +433,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
             }`}
           >
             <span>{isAdmin ? (isDml ? 'Distribuir / Editar Kit' : 'Baixar / Editar Kit') : 'Visualizar Kit'}</span>
-            <ArrowUpRight className="w-3.5 h-3.5" />
+            <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </div>
         </div>
       </div>

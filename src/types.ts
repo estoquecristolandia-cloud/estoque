@@ -50,6 +50,7 @@ export interface Product {
   idealStock?: number;
   dailyAvgConsumption: number; alertDays?: number; usageFrequency?: string; location: string;
   expirationDate?: string; barcode?: string; lastUpdated: string; lastOperationId?: string; updatedAt?: any;
+  averagePrice?: number;
 }
 
 export interface StockMovement {
@@ -63,12 +64,15 @@ export interface StockMovement {
   date: string;
   time?: string;
   entryType?: EntryType;
+  category?: string;
   supplierOrDonor?: string;
   receivedBy?: string;
   sector?: Sector;
   kitchenShift?: string;
   retrievedBy?: string;
   deliveredBy?: string;
+  unitPrice?: number;
+  invoiceNumber?: string;
   notes?: string;
   createdAt: string;
   operationId?: string;

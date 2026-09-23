@@ -26,6 +26,12 @@ import { MissionaryManagerModal } from './components/MissionaryManagerModal';
 import { WhatsAppAlertModal } from './components/WhatsAppAlertModal';
 import { PhysicalInventoryModal } from './components/PhysicalInventoryModal';
 import { PhysicalReconciliationPreviewModal } from './components/PhysicalReconciliationPreviewModal';
+import { BarcodeScannerModal } from './components/BarcodeScannerModal';
+import { ReceiptScannerModal } from './components/ReceiptScannerModal';
+import { PvpsRunwayBanner } from './components/PvpsRunwayBanner';
+import { CommandPalette } from './components/CommandPalette';
+import { usePwaInstall } from './hooks/usePwaInstall';
+import { exportFullSystemJSON, exportExcelCompatibleCSV } from './utils/backupExport';
 import { LoginScreen } from './components/LoginScreen';
 import { ToastContainer } from './components/ToastContainer';
 import { toast } from './utils/toast';
@@ -123,6 +129,85 @@ export default function App() {
     handleOpenTimelineById,
   } = useAppModals();
 
+  // 5. Agilidade e Inteligência (Pilares 2, 3 e 4)
+  const [isBarcodeScannerOpen, setIsBarcodeScannerOpen] = React.useState(false);
+  const [isReceiptScannerOpen, setIsReceiptScannerOpen] = React.useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = React.useState(false);
+  const { canInstall, triggerInstall } = usePwaInstall();
+
+  // Atalho Global Spotlight: Ctrl + K ou Cmd + K
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleBarcodeDetected = useCallback((code: string) => {
+    const cleanCode = code.trim().toLowerCase();
+    const matched = departmentProducts.find(
+      (p) =>
+        (p.barcode && p.barcode.toLowerCase() === cleanCode) ||
+        p.id.toLowerCase() === cleanCode ||
+        p.name.toLowerCase().includes(cleanCode)
+    );
+
+    if (matched) {
+      toast.success(`Item identificado: ${matched.name}!`);
+      setSelectedProductForAction(matched);
+      setIsBarcodeScannerOpen(false);
+      setIsExitModalOpen(true);
+    } else {
+      toast.info(`Código lido: ${code}. Abrindo registro de entrada.`);
+      setIsBarcodeScannerOpen(false);
+      setIsEntryModalOpen(true);
+    }
+  }, [departmentProducts, setSelectedProductForAction, setIsBarcodeScannerOpen, setIsExitModalOpen, setIsEntryModalOpen]);
+
+  const handleImportReceiptEntries = useCallback(async (entries: any[]) => {
+    let count = 0;
+    for (const entry of entries) {
+      try {
+        await handleAddEntry({
+          productId: entry.productId,
+          productName: entry.productName,
+          quantity: entry.quantity,
+          unit: entry.unit,
+          unitPrice: entry.unitPrice,
+          date: entry.date,
+          supplierOrDonor: entry.supplier,
+          notes: entry.notes,
+          category: entry.category,
+        });
+        count++;
+      } catch (err) {
+        console.error('Erro ao importar entrada:', err);
+      }
+    }
+    toast.success(`${count} itens da nota fiscal importados com sucesso!`);
+  }, [handleAddEntry]);
+
+  const handleBackupData = useCallback(() => {
+    exportFullSystemJSON({
+      products,
+      movements,
+      meals,
+      missionaries,
+      userName: currentUser?.displayName,
+      userEmail: currentUser?.email,
+    });
+    exportExcelCompatibleCSV({
+      products,
+      movements,
+      meals,
+    });
+    toast.success('Backup exportado com sucesso (JSON + Planilha Excel)!');
+  }, [products, movements, meals, missionaries, currentUser]);
+
   const handleSelectLocalRole = useCallback((_role: UserRole) => {
     toast.warning('A alteração de perfil é exclusiva do administrador.');
   }, []);
@@ -167,8 +252,15 @@ export default function App() {
     <div
       id="app-root"
       data-theme={isDarkMode ? 'dark' : 'light'}
-      className={`min-h-screen ${isDarkMode ? 'dark' : ''} bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans flex flex-col md:flex-row selection:bg-indigo-600 selection:text-white transition-colors duration-200`}
+      className={`min-h-screen ${isDarkMode ? 'dark' : ''} bg-slate-100 dark:bg-[#070913] text-slate-900 dark:text-slate-100 font-sans flex flex-col md:flex-row selection:bg-indigo-600 selection:text-white transition-colors duration-200 relative overflow-x-hidden`}
     >
+      {/* Ambient background glow for high-end SaaS feel */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 opacity-30 dark:opacity-100 transition-opacity">
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[900px] h-[500px] bg-gradient-to-b from-blue-600/15 via-indigo-600/10 to-transparent blur-[120px] rounded-full" />
+        <div className="absolute top-1/3 -left-40 w-[600px] h-[600px] bg-gradient-to-r from-emerald-600/10 to-transparent blur-[140px] rounded-full" />
+        <div className="absolute bottom-10 right-0 w-[500px] h-[500px] bg-gradient-to-l from-amber-600/5 to-transparent blur-[130px] rounded-full" />
+      </div>
+
       <ToastContainer />
       <Header
         activeTab={activeTab}
@@ -180,14 +272,20 @@ export default function App() {
         onOpenReconciliationPreview={() => setIsReconciliationPreviewOpen(true)}
         onOpenMissionariesModal={() => setIsMissionariesModalOpen(true)}
         onOpenWhatsAppModal={() => setIsWhatsAppModalOpen(true)}
+        onOpenBarcodeScanner={() => setIsBarcodeScannerOpen(true)}
+        onOpenReceiptScanner={() => setIsReceiptScannerOpen(true)}
+        onBackupData={handleBackupData}
+        canInstallPwa={canInstall}
+        onInstallPwa={triggerInstall}
         onResetData={handleResetData}
         currentUser={currentUser}
         onOpenAuthModal={() => setIsAuthModalOpen(true)}
         onLogout={handleLogout}
         isDarkMode={isDarkMode}
         onToggleDarkMode={toggleDarkMode}
+        onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
       />
-      <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden">
+      <main className="flex-1 p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full overflow-x-hidden relative z-10">
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
             <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
@@ -202,6 +300,13 @@ export default function App() {
                 onOpenReports={() => setActiveTab('reports')}
                 onOpenMeals={() => setActiveTab('meals')}
                 onOpenWhatsAppAlert={() => setIsWhatsAppModalOpen(true)}
+              />
+
+              {/* Autonomia Alimentar e Regra PVPS (Pilar 2) */}
+              <PvpsRunwayBanner
+                products={departmentProducts}
+                movements={departmentMovements}
+                onOpenExitForProduct={(p) => handleOpenExitModal(p)}
               />
 
               <KpiCards
@@ -388,6 +493,8 @@ export default function App() {
               <ReportsView
                 products={departmentProducts}
                 movements={departmentMovements}
+                meals={meals}
+                missionaries={missionaries}
                 inventoryAudits={inventoryAudits}
                 userRole={currentUser.role}
                 userName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'}
@@ -525,6 +632,22 @@ export default function App() {
         />
       )}
 
+      {isBarcodeScannerOpen && (
+        <BarcodeScannerModal
+          products={departmentProducts}
+          onClose={() => setIsBarcodeScannerOpen(false)}
+          onScanProduct={handleBarcodeDetected}
+        />
+      )}
+
+      {isReceiptScannerOpen && (
+        <ReceiptScannerModal
+          products={departmentProducts}
+          onClose={() => setIsReceiptScannerOpen(false)}
+          onImportEntries={handleImportReceiptEntries}
+        />
+      )}
+
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
@@ -537,6 +660,39 @@ export default function App() {
             if (p) setCurrentUser(p);
           }
         }}
+      />
+
+      {/* Global Spotlight / Command Palette (Ctrl + K) */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        products={departmentProducts}
+        activeDepartment={activeDepartment}
+        onSelectProduct={(product) => {
+          handleOpenTimeline(product);
+        }}
+        onNavigate={(tab) => {
+          setActiveTab(tab);
+        }}
+        onQuickEntry={() => {
+          handleOpenEntryModal(null);
+        }}
+        onQuickExit={() => {
+          handleOpenExitModal(null);
+        }}
+        onOpenKit={() => {
+          setIsKitModalOpen(true);
+        }}
+        onOpenPhysicalInventory={() => {
+          setIsPhysicalInventoryOpen(true);
+        }}
+        onOpenReports={() => {
+          setActiveTab('reports');
+        }}
+        onOpenAi={() => {
+          setActiveTab('ai_assistant');
+        }}
+        onToggleDarkMode={toggleDarkMode}
       />
     </div>
   );

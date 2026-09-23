@@ -141,6 +141,21 @@
       },
       "required": ["id", "date", "time", "responsible", "totalProducts", "checkedCount", "divergentCount", "adjustedCount"]
     },
+    "AuthorizedUser": {
+      "title": "AuthorizedUser",
+      "description": "Registro de e-mail na Lista de Pré-Autorização (Whitelist) para acesso de visualizador",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "maxLength": 200 },
+        "name": { "type": "string", "maxLength": 150 },
+        "active": { "type": "boolean" },
+        "role": { "type": "string", "enum": ["viewer"] },
+        "authorizedBy": { "type": "string", "maxLength": 200 },
+        "authorizedAt": { "type": "string", "maxLength": 64 },
+        "notes": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["email", "name", "active", "role", "authorizedBy", "authorizedAt"]
+    },
     "AppUserProfile": {
       "title": "AppUserProfile",
       "description": "Perfil de usuário e privilégios no sistema",
@@ -156,6 +171,10 @@
     }
   },
   "firestore": {
+    "/authorized_users/{userEmail}": {
+      "schema": "AuthorizedUser",
+      "description": "Lista de pré-autorização (whitelist) de visualizadores auditáveis."
+    },
     "/products/{productId}": {
       "schema": "Product",
       "description": "Catálogo de mantimentos e saldos atuais no estoque."

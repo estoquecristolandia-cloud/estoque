@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye, Bot, Sparkles, Droplets, Layers } from 'lucide-react';
+import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye, Bot, Sparkles, Droplets, Layers, ScanBarcode, Camera, Save, Smartphone, Search, Volume2, VolumeX } from 'lucide-react';
 import { AppUserProfile, ROLE_LABELS } from '../firebase';
 import { Department } from '../types';
 import { CristolandiaLogo } from './CristolandiaLogo';
+import { soundFeedback } from '../utils/audioFeedback';
 
 interface HeaderProps {
   activeTab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports' | 'ai_assistant';
@@ -14,12 +15,18 @@ interface HeaderProps {
   onOpenReconciliationPreview?: () => void;
   onOpenMissionariesModal?: () => void;
   onOpenWhatsAppModal?: () => void;
+  onOpenBarcodeScanner?: () => void;
+  onOpenReceiptScanner?: () => void;
+  onBackupData?: () => void;
+  canInstallPwa?: boolean;
+  onInstallPwa?: () => void;
   onResetData?: () => void;
   currentUser: AppUserProfile | null;
   onOpenAuthModal: () => void;
   onLogout?: () => void;
   isDarkMode?: boolean;
   onToggleDarkMode?: () => void;
+  onOpenCommandPalette?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -32,18 +39,29 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenReconciliationPreview,
   onOpenMissionariesModal,
   onOpenWhatsAppModal,
+  onOpenBarcodeScanner,
+  onOpenReceiptScanner,
+  onBackupData,
+  canInstallPwa,
+  onInstallPwa,
   onResetData,
   currentUser,
   onOpenAuthModal,
   onLogout,
   isDarkMode = true,
   onToggleDarkMode,
+  onOpenCommandPalette,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [soundOn, setSoundOn] = useState(() => soundFeedback.isEnabled());
 
-  const isAdmin = currentUser?.role === 'admin';
+  const handleToggleSound = () => {
+    const newState = soundFeedback.toggle();
+    setSoundOn(newState);
+  };
   const roleMeta = ROLE_LABELS[currentUser?.role || 'viewer'];
   const isDml = activeDepartment === 'dml';
+  const isAdmin = currentUser?.role === 'admin';
 
   const baseNavItems = isDml
     ? [
@@ -153,6 +171,18 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onOpenCommandPalette && (
+            <button
+              onClick={() => {
+                soundFeedback.play('click');
+                onOpenCommandPalette();
+              }}
+              className="p-2 text-slate-300 hover:text-white rounded-xl bg-slate-900 border border-slate-700/80 hover:bg-slate-800 transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Buscar / Spotlight (Ctrl + K)"
+            >
+              <Search className="w-4 h-4 text-slate-300" />
+            </button>
+          )}
           {onToggleDarkMode && (
             <button
               onClick={onToggleDarkMode}
@@ -297,6 +327,47 @@ export const Header: React.FC<HeaderProps> = ({
             })}
 
             <div className="pt-4 border-t border-slate-800 flex flex-col gap-2">
+              {/* Ferramentas Móveis de Galpão */}
+              <div className="grid grid-cols-2 gap-2">
+                {onOpenBarcodeScanner && (
+                  <button
+                    onClick={() => {
+                      onOpenBarcodeScanner();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="py-2.5 px-3 bg-slate-950 border border-slate-800 hover:border-indigo-500 rounded-xl text-xs font-bold text-slate-200 flex items-center justify-center gap-1.5"
+                  >
+                    <ScanBarcode className="w-4 h-4 text-indigo-400" />
+                    <span>Cód. Barras</span>
+                  </button>
+                )}
+                {onOpenReceiptScanner && (
+                  <button
+                    onClick={() => {
+                      onOpenReceiptScanner();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="py-2.5 px-3 bg-slate-950 border border-slate-800 hover:border-amber-500 rounded-xl text-xs font-bold text-slate-200 flex items-center justify-center gap-1.5"
+                  >
+                    <Camera className="w-4 h-4 text-amber-400" />
+                    <span>Nota Fiscal IA</span>
+                  </button>
+                )}
+              </div>
+
+              {canInstallPwa && onInstallPwa && (
+                <button
+                  onClick={() => {
+                    onInstallPwa();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-black shadow-md flex items-center justify-center gap-2"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span>📲 Instalar no Celular (App PWA)</span>
+                </button>
+              )}
+
               {isAdmin && onOpenReconciliationPreview && (
                 <button
                   onClick={() => {
@@ -442,6 +513,19 @@ export const Header: React.FC<HeaderProps> = ({
                 )}
               </button>
             )}
+
+            <button
+              onClick={handleToggleSound}
+              className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white transition-all cursor-pointer shrink-0 shadow-sm flex items-center justify-center group"
+              title={soundOn ? 'Sons e Feedback Háptico Ativados (Clique para silenciar)' : 'Sons Silenciados (Clique para ativar)'}
+              aria-label="Alternar som do sistema"
+            >
+              {soundOn ? (
+                <Volume2 className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+              ) : (
+                <VolumeX className="w-4 h-4 text-slate-500 group-hover:scale-110 transition-transform" />
+              )}
+            </button>
           </div>
 
           {/* DEPARTAMENTOS DO SIG-CRISTOLÂNDIA */}
@@ -454,7 +538,10 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-1 p-0.5 bg-slate-950/60 rounded-xl border border-slate-800/80">
               <button
-                onClick={() => onSelectDepartment?.('alimentacao')}
+                onClick={() => {
+                  soundFeedback.play('click');
+                  onSelectDepartment?.('alimentacao');
+                }}
                 className={`py-1.5 px-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   !isDml
                     ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950/40'
@@ -466,7 +553,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="truncate">Alimentação</span>
               </button>
               <button
-                onClick={() => onSelectDepartment?.('dml')}
+                onClick={() => {
+                  soundFeedback.play('click');
+                  onSelectDepartment?.('dml');
+                }}
                 className={`py-1.5 px-2 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   isDml
                     ? 'bg-cyan-600 text-white shadow-md shadow-cyan-950/40'
@@ -481,6 +571,56 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
+        {/* Spotlight Search (Ctrl + K) Trigger */}
+        {onOpenCommandPalette && (
+          <button
+            onClick={() => {
+              soundFeedback.play('click');
+              onOpenCommandPalette();
+            }}
+            className="w-full flex items-center justify-between py-2 px-3 mb-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white transition-all text-xs cursor-pointer group shadow-2xs"
+            title="Buscar Produtos ou Ações Rápidas (Ctrl + K)"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-400 transition-colors shrink-0" />
+              <span className="font-semibold text-slate-300 truncate">Spotlight...</span>
+            </div>
+            <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-bold bg-slate-950 border border-slate-800 rounded text-slate-400 group-hover:border-slate-600 shrink-0">
+              Ctrl K
+            </kbd>
+          </button>
+        )}
+
+        {/* Ferramentas de Agilidade Operacional no Galpão (Pilares 2 e 3) */}
+        <div className="grid grid-cols-2 gap-1.5 shrink-0 my-1">
+          {onOpenBarcodeScanner && (
+            <button
+              onClick={() => {
+                soundFeedback.play('click');
+                onOpenBarcodeScanner();
+              }}
+              className="py-1.5 px-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 rounded-xl text-[11px] font-bold text-slate-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs group"
+              title="Abrir Câmera para Leitura de Código de Barras"
+            >
+              <ScanBarcode className="w-3.5 h-3.5 text-indigo-400 group-hover:scale-110 transition-transform" />
+              <span className="truncate">Cód. Barras</span>
+            </button>
+          )}
+          {onOpenReceiptScanner && (
+            <button
+              onClick={() => {
+                soundFeedback.play('click');
+                onOpenReceiptScanner();
+              }}
+              className="py-1.5 px-2 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/50 rounded-xl text-[11px] font-bold text-slate-300 hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs group"
+              title="Foto de Cupom Fiscal com Leitura Inteligente por IA"
+            >
+              <Camera className="w-3.5 h-3.5 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span className="truncate">Nota IA</span>
+            </button>
+          )}
+        </div>
+
         {/* Navigation */}
         <nav className="flex-1 space-y-1 shrink-0">
           {navItems.map((item) => {
@@ -489,7 +629,10 @@ export const Header: React.FC<HeaderProps> = ({
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  soundFeedback.play('click');
+                  setActiveTab(item.id);
+                }}
                 className={`w-full flex items-center space-x-2.5 py-2 px-3 rounded-xl transition-all text-xs font-semibold cursor-pointer ${
                   isActive
                     ? `${item.activeColor} shadow-sm`
@@ -555,6 +698,28 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Users className="w-3.5 h-3.5 text-amber-500" />
               <span>Missionários & Turnos</span>
+            </button>
+          )}
+
+          {canInstallPwa && onInstallPwa && (
+            <button
+              onClick={onInstallPwa}
+              className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-700/30 flex items-center justify-center gap-2 cursor-pointer transition-all animate-pulse"
+              title="Instalar o SIG-Cristolândia na tela inicial como Aplicativo Nativo"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Instalar Aplicativo (PWA)</span>
+            </button>
+          )}
+
+          {onBackupData && (
+            <button
+              onClick={onBackupData}
+              className="w-full py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-amber-300 hover:text-amber-200 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              title="Exportar Backup Completo (JSON e Planilha)"
+            >
+              <Save className="w-3.5 h-3.5 text-amber-400" />
+              <span>Backup Rápido (1-Clique)</span>
             </button>
           )}
 
