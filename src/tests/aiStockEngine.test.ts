@@ -387,5 +387,94 @@ export function runAllAiEngineTests(): { passed: number; failed: number; results
   );
   assert(resFlocao.summary.includes('2 preparos semanais completos') || resFlocao.summary.includes('20 pc'), 'Cálculo de autonomia do flocão com a regra de 20 pacotes por preparo');
 
+  // Teste 14: Auditoria de Cenário Real — Consulta de Setembro com Saídas Multi-Missionários
+  const mockSeptemberMovements: StockMovement[] = [
+    {
+      id: 'mov-sept-1',
+      productId: 'prod-1',
+      productName: 'Leite Integral',
+      unit: 'litro',
+      type: 'saida',
+      quantity: 1,
+      date: '2026-09-23',
+      time: '08:18',
+      sector: 'Casa Missionária Masculina',
+      retrievedBy: 'Missionário Renê',
+      deliveredBy: 'Marconi Castro (Gestor do Estoque)',
+      createdAt: '2026-09-23T08:18:00Z',
+    },
+    {
+      id: 'mov-sept-2',
+      productId: 'prod-1',
+      productName: 'Leite Integral',
+      unit: 'litro',
+      type: 'saida',
+      quantity: 2,
+      date: '2026-09-23',
+      time: '08:17',
+      sector: 'Casa Missionária Masculina',
+      retrievedBy: 'Missionário Manuel',
+      deliveredBy: 'Marconi Castro (Gestor do Estoque)',
+      createdAt: '2026-09-23T08:17:00Z',
+    },
+    {
+      id: 'mov-sept-3',
+      productId: 'prod-1',
+      productName: 'Leite Integral',
+      unit: 'litro',
+      type: 'saida',
+      quantity: 3,
+      date: '2026-09-24',
+      time: '08:18',
+      sector: 'Cozinha',
+      retrievedBy: 'Equipe 1 (Equipe Cozinha)',
+      deliveredBy: 'Marconi Castro (Gestor do Estoque)',
+      createdAt: '2026-09-24T08:18:00Z',
+    },
+  ];
+
+  const resAuditoriaSetembro = executeDeterministicStockQuery(
+    'Me diga a quantidade de leite consumido pela casa missionaria masculina no mês de setembro e quais missionarios fizeram as retiradas',
+    mockProducts,
+    [...mockMovements, ...mockSeptemberMovements],
+    mockMeals,
+    mockDailyKit,
+    mockMissionaries,
+    [],
+    [],
+    new Date('2026-09-24T12:00:00')
+  );
+
+  assert(resAuditoriaSetembro.calculationBase.totalQuantity === 3, 'Volume de leite de Setembro da Casa Masculina calculado com precisão (1L Renê + 2L Manuel = 3L)');
+  assert(resAuditoriaSetembro.calculationBase.movementsCount === 2, 'Contagem de lançamentos de Setembro da Casa Masculina (2 retiradas auditadas)');
+  assert(resAuditoriaSetembro.detailedAnalysis.includes('Renê') && resAuditoriaSetembro.detailedAnalysis.includes('Manuel'), 'Detalhamento discrimina Renê e Manuel como missionários que retiraram');
+  assert(!resAuditoriaSetembro.detailedAnalysis.includes('Equipe 1'), 'Isolamento estrito: saída da Cozinha não foi misturada com a Casa Masculina');
+
+  // Teste 15: Tolerância a Erros de Digitação ("mesmde semtembro") e Reconhecimento do Mês Inteiro
+  const dateRangeTypo = parseDateRangeFromQuery(
+    'o que foi retirado do estoque pelo missionario Rene no mesmde semtembro?',
+    new Date('2026-09-24T12:00:00')
+  );
+  assert(
+    dateRangeTypo.startDate === '2026-09-01' && dateRangeTypo.endDate === '2026-09-30',
+    'Tolerância ortográfica: "mesmde semtembro" reconhece o mês cheio de Setembro (01/09 a 30/09) em vez dos últimos 7 dias'
+  );
+
+  const resTypoRene = executeDeterministicStockQuery(
+    'o que foi retirado do estoque pelo missionario Rene no mesmde semtembro?',
+    mockProducts,
+    [...mockMovements, ...mockSeptemberMovements],
+    mockMeals,
+    mockDailyKit,
+    mockMissionaries,
+    [],
+    [],
+    new Date('2026-09-24T12:00:00')
+  );
+  assert(
+    resTypoRene.calculationBase.periodAnalyzed.includes('Setembro/2026') && resTypoRene.calculationBase.totalQuantity === 1,
+    'Filtro auditado por missionário e mês cheio com erro de digitação ("mesmde semtembro"): 1L retirado por Renê em Setembro'
+  );
+
   return { passed, failed, results };
 }

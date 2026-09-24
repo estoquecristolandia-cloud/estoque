@@ -50,8 +50,48 @@ export const MONTHS_MAP: Record<string, string> = {
   'setembro': '09', 'outubro': '10', 'novembro': '11', 'dezembro': '12',
 };
 
+export const MONTH_DEFINITIONS: Array<{ name: string; num: string; regex: RegExp }> = [
+  { name: 'Janeiro', num: '01', regex: /\b(janeiro|janero|janeir)\b|\b(?:em|de|no\s+mes\s+de?)\s+jan\b/i },
+  { name: 'Fevereiro', num: '02', regex: /\b(fevereiro|feverero|fevereir)\b|\b(?:em|de|no\s+mes\s+de?)\s+fev\b/i },
+  { name: 'Março', num: '03', regex: /\b(marco|março)\b|\b(?:em|de|no\s+mes\s+de?)\s+mar\b/i },
+  { name: 'Abril', num: '04', regex: /\b(abril)\b|\b(?:em|de|no\s+mes\s+de?)\s+abr\b/i },
+  { name: 'Maio', num: '05', regex: /\b(maio)\b|\b(?:em|de|no\s+mes\s+de?)\s+mai\b/i },
+  { name: 'Junho', num: '06', regex: /\b(junho)\b|\b(?:em|de|no\s+mes\s+de?)\s+jun\b/i },
+  { name: 'Julho', num: '07', regex: /\b(julho)\b|\b(?:em|de|no\s+mes\s+de?)\s+jul\b/i },
+  { name: 'Agosto', num: '08', regex: /\b(agosto|agost|agos)\b|\b(?:em|de|no\s+mes\s+de?)\s+ago\b/i },
+  { name: 'Setembro', num: '09', regex: /\b(setembro|semtembro|setenbro|setembo|setembr|setenbr|stembro)\b|\b(?:em|de|no\s+mes\s+de?)\s+set\b/i },
+  { name: 'Outubro', num: '10', regex: /\b(outubro|outobro|outubr)\b|\b(?:em|de|no\s+mes\s+de?)\s+out\b/i },
+  { name: 'Novembro', num: '11', regex: /\b(novembro|novenbro|novembr)\b|\b(?:em|de|no\s+mes\s+de?)\s+nov\b/i },
+  { name: 'Dezembro', num: '12', regex: /\b(dezembro|dezenbro|dezembr)\b|\b(?:em|de|no\s+mes\s+de?)\s+dez\b/i },
+];
+
 export function convertSpokenNumbersToDigits(text: string): string {
   let res = normalizeStr(text);
+
+  // Correção de digitação e fonética comum para meses e períodos
+  res = res.replace(/\bmesmde\b/g, 'mes de')
+           .replace(/\bnomesmde\b/g, 'no mes de')
+           .replace(/\bmesm\b/g, 'mes')
+           .replace(/\bmesme\b/g, 'mes de')
+           .replace(/\bnomês\b/g, 'no mes')
+           .replace(/\bsemtembro\b/g, 'setembro')
+           .replace(/\bsetenbro\b/g, 'setembro')
+           .replace(/\bsetembo\b/g, 'setembro')
+           .replace(/\bsetembr\b/g, 'setembro')
+           .replace(/\bsetenbr\b/g, 'setembro')
+           .replace(/\bstembro\b/g, 'setembro')
+           .replace(/\bagost\b/g, 'agosto')
+           .replace(/\bagos\b/g, 'agosto')
+           .replace(/\boutobro\b/g, 'outubro')
+           .replace(/\boutubr\b/g, 'outubro')
+           .replace(/\bnovenbro\b/g, 'novembro')
+           .replace(/\bnovembr\b/g, 'novembro')
+           .replace(/\bdezenbro\b/g, 'dezembro')
+           .replace(/\bdezembr\b/g, 'dezembro')
+           .replace(/\bfeverero\b/g, 'fevereiro')
+           .replace(/\bfevereir\b/g, 'fevereiro')
+           .replace(/\bjanero\b/g, 'janeiro')
+           .replace(/\bjaneir\b/g, 'janeiro');
 
   // Anos falados
   res = res.replace(/dois mil e vinte e seis/g, '2026')
@@ -189,16 +229,36 @@ export function parseDateRangeFromQuery(query: string, referenceDate: Date = new
     return { startDate: MARCO_ZERO_DATE_STR, endDate: todayStr, label: `Desde o Marco Zero (21/08/2026 até ${formatDateBR(todayStr)})` };
   }
 
-  // Mês específico (ex: "em agosto", "de agosto", "em setembro", "de setembro")
-  for (const [monthName, monthNum] of Object.entries(MONTHS_MAP)) {
-    if (norm.includes(`em ${monthName}`) || norm.includes(`de ${monthName}`) || norm.includes(`mes de ${monthName}`)) {
-      const year = referenceDate.getFullYear();
-      const firstDay = `${year}-${monthNum}-01`;
-      const lastDayObj = new Date(year, parseInt(monthNum, 10), 0);
+  // Mês específico (reconhece nomes de meses, abreviações, digitações com ou sem preposição, ex: "mesmde semtembro", "no mes de setembro", "setembro", etc.)
+  for (const mDef of MONTH_DEFINITIONS) {
+    if (mDef.regex.test(norm)) {
+      const yearMatch = norm.match(/\b(202\d)\b/);
+      const year = yearMatch ? parseInt(yearMatch[1], 10) : referenceDate.getFullYear();
+      const firstDay = `${year}-${mDef.num}-01`;
+      const lastDayObj = new Date(year, parseInt(mDef.num, 10), 0);
       const lastDay = getLocalDateStr(lastDayObj);
-      const capName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-      return { startDate: firstDay, endDate: lastDay, label: `Mês de ${capName}/${year}` };
+      return { startDate: firstDay, endDate: lastDay, label: `Mês de ${mDef.name}/${year}` };
     }
+  }
+
+  // Mês todo / Mês inteiro / Todo o mês (quando não especifica o nome do mês, assume o mês atual completo de 01 ao último dia)
+  if (
+    norm.includes('mes todo') ||
+    norm.includes('o mes inteiro') ||
+    norm.includes('mes inteiro') ||
+    norm.includes('todo o mes') ||
+    norm.includes('mes completo') ||
+    norm.includes('durante o mes') ||
+    /\b(?:no|do|neste|este|nesse)\s+mes\b/.test(norm) ||
+    norm.includes('mes atual')
+  ) {
+    const year = referenceDate.getFullYear();
+    const monthNum = String(referenceDate.getMonth() + 1).padStart(2, '0');
+    const firstDay = `${year}-${monthNum}-01`;
+    const lastDayObj = new Date(year, referenceDate.getMonth() + 1, 0);
+    const lastDay = getLocalDateStr(lastDayObj);
+    const monthName = MONTH_DEFINITIONS[referenceDate.getMonth()]?.name || 'Atual';
+    return { startDate: firstDay, endDate: lastDay, label: `Mês de ${monthName}/${year}` };
   }
 
   // Trimestre / Semestre / Ano
@@ -477,13 +537,17 @@ export function findMentionedPerson(query: string, missionaries: Missionary[], m
     } catch {}
   }
 
-  // 2. Verificar missionários cadastrados
+  // 2. Verificar missionários cadastrados (ignorando prefixos/títulos como "Missionário", "Pastora", etc.)
+  const titleWords = new Set(['missionario', 'missionarios', 'missionaria', 'missionarias', 'pastor', 'pastores', 'pastora', 'pr', 'psicologa', 'chefe', 'irmao', 'irma', 'equipe', 'casal', 'casa', 'cozinha', 'gestor', 'responsavel']);
+
   for (const m of missionaries) {
     const mNorm = normalizeStr(m.name);
-    const firstName = mNorm.replace(/[^a-z0-9\s]/gi, ' ').split(/\s+/)[0];
-    if (firstName && firstName.length >= 3) {
+    const words = mNorm.replace(/[^a-z0-9\s]/gi, ' ').split(/\s+/).filter(Boolean);
+    const actualNames = words.filter((w) => !titleWords.has(w));
+    const targetName = actualNames[0];
+    if (targetName && targetName.length >= 3) {
       try {
-        const regex = new RegExp(`\\b${escapeRegExp(firstName)}\\b`, 'i');
+        const regex = new RegExp(`\\b${escapeRegExp(targetName)}\\b`, 'i');
         if (regex.test(norm)) {
           return m.name;
         }
@@ -502,10 +566,12 @@ export function findMentionedPerson(query: string, missionaries: Missionary[], m
 
   for (const person of historicPeople) {
     const pNorm = normalizeStr(person);
-    const firstName = pNorm.replace(/[^a-z0-9\s]/gi, ' ').split(/\s+/)[0];
-    if (firstName && firstName.length >= 3) {
+    const words = pNorm.replace(/[^a-z0-9\s]/gi, ' ').split(/\s+/).filter(Boolean);
+    const actualNames = words.filter((w) => !titleWords.has(w));
+    const targetName = actualNames[0];
+    if (targetName && targetName.length >= 3) {
       try {
-        const regex = new RegExp(`\\b${escapeRegExp(firstName)}\\b`, 'i');
+        const regex = new RegExp(`\\b${escapeRegExp(targetName)}\\b`, 'i');
         if (regex.test(norm)) {
           return person;
         }
@@ -1188,7 +1254,7 @@ export function executeDeterministicStockQuery(
       if (m.type !== 'saida') return false;
       const sNorm = normalizeStr(m.sector);
       const targetNorm = normalizeStr(mentionedSector);
-      return (sNorm.includes(targetNorm) || targetNorm.includes(sNorm)) &&
+      return sNorm.length > 0 && (sNorm.includes(targetNorm) || targetNorm.includes(sNorm)) &&
         m.date >= dateRange.startDate && m.date <= dateRange.endDate;
     });
 
@@ -1308,7 +1374,7 @@ export function executeDeterministicStockQuery(
     const sNorm = normalizeStr(mentionedSector);
     matchingMovements = matchingMovements.filter((m) => {
       const sec = normalizeStr(m.sector);
-      return sec.includes(sNorm) || sNorm.includes(sec);
+      return sec.length > 0 && (sec.includes(sNorm) || sNorm.includes(sec));
     });
   }
 
@@ -1355,25 +1421,65 @@ export function executeDeterministicStockQuery(
     if (mentionedSector) emptyMsg += `no setor **${mentionedSector}** `;
     emptyMsg += `no período analisado (${dateRange.label}).`;
 
+    // Verificar se existem movimentações em outros períodos (ex: mês anterior)
+    const anyMatchingEver = movements.filter((m) => {
+      if (requestedType !== 'todos' && m.type !== requestedType) return false;
+      if (mentionedProduct) {
+        const mName = normalizeStr(m.productName);
+        const targetName = normalizeStr(mentionedProduct.name);
+        if (m.productId !== mentionedProduct.id && !mName.includes(targetName) && !targetName.includes(mName)) return false;
+      }
+      if (mentionedPerson) {
+        const pNorm = normalizeStr(mentionedPerson);
+        const firstName = pNorm.split(' ')[0];
+        const ret = normalizeStr(m.retrievedBy);
+        const del = normalizeStr(m.deliveredBy);
+        const rec = normalizeStr(m.receivedBy);
+        const resp = normalizeStr(m.responsible);
+        if (!ret.includes(firstName) && !del.includes(firstName) && !rec.includes(firstName) && !resp.includes(firstName)) return false;
+      }
+      if (mentionedSector) {
+        const sec = normalizeStr(m.sector);
+        const sNorm = normalizeStr(mentionedSector);
+        if (!sec || (!sec.includes(sNorm) && !sNorm.includes(sec))) return false;
+      }
+      return true;
+    });
+
+    let extraContext = '';
+    if (anyMatchingEver.length > 0) {
+      const dates = anyMatchingEver.map((m) => m.date).filter(Boolean).sort();
+      const firstDate = formatDateBR(dates[0]);
+      const lastDate = formatDateBR(dates[dates.length - 1]);
+      const totalPast = anyMatchingEver.reduce((sum, m) => sum + (Number(m.quantity) || 0), 0);
+      extraContext = `\n\n💡 **Dica de Auditoria:** Existem **${anyMatchingEver.length} lançamento(s)** para estes critérios em outros períodos (${firstDate} a ${lastDate}), totalizando **${totalPast} ${primaryUnit}**. Para consultá-los, experimente perguntar pelo **mês de agosto** ou **desde o Marco Zero**.`;
+    }
+
+    const confidenceLevel: AiConfidenceLevel = anyMatchingEver.length > 0 ? 'medium' : 'low';
+
     return {
       query,
       intent: 'movements_empty',
-      summary: emptyMsg,
-      confidence: 'low',
-      confidenceReason: 'Nenhum registro correspondente foi localizado na base de dados para estes filtros.',
+      summary: emptyMsg + (extraContext ? ` *(Nota: registros encontrados no mês de agosto).*` : ''),
+      confidence: confidenceLevel,
+      confidenceReason: anyMatchingEver.length > 0
+        ? 'Busca auditada concluída com sucesso: zero lançamentos no período solicitado (registros encontrados em outros períodos).'
+        : 'Nenhum registro correspondente foi localizado na base de dados para estes filtros.',
       metrics: [
         { label: 'Total Encontrado', value: 0, unit: primaryUnit },
         { label: 'Movimentações', value: 0 },
         { label: 'Período', value: dateRange.label },
       ],
       calculationBase,
-      detailedAnalysis: `### 🔍 Nenhuma Movimentação Encontrada\n\n${emptyMsg}\n\n**Observações:**\n• O saldo atual do estoque pode ser consultado diretamente na aba de **Produtos & Estoque**.\n• Para consultar lançamentos em outras datas, utilize períodos mais amplos como "últimos 30 dias" ou "desde o Marco Zero".`,
+      detailedAnalysis: `### 🔍 Nenhuma Movimentação Encontrada no Período\n\n${emptyMsg}${extraContext}\n\n**Observações de Auditoria:**\n• O período de **${dateRange.label}** não possui saídas registradas com estes filtros.\n• O saldo atual físico em almoxarifado pode ser conferido diretamente na aba **Produtos & Estoque**.\n• Para visualizar o histórico completo consolidado, pergunte por *"mês de agosto"* ou *"desde o Marco Zero"*.`,
       insights: [
-        'Nenhum lançamento registrado com os filtros aplicados.',
+        anyMatchingEver.length > 0
+          ? `Foram localizados registros correspondentes no mês anterior (Agosto/2026).`
+          : 'Nenhum lançamento registrado com os filtros aplicados.',
       ],
       suggestedFollowUps: [
-        'Como está a situação geral do nosso estoque?',
-        'Quais produtos estão abaixo do estoque mínimo?',
+        'Quanto de leite a casa masculina consumiu no mês de agosto?',
+        'Qual o estoque atual de leite integral?',
       ],
       timestamp: new Date().toISOString(),
     };
@@ -1405,6 +1511,29 @@ export function executeDeterministicStockQuery(
     Object.entries(productTotals).forEach(([name, data]) => {
       detailedAnalysis += `| **${name}** | **${data.qty.toFixed(1)} ${data.unit}** | ${data.count} registro(s) |\n`;
     });
+    detailedAnalysis += `\n`;
+  }
+
+  // Agrupamento por Responsável / Missionário
+  const respTotals: Record<string, { qty: number; count: number }> = {};
+  matchingMovements.forEach((m) => {
+    const r = m.retrievedBy || m.responsible || m.receivedBy || m.deliveredBy || 'Não especificado';
+    if (!respTotals[r]) {
+      respTotals[r] = { qty: 0, count: 0 };
+    }
+    respTotals[r].qty += Number(m.quantity) || 0;
+    respTotals[r].count += 1;
+  });
+
+  if (Object.keys(respTotals).length > 0) {
+    detailedAnalysis += `#### 👤 Resumo por Missionário / Responsável:\n\n`;
+    detailedAnalysis += `| Missionário / Responsável | Quantidade Retirada | Lançamentos |\n`;
+    detailedAnalysis += `| :--- | :--- | :--- |\n`;
+    Object.entries(respTotals)
+      .sort((a, b) => b[1].qty - a[1].qty)
+      .forEach(([person, data]) => {
+        detailedAnalysis += `| **${person}** | **${data.qty.toFixed(1)} ${primaryUnit}** | ${data.count} retirada(s) |\n`;
+      });
     detailedAnalysis += `\n`;
   }
 

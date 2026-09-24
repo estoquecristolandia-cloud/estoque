@@ -111,10 +111,11 @@ app.post('/api/ai/ask', async (req, res) => {
     }
 
     // 5. Execução do cálculo determinístico com dados autoritativos no backend
+    const rawMovements = inventorySnapshot.movements || inventorySnapshot.recentMovementsSample || [];
     const authoritativeResult = executeAuthoritativeCalculation(
       prompt,
       authoritativeProducts,
-      inventorySnapshot.recentMovementsSample || inventorySnapshot.movements || [],
+      rawMovements,
       inventorySnapshot.meals || [],
       inventorySnapshot.dailyKit,
       inventorySnapshot.missionaries || [],

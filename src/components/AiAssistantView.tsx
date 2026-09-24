@@ -12,6 +12,7 @@ import {
   Department,
 } from '../types';
 import { askGeminiAiAssistant, getAiAuditLogs } from '../services/aiAssistantService';
+import { runAllAiEngineTests } from '../tests/aiStockEngine.test';
 import {
   checkVoiceSupport,
   categorizeVoiceError,
@@ -109,6 +110,9 @@ export const AiAssistantView: React.FC<AiAssistantViewProps> = ({
   const [showCalculationBase, setShowCalculationBase] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AiQueryAuditLog[]>([]);
+  const [showSelfTestModal, setShowSelfTestModal] = useState(false);
+  const [selfTestResults, setSelfTestResults] = useState<{ passed: number; failed: number; results: string[] } | null>(null);
+  const [isRunningSelfTest, setIsRunningSelfTest] = useState(false);
 
   // Estados de Comando de Voz & Gravação de Áudio
   const [isRecording, setIsRecording] = useState(false);
@@ -140,6 +144,21 @@ export const AiAssistantView: React.FC<AiAssistantViewProps> = ({
       }
     };
   }, []);
+
+  const handleRunSelfTest = () => {
+    setIsRunningSelfTest(true);
+    setShowSelfTestModal(true);
+    setTimeout(() => {
+      try {
+        const res = runAllAiEngineTests();
+        setSelfTestResults(res);
+      } catch (err: any) {
+        toast.error('Erro ao executar bateria de testes: ' + (err.message || 'Falha'));
+      } finally {
+        setIsRunningSelfTest(false);
+      }
+    }, 150);
+  };
 
   const handleAsk = async (questionToAsk?: string) => {
     const textToAsk = (questionToAsk || query).trim();
@@ -490,6 +509,22 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
     }
   };
 
+  // Renderiza Markdown inline (converte **texto** em negrito limpo sem asteriscos)
+  const renderFormattedText = (text?: string | null) => {
+    if (!text) return null;
+    const parts = text.split(/(\*\*[^*]+\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+        return (
+          <strong key={i} className="font-bold text-slate-900">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* HEADER SECTION (PADRÃO BENTO GRID CLARO & INSTITUCIONAL) */}
@@ -523,6 +558,14 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
           </div>
 
           <div className="flex items-center gap-2 self-start md:self-auto">
+            <button
+              onClick={handleRunSelfTest}
+              className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-2xl text-xs font-bold border border-emerald-200 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+              title="Executar bateria de testes e auditoria de integridade do sistema"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>Auditoria do Sistema (38 Testes)</span>
+            </button>
             <button
               onClick={() => setShowHistory(!showHistory)}
               className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl text-xs font-bold border border-slate-200 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
@@ -858,7 +901,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                 <span>Resumo da Análise:</span>
               </div>
               <p className="text-sm sm:text-base font-semibold text-slate-800 leading-relaxed">
-                {currentResponse.summary}
+                {renderFormattedText(currentResponse.summary)}
               </p>
             </div>
 
@@ -869,46 +912,49 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                 <span>Detalhamento Técnico & Explicação</span>
               </h3>
 
-              <div className="prose prose-sm max-w-none text-slate-700 leading-relaxed">
+              <div className="prose prose-sm max-w-none text-slate-700 leading-relaxed space-y-3">
                 {currentResponse.detailedAnalysis.split('\n\n').map((paragraph, pIdx) => {
-                  if (paragraph.startsWith('### ')) {
+                  const trimmed = paragraph.trim();
+                  if (!trimmed) return null;
+
+                  if (trimmed.startsWith('### ')) {
                     return (
-                      <h4 key={pIdx} className="text-base font-bold text-slate-900 mt-4 mb-2">
-                        {paragraph.replace('### ', '')}
+                      <h4 key={pIdx} className="text-base font-bold text-slate-900 mt-4 mb-2 flex items-center gap-1.5">
+                        {renderFormattedText(trimmed.replace('### ', ''))}
                       </h4>
                     );
                   }
-                  if (paragraph.startsWith('#### ')) {
+                  if (trimmed.startsWith('#### ')) {
                     return (
                       <h5 key={pIdx} className="text-sm font-bold text-slate-800 mt-3 mb-1">
-                        {paragraph.replace('#### ', '')}
+                        {renderFormattedText(trimmed.replace('#### ', ''))}
                       </h5>
                     );
                   }
-                  if (paragraph.startsWith('|')) {
+                  if (trimmed.startsWith('|')) {
                     // Tabela Markdown
-                    const rows = paragraph.trim().split('\n').filter((r) => !r.includes(':---'));
+                    const rows = trimmed.split('\n').filter((r) => !r.includes(':---') && r.trim().startsWith('|'));
                     const headers = rows[0]?.split('|').map((h) => h.trim()).filter(Boolean) || [];
                     const bodyRows = rows.slice(1).map((r) => r.split('|').map((c) => c.trim()).filter(Boolean));
 
                     return (
                       <div key={pIdx} className="overflow-x-auto my-3">
-                        <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+                        <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden shadow-xs">
                           <thead className="bg-slate-100 text-slate-700 font-bold">
                             <tr>
                               {headers.map((h, hIdx) => (
                                 <th key={hIdx} className="p-2.5 border-b border-slate-200">
-                                  {h}
+                                  {renderFormattedText(h)}
                                 </th>
                               ))}
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100">
+                          <tbody className="divide-y divide-slate-100 bg-white">
                             {bodyRows.map((row, rIdx) => (
-                              <tr key={rIdx} className="hover:bg-slate-50">
+                              <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
                                 {row.map((cell, cIdx) => (
-                                  <td key={cIdx} className="p-2.5">
-                                    {cell}
+                                  <td key={cIdx} className="p-2.5 text-slate-700">
+                                    {renderFormattedText(cell)}
                                   </td>
                                 ))}
                               </tr>
@@ -918,9 +964,31 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                       </div>
                     );
                   }
+
+                  // Linhas com tópicos / bullets (• ou -)
+                  const lines = trimmed.split('\n').filter((l) => l.trim().length > 0);
+                  if (lines.length > 1 || lines.some((l) => l.trim().startsWith('•') || l.trim().startsWith('-'))) {
+                    return (
+                      <div key={pIdx} className="my-2 space-y-1.5">
+                        {lines.map((line, lIdx) => {
+                          const isBullet = line.trim().startsWith('•') || line.trim().startsWith('-');
+                          const cleanLine = isBullet ? line.trim().replace(/^[•\-]\s*/, '') : line;
+                          return (
+                            <div key={lIdx} className="text-xs text-slate-700 leading-relaxed flex items-start gap-2">
+                              {isBullet && (
+                                <span className="text-emerald-600 font-bold select-none mt-0.5">•</span>
+                              )}
+                              <span className="flex-1">{renderFormattedText(cleanLine)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+
                   return (
-                    <p key={pIdx} className="my-1.5">
-                      {paragraph}
+                    <p key={pIdx} className="my-1.5 text-xs text-slate-700 leading-relaxed">
+                      {renderFormattedText(trimmed)}
                     </p>
                   );
                 })}
@@ -1103,6 +1171,107 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
           <div ref={responseEndRef} />
         </motion.div>
       )}
+      {/* MODAL DE AUDITORIA E TESTES DO SISTEMA */}
+      <AnimatePresence>
+        {showSelfTestModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden"
+            >
+              <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-2xl">
+                    <ShieldCheck className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">
+                      Bateria de Testes Automatizados & Auditoria do Sistema
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Validação matemática, regras de negócio e integridade de consultas
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSelfTestModal(false)}
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-xl transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto space-y-4 flex-1">
+                {isRunningSelfTest ? (
+                  <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                    <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+                    <p className="text-sm font-bold text-slate-700">Executando suíte de testes do motor do estoque...</p>
+                    <p className="text-xs text-slate-400">Verificando 38 regras críticas, incluindo datas, setores e missionários.</p>
+                  </div>
+                ) : selfTestResults ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
+                        <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">Testes Aprovados</span>
+                        <span className="text-2xl font-black text-emerald-600 mt-1 block">{selfTestResults.passed}</span>
+                      </div>
+                      <div className={`p-3 rounded-2xl text-center border ${selfTestResults.failed > 0 ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                        <span className="text-[11px] font-bold uppercase tracking-wider block">Falhas Encontradas</span>
+                        <span className="text-2xl font-black mt-1 block">{selfTestResults.failed}</span>
+                      </div>
+                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-center">
+                        <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider block">Status Geral</span>
+                        <span className="text-xs font-black text-blue-700 mt-2 block">
+                          {selfTestResults.failed === 0 ? '✅ 100% ÍNTEGRO' : '⚠️ AJUSTE NECESSÁRIO'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 pt-2">
+                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Detalhamento dos Testes Executados:
+                      </h4>
+                      <div className="max-h-72 overflow-y-auto space-y-1.5 p-3 bg-slate-50 border border-slate-200 rounded-2xl font-mono text-xs text-slate-700">
+                        {selfTestResults.results.map((res, i) => (
+                          <div
+                            key={i}
+                            className={`p-2 rounded-lg border ${
+                              res.includes('PASSOU')
+                                ? 'bg-white border-slate-200 text-slate-800'
+                                : 'bg-rose-100 border-rose-300 text-rose-900 font-bold'
+                            }`}
+                          >
+                            {res}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                <button
+                  onClick={handleRunSelfTest}
+                  disabled={isRunningSelfTest}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRunningSelfTest ? 'animate-spin' : ''}`} />
+                  <span>Re-executar Todos os Testes</span>
+                </button>
+                <button
+                  onClick={() => setShowSelfTestModal(false)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
