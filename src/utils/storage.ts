@@ -144,7 +144,7 @@ export function deleteStockMovement(movementId: string, allProducts: Product[], 
 }
 export function verifyProductAudit(product: Product, movements: StockMovement[], startDate?: string, endDate?: string): AuditReport {
   const prodMovs = movements.filter((m) => m.productId === product.id); let totalEntries = 0; let totalExits = 0;
-  prodMovs.forEach((m) => { if ((!startDate || m.date >= startDate) && (!endDate || m.date <= endDate)) m.type === 'entrada' ? totalEntries += m.quantity : totalExits += m.quantity; });
+  prodMovs.forEach((m) => { if (m.isCompensated) return; if ((!startDate || m.date >= startDate) && (!endDate || m.date <= endDate)) m.type === 'entrada' ? totalEntries += m.quantity : totalExits += m.quantity; });
   const initialStock = Number((product.currentStock - totalEntries + totalExits).toFixed(2));
   return { productId: product.id, productName: product.name, initialStock, totalEntries, totalExits, calculatedBalance: product.currentStock, currentStock: product.currentStock, isBalanced: true, discrepancy: 0 };
 }

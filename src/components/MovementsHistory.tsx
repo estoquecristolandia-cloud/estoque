@@ -636,6 +636,18 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                               <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
                                 🕒 {m.time || '00:00'}
                               </span>
+
+                              {m.isCompensated && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
+                                  ⚠️ ESTORNADA / COMPENSADA
+                                </span>
+                              )}
+
+                              {m.movementRole === 'compensation' && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                                  ↩️ LANÇAMENTO COMPENSATÓRIO
+                                </span>
+                              )}
                             </div>
 
                             <div className="text-slate-600 dark:text-slate-300 flex items-center gap-2 flex-wrap text-xs">

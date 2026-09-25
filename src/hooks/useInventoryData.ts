@@ -44,6 +44,9 @@ import {
   executeDailyKitTransaction,
   updateStockMovementTransaction,
   deleteStockMovementTransaction,
+  permanentDeleteStockMovementTransaction,
+  purgeUnwantedSeptemberEntries,
+  isMarcoZeroRecord,
 } from '../services/firestoreService';
 import { toast } from '../utils/toast';
 import { AppUserProfile } from '../firebase';
@@ -63,6 +66,13 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
 
     if (currentUser.role === 'admin') {
       syncInitialFirestoreData().catch((err) => console.error('Bootstrap Firestore:', err));
+      purgeUnwantedSeptemberEntries(['2026-09-21', '2026-09-24', '2026-09-25']).then((res) => {
+        if (res.purgedCount > 0) {
+          toast.success(
+            `Removidas com sucesso ${res.purgedCount} entrada(s) indevida(s) de 21/09, 24/09 e 25/09! Estoque de ${res.affectedProducts.join(', ')} corrigido.`
+          );
+        }
+      }).catch((err) => console.warn('Erro ao purgar entradas indevidas de setembro:', err));
     }
 
     const unsubProds = subscribeToProducts((data) => {
@@ -314,27 +324,41 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
         toast.warning('Apenas o Administrador do Estoque pode excluir movimentações.');
         return;
       }
+      if (isMarcoZeroRecord(movementId)) {
+        toast.error('O Marco Zero Oficial é protegido contra exclusão física.');
+        return;
+      }
       try {
-        const result = await deleteStockMovementTransaction(movementId);
+        const result = await permanentDeleteStockMovementTransaction(movementId);
         setProducts((prev) =>
           prev.map((p) => (p.id === result.updatedProduct.id ? result.updatedProduct : p))
         );
-        setMovements((prev) => [
-          result.compensationMovement,
-          ...prev.map((m) =>
-            m.id === movementId
-              ? {
-                  ...m,
-                  isCompensated: true,
-                  compensatedByMovementId: result.compensationMovement.id,
-                }
-              : m
-          ),
-        ]);
-        toast.info('Movimentação compensada com sucesso e histórico preservado!');
+        setMovements((prev) => prev.filter((m) => m.id !== movementId));
+        toast.success('Movimentação removida com sucesso e saldo recalculado!');
       } catch (err: any) {
-        toast.warning(err.message || 'Erro ao excluir movimentação');
-        throw err;
+        // Fallback para compensação atômica
+        try {
+          const compResult = await deleteStockMovementTransaction(movementId);
+          setProducts((prev) =>
+            prev.map((p) => (p.id === compResult.updatedProduct.id ? compResult.updatedProduct : p))
+          );
+          setMovements((prev) => [
+            compResult.compensationMovement,
+            ...prev.map((m) =>
+              m.id === movementId
+                ? {
+                    ...m,
+                    isCompensated: true,
+                    compensatedByMovementId: compResult.compensationMovement.id,
+                  }
+                : m
+            ),
+          ]);
+          toast.info('Movimentação compensada com sucesso e histórico preservado!');
+        } catch (compErr: any) {
+          toast.warning(compErr.message || err.message || 'Erro ao excluir movimentação');
+          throw compErr;
+        }
       }
     },
     [currentUser?.role]

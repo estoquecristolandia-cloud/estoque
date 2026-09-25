@@ -531,12 +531,13 @@ export default function App() {
 
       {timelineProduct && (
         <ProductTimelineModal
-          product={timelineProduct}
+          product={products.find((p) => p.id === timelineProduct.id) || timelineProduct}
           movements={movements}
           userRole={currentUser.role}
           onClose={() => setTimelineProduct(null)}
           onOpenEntry={(p) => handleOpenEntryModal(p)}
           onOpenExit={(p) => handleOpenExitModal(p)}
+          onDeleteMovement={handleDeleteMovement}
         />
       )}
 

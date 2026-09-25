@@ -28,6 +28,17 @@ const INVENTORY_SESSIONS_COLLECTION = 'inventory_sessions';
 export const MARCO_ZERO_SESSION_ID = 'marco-zero-20260821';
 export const MARCO_ZERO_DML_SESSION_ID = 'marco-zero-dml-20260921';
 
+export function isMarcoZeroRecord(id: string): boolean {
+  if (!id) return false;
+  return (
+    id.startsWith('adj-marco-zero-20260821-') ||
+    id.startsWith('adj-20260821-') ||
+    id.startsWith('adj-marco-zero-dml-20260921-') ||
+    id === MARCO_ZERO_SESSION_ID ||
+    id === MARCO_ZERO_DML_SESSION_ID
+  );
+}
+
 function cleanForFirestore<T extends Record<string, any>>(obj: T): Record<string, any> {
   const cleaned: Record<string, any> = {};
   Object.keys(obj).forEach((key) => {
@@ -1102,6 +1113,94 @@ export async function deleteStockMovementTransaction(
     deletedMovementId: movementId,
     compensationMovement: result.compensationMovement,
   };
+}
+
+export async function permanentDeleteStockMovementTransaction(
+  movementId: string
+): Promise<{ updatedProduct: Product; deletedMovementId: string }> {
+  if (isMarcoZeroRecord(movementId)) {
+    throw new Error('O Marco Zero Oficial é protegido contra exclusão física.');
+  }
+
+  return runTransaction(db, async (tx) => {
+    const origRef = doc(db, MOVEMENTS_COLLECTION, movementId);
+    const origSnap = await tx.get(origRef);
+    if (!origSnap.exists()) {
+      throw new Error('Movimentação não encontrada no Firestore.');
+    }
+    const origMovement = origSnap.data() as StockMovement;
+    const productRef = doc(db, PRODUCTS_COLLECTION, origMovement.productId);
+    const prodSnap = await tx.get(productRef);
+    if (!prodSnap.exists()) {
+      throw new Error('Produto associado não encontrado no Firestore.');
+    }
+    const product = prodSnap.data() as Product;
+    const currentStock = round2(Number(product.currentStock || 0));
+
+    // Reversão exata do impacto no estoque
+    let reverseImpact = 0;
+    if (origMovement.type === 'entrada') {
+      reverseImpact = -origMovement.quantity;
+    } else if (origMovement.type === 'saida') {
+      reverseImpact = origMovement.quantity;
+    } else if (origMovement.type === 'ajuste') {
+      const diff = origMovement.difference !== undefined ? origMovement.difference : 0;
+      reverseImpact = -diff;
+    }
+
+    const restoredStock = Math.max(0, round2(currentStock + reverseImpact));
+    const now = new Date().toISOString();
+
+    const updatedProduct: Product = {
+      ...product,
+      currentStock: restoredStock,
+      lastUpdated: now,
+      updatedAt: serverTimestamp(),
+    };
+
+    tx.set(productRef, cleanForFirestore(updatedProduct), { merge: true });
+    tx.delete(origRef);
+
+    return { updatedProduct, deletedMovementId: movementId };
+  });
+}
+
+export async function purgeUnwantedSeptemberEntries(
+  datesToPurge: string[] = ['2026-09-21', '2026-09-24', '2026-09-25']
+): Promise<{ purgedCount: number; affectedProducts: string[] }> {
+  try {
+    const movsSnap = await getDocs(collection(db, MOVEMENTS_COLLECTION));
+    const toPurge = movsSnap.docs.filter((d) => {
+      const data = d.data() as StockMovement;
+      return (
+        data.type === 'entrada' &&
+        datesToPurge.includes(data.date) &&
+        !isMarcoZeroRecord(d.id)
+      );
+    });
+
+    if (toPurge.length === 0) {
+      return { purgedCount: 0, affectedProducts: [] };
+    }
+
+    const affectedNames = new Set<string>();
+    for (const docSnap of toPurge) {
+      try {
+        const result = await permanentDeleteStockMovementTransaction(docSnap.id);
+        affectedNames.add(result.updatedProduct.name);
+      } catch (err) {
+        console.warn(`Erro ao purgar movimentação indevida ${docSnap.id}:`, err);
+      }
+    }
+
+    return {
+      purgedCount: toPurge.length,
+      affectedProducts: Array.from(affectedNames),
+    };
+  } catch (err) {
+    console.warn('Falha na verificação de expurgo de entradas de setembro:', err);
+    return { purgedCount: 0, affectedProducts: [] };
+  }
 }
 
 export async function executeInventoryAdjustmentTransaction(

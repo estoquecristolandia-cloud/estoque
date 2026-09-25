@@ -1,8 +1,9 @@
-import React from 'react';
-import { X, ArrowDownLeft, ArrowUpRight, ShieldCheck, Clock, User, Building2, Package, Sparkles, AlertTriangle, Scale } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, ArrowDownLeft, ArrowUpRight, ShieldCheck, Clock, User, Building2, Package, Sparkles, AlertTriangle, Scale, Trash2 } from 'lucide-react';
 import { Product, StockMovement } from '../types';
 import { UserRole } from '../firebase';
 import { calculateDaysRemaining, verifyProductAudit, formatDaysRemainingText, getProductAutonomyLabel } from '../utils/storage';
+import { isMarcoZeroRecord } from '../services/firestoreService';
 
 interface ProductTimelineModalProps {
   product: Product | null;
@@ -11,6 +12,7 @@ interface ProductTimelineModalProps {
   onClose: () => void;
   onOpenEntry: (product: Product) => void;
   onOpenExit: (product: Product) => void;
+  onDeleteMovement?: (movementId: string) => Promise<void> | void;
 }
 
 export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
@@ -20,8 +22,11 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
   onClose,
   onOpenEntry,
   onOpenExit,
+  onDeleteMovement,
 }) => {
   const isAdmin = userRole === 'admin';
+  const [movementToDelete, setMovementToDelete] = useState<StockMovement | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   if (!product) return null;
 
   const prodMovements = movements.filter((m) => m.productId === product.id);
@@ -236,13 +241,25 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
                             </span>
                           </div>
 
-                          <span className={`font-black text-sm ${
-                            isAjuste ? 'text-purple-400' : isEntry ? 'text-emerald-400' : 'text-amber-400'
-                          }`}>
-                            {isAjuste 
-                              ? `${(mov.difference || 0) > 0 ? '+' : ''}${mov.difference !== undefined ? mov.difference : mov.quantity} ${mov.unit}`
-                              : `${isEntry ? '+' : '-'}${mov.quantity} ${mov.unit}`}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-black text-sm ${
+                              isAjuste ? 'text-purple-400' : isEntry ? 'text-emerald-400' : 'text-amber-400'
+                            }`}>
+                              {isAjuste 
+                                ? `${(mov.difference || 0) > 0 ? '+' : ''}${mov.difference !== undefined ? mov.difference : mov.quantity} ${mov.unit}`
+                                : `${isEntry ? '+' : '-'}${mov.quantity} ${mov.unit}`}
+                            </span>
+
+                            {isAdmin && onDeleteMovement && !isMarcoZeroRecord(mov.id) && (
+                              <button
+                                onClick={() => setMovementToDelete(mov)}
+                                title="Excluir movimentação e recalcular saldo"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </div>
 
                         {/* Details */}
@@ -291,6 +308,76 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal for Movement Deletion */}
+      {movementToDelete && (
+        <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-white animate-fade-in">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="p-3 bg-red-950/80 border border-red-800 rounded-xl">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-white">Excluir Lançamento?</h3>
+                <p className="text-xs text-slate-400">O saldo do produto será recalculado automaticamente.</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700 text-xs space-y-2">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Produto:</span>
+                <strong className="text-slate-200">{movementToDelete.productName}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Tipo:</span>
+                <span className={`font-bold uppercase ${movementToDelete.type === 'entrada' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  {movementToDelete.type}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Quantidade:</span>
+                <strong className="text-slate-200">{movementToDelete.quantity} {movementToDelete.unit}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Data:</span>
+                <span className="text-slate-200">{movementToDelete.date} às {movementToDelete.time || '00:00'}</span>
+              </div>
+            </div>
+
+            <div className="text-xs text-amber-300 bg-amber-950/40 p-3 rounded-xl border border-amber-800/60">
+              ℹ️ Se for uma <strong>Entrada</strong>, a quantidade será subtraída do estoque. Se for uma <strong>Saída</strong>, a quantidade será devolvida ao saldo.
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setMovementToDelete(null)}
+                className="px-4 py-2 rounded-xl border border-slate-700 text-slate-300 font-semibold hover:bg-slate-800 cursor-pointer text-xs"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  if (!onDeleteMovement || !movementToDelete) return;
+                  try {
+                    setIsDeleting(true);
+                    await onDeleteMovement(movementToDelete.id);
+                    setMovementToDelete(null);
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold cursor-pointer flex items-center gap-2 text-xs disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeleting ? 'Excluindo...' : 'Confirmar Exclusão'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

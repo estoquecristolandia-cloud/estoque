@@ -454,13 +454,20 @@ export function findMentionedProducts(query: string, products: Product[]): Produ
     }
   }
 
-  // 3. Busca por palavras-chave com mais de 3 letras do nome
+  const STOP_WORDS = new Set([
+    'para', 'como', 'pelo', 'pela', 'onde', 'mais', 'esta', 'estao', 'este',
+    'esse', 'essa', 'qual', 'quais', 'cada', 'tudo', 'todo', 'toda', 'todos',
+    'todas', 'item', 'itens', 'sobre', 'entre', 'mesmo', 'mesma', 'mesmos',
+    'sendo', 'estou', 'estamos', 'foram', 'houve'
+  ]);
+
+  // 3. Busca por palavras-chave com mais de 3 letras do nome (excluindo stop words)
   for (const p of products) {
     const words = normalizeStr(p.name)
       .replace(/[^a-z0-9\s]/gi, ' ')
       .split(/\s+/)
       .map((w) => w.trim())
-      .filter((w) => w.length > 3);
+      .filter((w) => w.length > 3 && !STOP_WORDS.has(w));
 
     for (const w of words) {
       try {
@@ -628,6 +635,19 @@ export function findMentionedSector(query: string): string | null {
  */
 export function determineMovementType(query: string): 'saida' | 'entrada' | 'ajuste' | 'todos' {
   const norm = normalizeStr(query);
+
+  if (
+    (norm.includes('entrada') && (norm.includes('saida') || norm.includes('retirada'))) ||
+    norm.includes('entradas e saidas') ||
+    norm.includes('movimentacao') ||
+    norm.includes('movimentacoes') ||
+    norm.includes('extrato') ||
+    norm.includes('historico') ||
+    norm.includes('inconsistencia') ||
+    (norm.includes('auditoria') && !norm.includes('ajuste'))
+  ) {
+    return 'todos';
+  }
 
   if (norm.includes('entrada') || norm.includes('doacao') || norm.includes('compra') || norm.includes('recebido') || norm.includes('chegou') || norm.includes('recebemos')) {
     return 'entrada';
