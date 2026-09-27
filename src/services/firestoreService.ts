@@ -28,17 +28,6 @@ const INVENTORY_SESSIONS_COLLECTION = 'inventory_sessions';
 export const MARCO_ZERO_SESSION_ID = 'marco-zero-20260821';
 export const MARCO_ZERO_DML_SESSION_ID = 'marco-zero-dml-20260921';
 
-export function isMarcoZeroRecord(id: string): boolean {
-  if (!id) return false;
-  return (
-    id.startsWith('adj-marco-zero-20260821-') ||
-    id.startsWith('adj-20260821-') ||
-    id.startsWith('adj-marco-zero-dml-20260921-') ||
-    id === MARCO_ZERO_SESSION_ID ||
-    id === MARCO_ZERO_DML_SESSION_ID
-  );
-}
-
 function cleanForFirestore<T extends Record<string, any>>(obj: T): Record<string, any> {
   const cleaned: Record<string, any> = {};
   Object.keys(obj).forEach((key) => {
@@ -408,19 +397,24 @@ export async function syncInitialFirestoreData(): Promise<void> {
         notes: `Ajuste auditado de Marco Zero: ${previousStock} -> ${physicalStock} ${currentProduct.unit}.`,
       };
 
-      baselineBatch.set(
-        doc(db, PRODUCTS_COLLECTION, currentProduct.id),
-        cleanForFirestore({
-          currentStock: physicalStock,
-          lastUpdated: now,
-          lastOperationId: opId,
-          updatedAt: serverTimestamp(),
-        }),
-        { merge: true }
-      );
+      // Only set baseline stock if product has not been updated since Marco Zero (2026-08-21)
+      const isAlreadyActive = currentProduct.lastUpdated && currentProduct.lastUpdated > '2026-08-21T17:30:00Z';
+      if (!isAlreadyActive) {
+        baselineBatch.set(
+          doc(db, PRODUCTS_COLLECTION, currentProduct.id),
+          cleanForFirestore({
+            currentStock: physicalStock,
+            lastUpdated: now,
+            lastOperationId: opId,
+            updatedAt: serverTimestamp(),
+          }),
+          { merge: true }
+        );
+        baselineWrites++;
+      }
       baselineBatch.set(doc(db, MOVEMENTS_COLLECTION, opId), cleanForFirestore(movement));
       baselineBatch.set(doc(db, INVENTORY_AUDITS_COLLECTION, opId), cleanForFirestore(audit));
-      baselineWrites += 3;
+      baselineWrites += 2;
       adjustedCount++;
     }
 
@@ -500,21 +494,26 @@ export async function syncInitialFirestoreData(): Promise<void> {
         notes: `Ajuste auditado de Marco Zero DML: ${previousStock} -> 0 ${dmlProduct.unit}.`,
       };
 
-      dmlBatch.set(
-        doc(db, PRODUCTS_COLLECTION, dmlProduct.id),
-        cleanForFirestore({
-          ...dmlProduct,
-          currentStock: 0,
-          department: 'dml',
-          lastUpdated: now,
-          lastOperationId: opId,
-          updatedAt: serverTimestamp(),
-        }),
-        { merge: true }
-      );
+      // Only set 0 stock if product has not been updated since DML Marco Zero (2026-09-21)
+      const isDmlActive = currentProduct.lastUpdated && currentProduct.lastUpdated > '2026-09-21T08:00:00Z';
+      if (!isDmlActive && (currentProduct.currentStock === undefined || currentProduct.currentStock === null)) {
+        dmlBatch.set(
+          doc(db, PRODUCTS_COLLECTION, dmlProduct.id),
+          cleanForFirestore({
+            ...dmlProduct,
+            currentStock: 0,
+            department: 'dml',
+            lastUpdated: now,
+            lastOperationId: opId,
+            updatedAt: serverTimestamp(),
+          }),
+          { merge: true }
+        );
+        dmlWrites++;
+      }
       dmlBatch.set(doc(db, MOVEMENTS_COLLECTION, opId), cleanForFirestore(movement));
       dmlBatch.set(doc(db, INVENTORY_AUDITS_COLLECTION, opId), cleanForFirestore(audit));
-      dmlWrites += 3;
+      dmlWrites += 2;
     }
 
     const dmlSession: InventorySessionSummary = {
@@ -544,18 +543,23 @@ export async function syncInitialFirestoreData(): Promise<void> {
     const leiteBatch = writeBatch(db);
     const now = new Date().toISOString();
 
-    // 1. Set prod-leite current stock to 11 L
+    // 1. Only initialize prod-leite stock if document does not exist yet
     const leiteRef = doc(db, PRODUCTS_COLLECTION, 'prod-leite');
-    leiteBatch.set(
-      leiteRef,
-      cleanForFirestore({
-        currentStock: 11,
-        lastUpdated: '2026-08-31T17:00:00Z',
-        lastOperationId: 'adj-20260831-prod-leite-conciliacao',
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
-    );
+    const existingLeiteSnap = await getDoc(leiteRef);
+    if (!existingLeiteSnap.exists()) {
+      leiteBatch.set(
+        leiteRef,
+        cleanForFirestore({
+          id: 'prod-leite',
+          name: 'Leite Integral',
+          currentStock: 25,
+          department: 'alimentacao',
+          lastUpdated: '2026-09-24T11:19:27Z',
+          lastOperationId: 'adj-20260831-prod-leite-conciliacao',
+          updatedAt: serverTimestamp(),
+        })
+      );
+    }
 
     // 2. Commit all 23 Leite movements (1 entrada, 21 saídas, 1 ajuste conciliação)
     const leiteMovements = INITIAL_MOVEMENTS.filter(
@@ -1115,94 +1119,6 @@ export async function deleteStockMovementTransaction(
   };
 }
 
-export async function permanentDeleteStockMovementTransaction(
-  movementId: string
-): Promise<{ updatedProduct: Product; deletedMovementId: string }> {
-  if (isMarcoZeroRecord(movementId)) {
-    throw new Error('O Marco Zero Oficial é protegido contra exclusão física.');
-  }
-
-  return runTransaction(db, async (tx) => {
-    const origRef = doc(db, MOVEMENTS_COLLECTION, movementId);
-    const origSnap = await tx.get(origRef);
-    if (!origSnap.exists()) {
-      throw new Error('Movimentação não encontrada no Firestore.');
-    }
-    const origMovement = origSnap.data() as StockMovement;
-    const productRef = doc(db, PRODUCTS_COLLECTION, origMovement.productId);
-    const prodSnap = await tx.get(productRef);
-    if (!prodSnap.exists()) {
-      throw new Error('Produto associado não encontrado no Firestore.');
-    }
-    const product = prodSnap.data() as Product;
-    const currentStock = round2(Number(product.currentStock || 0));
-
-    // Reversão exata do impacto no estoque
-    let reverseImpact = 0;
-    if (origMovement.type === 'entrada') {
-      reverseImpact = -origMovement.quantity;
-    } else if (origMovement.type === 'saida') {
-      reverseImpact = origMovement.quantity;
-    } else if (origMovement.type === 'ajuste') {
-      const diff = origMovement.difference !== undefined ? origMovement.difference : 0;
-      reverseImpact = -diff;
-    }
-
-    const restoredStock = Math.max(0, round2(currentStock + reverseImpact));
-    const now = new Date().toISOString();
-
-    const updatedProduct: Product = {
-      ...product,
-      currentStock: restoredStock,
-      lastUpdated: now,
-      updatedAt: serverTimestamp(),
-    };
-
-    tx.set(productRef, cleanForFirestore(updatedProduct), { merge: true });
-    tx.delete(origRef);
-
-    return { updatedProduct, deletedMovementId: movementId };
-  });
-}
-
-export async function purgeUnwantedSeptemberEntries(
-  datesToPurge: string[] = ['2026-09-21', '2026-09-24', '2026-09-25']
-): Promise<{ purgedCount: number; affectedProducts: string[] }> {
-  try {
-    const movsSnap = await getDocs(collection(db, MOVEMENTS_COLLECTION));
-    const toPurge = movsSnap.docs.filter((d) => {
-      const data = d.data() as StockMovement;
-      return (
-        data.type === 'entrada' &&
-        datesToPurge.includes(data.date) &&
-        !isMarcoZeroRecord(d.id)
-      );
-    });
-
-    if (toPurge.length === 0) {
-      return { purgedCount: 0, affectedProducts: [] };
-    }
-
-    const affectedNames = new Set<string>();
-    for (const docSnap of toPurge) {
-      try {
-        const result = await permanentDeleteStockMovementTransaction(docSnap.id);
-        affectedNames.add(result.updatedProduct.name);
-      } catch (err) {
-        console.warn(`Erro ao purgar movimentação indevida ${docSnap.id}:`, err);
-      }
-    }
-
-    return {
-      purgedCount: toPurge.length,
-      affectedProducts: Array.from(affectedNames),
-    };
-  } catch (err) {
-    console.warn('Falha na verificação de expurgo de entradas de setembro:', err);
-    return { purgedCount: 0, affectedProducts: [] };
-  }
-}
-
 export async function executeInventoryAdjustmentTransaction(
   productId: string,
   newPhysicalStock: number,
@@ -1431,5 +1347,16 @@ export async function saveMissionariesToFirestore(missionaries: Missionary[]): P
     batch.set(doc(db, MISSIONARIES_COLLECTION, m.id), cleanForFirestore(m), { merge: true });
   });
   await batch.commit();
+}
+
+export function isMarcoZeroRecord(id: string): boolean {
+  if (!id) return false;
+  return (
+    id.startsWith('adj-marco-zero-') ||
+    id.startsWith('adj-20260821-') ||
+    id.startsWith('adj-20260831-') ||
+    id === 'marco-zero-session-20260821' ||
+    id === 'marco-zero-dml-20260921'
+  );
 }
 

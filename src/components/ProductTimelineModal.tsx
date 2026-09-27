@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
-import { X, ArrowDownLeft, ArrowUpRight, ShieldCheck, Clock, User, Building2, Package, Sparkles, AlertTriangle, Scale, Trash2 } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { X, ArrowDownLeft, ArrowUpRight, ShieldCheck, Clock, User, Building2, Package, Sparkles, AlertTriangle, Scale, History } from 'lucide-react';
 import { Product, StockMovement } from '../types';
 import { UserRole } from '../firebase';
 import { calculateDaysRemaining, verifyProductAudit, formatDaysRemainingText, getProductAutonomyLabel } from '../utils/storage';
-import { isMarcoZeroRecord } from '../services/firestoreService';
 
 interface ProductTimelineModalProps {
   product: Product | null;
@@ -12,8 +11,9 @@ interface ProductTimelineModalProps {
   onClose: () => void;
   onOpenEntry: (product: Product) => void;
   onOpenExit: (product: Product) => void;
-  onDeleteMovement?: (movementId: string) => Promise<void> | void;
 }
+
+const round2 = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
 export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
   product,
@@ -22,25 +22,61 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
   onClose,
   onOpenEntry,
   onOpenExit,
-  onDeleteMovement,
 }) => {
   const isAdmin = userRole === 'admin';
-  const [movementToDelete, setMovementToDelete] = useState<StockMovement | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
   if (!product) return null;
 
-  const prodMovements = movements.filter((m) => m.productId === product.id);
   const audit = verifyProductAudit(product, movements);
   const daysRemaining = calculateDaysRemaining(product);
 
-  // Sector breakdown for this specific product
-  const sectorBreakdown: Record<string, number> = {};
-  prodMovements
-    .filter((m) => m.type === 'saida')
-    .forEach((m) => {
-      const sec = m.sector || 'Outros';
-      sectorBreakdown[sec] = (sectorBreakdown[sec] || 0) + m.quantity;
+  const { movementsWithBalance, sectorBreakdown } = useMemo(() => {
+    const prodMovs = movements.filter((m) => m.productId === product.id);
+
+    // Sort chronologically ascending to calculate running balance accurately
+    const sortedAsc = [...prodMovs].sort((a, b) => {
+      const d = (a.date || '').localeCompare(b.date || '');
+      if (d !== 0) return d;
+      const t = (a.time || '').localeCompare(b.time || '');
+      if (t !== 0) return t;
+      return (a.createdAt || '').localeCompare(b.createdAt || '');
     });
+
+    let running = 0;
+    const breakdown: Record<string, number> = {};
+    const balanceMap = new Map<string, { before: number; after: number }>();
+
+    sortedAsc.forEach((m) => {
+      let before = running;
+      if (m.previousStock !== undefined && running === 0) {
+        before = m.previousStock;
+      }
+      if (m.type === 'ajuste') {
+        if (m.physicalStock !== undefined) {
+          running = m.physicalStock;
+        } else if (m.difference !== undefined) {
+          running = round2(before + m.difference);
+        } else {
+          running = m.quantity;
+        }
+      } else if (m.type === 'entrada') {
+        running = round2(before + m.quantity);
+      } else if (m.type === 'saida') {
+        running = round2(Math.max(0, before - m.quantity));
+        const sec = m.sector || 'Outros';
+        breakdown[sec] = (breakdown[sec] || 0) + m.quantity;
+      }
+      balanceMap.set(m.id, { before, after: running });
+    });
+
+    // Sort descending for display (most recent at top)
+    const sortedDesc = [...sortedAsc].reverse().map((m) => ({
+      ...m,
+      balanceBefore: balanceMap.get(m.id)?.before ?? m.previousStock,
+      balanceAfter: balanceMap.get(m.id)?.after ?? m.physicalStock,
+    }));
+
+    return { movementsWithBalance: sortedDesc, sectorBreakdown: breakdown };
+  }, [movements, product]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
@@ -196,11 +232,11 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
               )}
             </div>
 
-            {prodMovements.length === 0 ? (
+            {movementsWithBalance.length === 0 ? (
               <p className="text-xs text-slate-500 text-center py-8">Nenhuma movimentação registrada para este produto.</p>
             ) : (
               <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
-                {prodMovements.map((mov) => {
+                {movementsWithBalance.map((mov) => {
                   const isEntry = mov.type === 'entrada';
                   const isAjuste = mov.type === 'ajuste';
                   return (
@@ -218,7 +254,7 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
                         {isAjuste ? '⚖️' : isEntry ? '+' : '-'}
                       </div>
 
-                      <div className={`border rounded-xl p-3 text-xs space-y-1.5 transition-colors ${
+                      <div className={`border rounded-xl p-3 text-xs space-y-2 transition-colors ${
                         isAjuste 
                           ? 'bg-purple-950/20 border-purple-800/60 hover:bg-purple-950/40' 
                           : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/70'
@@ -241,24 +277,25 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2">
-                            <span className={`font-black text-sm ${
-                              isAjuste ? 'text-purple-400' : isEntry ? 'text-emerald-400' : 'text-amber-400'
-                            }`}>
-                              {isAjuste 
-                                ? `${(mov.difference || 0) > 0 ? '+' : ''}${mov.difference !== undefined ? mov.difference : mov.quantity} ${mov.unit}`
-                                : `${isEntry ? '+' : '-'}${mov.quantity} ${mov.unit}`}
-                            </span>
+                          <span className={`font-black text-sm ${
+                            isAjuste ? 'text-purple-400' : isEntry ? 'text-emerald-400' : 'text-amber-400'
+                          }`}>
+                            {isAjuste 
+                              ? `${(mov.difference || 0) > 0 ? '+' : ''}${mov.difference !== undefined ? mov.difference : mov.quantity} ${mov.unit}`
+                              : `${isEntry ? '+' : '-'}${mov.quantity} ${mov.unit}`}
+                          </span>
+                        </div>
 
-                            {isAdmin && onDeleteMovement && !isMarcoZeroRecord(mov.id) && (
-                              <button
-                                onClick={() => setMovementToDelete(mov)}
-                                title="Excluir movimentação e recalcular saldo"
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                        {/* Rastreabilidade de Saldo Progressivo */}
+                        <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-xs">
+                          <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
+                            <History className="w-3.5 h-3.5 text-blue-400" />
+                            Saldo no Sistema:
+                          </span>
+                          <div className="flex items-center gap-1.5 font-mono text-xs">
+                            <span className="text-slate-400">{mov.balanceBefore !== undefined ? mov.balanceBefore : '?'} {product.unit}</span>
+                            <span className="text-slate-500 font-bold">→</span>
+                            <span className="font-bold text-emerald-400">{mov.balanceAfter !== undefined ? mov.balanceAfter : '?'} {product.unit}</span>
                           </div>
                         </div>
 
@@ -308,76 +345,6 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Confirmation Modal for Movement Deletion */}
-      {movementToDelete && (
-        <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-white animate-fade-in">
-            <div className="flex items-center gap-3 text-red-400">
-              <div className="p-3 bg-red-950/80 border border-red-800 rounded-xl">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-white">Excluir Lançamento?</h3>
-                <p className="text-xs text-slate-400">O saldo do produto será recalculado automaticamente.</p>
-              </div>
-            </div>
-
-            <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700 text-xs space-y-2">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Produto:</span>
-                <strong className="text-slate-200">{movementToDelete.productName}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Tipo:</span>
-                <span className={`font-bold uppercase ${movementToDelete.type === 'entrada' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {movementToDelete.type}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Quantidade:</span>
-                <strong className="text-slate-200">{movementToDelete.quantity} {movementToDelete.unit}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Data:</span>
-                <span className="text-slate-200">{movementToDelete.date} às {movementToDelete.time || '00:00'}</span>
-              </div>
-            </div>
-
-            <div className="text-xs text-amber-300 bg-amber-950/40 p-3 rounded-xl border border-amber-800/60">
-              ℹ️ Se for uma <strong>Entrada</strong>, a quantidade será subtraída do estoque. Se for uma <strong>Saída</strong>, a quantidade será devolvida ao saldo.
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setMovementToDelete(null)}
-                className="px-4 py-2 rounded-xl border border-slate-700 text-slate-300 font-semibold hover:bg-slate-800 cursor-pointer text-xs"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={async () => {
-                  if (!onDeleteMovement || !movementToDelete) return;
-                  try {
-                    setIsDeleting(true);
-                    await onDeleteMovement(movementToDelete.id);
-                    setMovementToDelete(null);
-                  } finally {
-                    setIsDeleting(false);
-                  }
-                }}
-                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold cursor-pointer flex items-center gap-2 text-xs disabled:opacity-50"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>{isDeleting ? 'Excluindo...' : 'Confirmar Exclusão'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
