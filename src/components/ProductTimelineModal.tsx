@@ -205,7 +205,7 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-sm font-bold text-white flex items-center gap-2">
                 <Clock className="w-4 h-4 text-blue-400" />
-                Histórico Cronológico de Movimentações ({prodMovements.length})
+                Histórico Cronológico de Movimentações ({movementsWithBalance.length})
               </h4>
 
               {isAdmin && (
