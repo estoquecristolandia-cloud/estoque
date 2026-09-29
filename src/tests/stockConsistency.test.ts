@@ -157,6 +157,39 @@ class MockFirestoreStockEngine {
     return { updatedProduct, deletedMovementId: movementId };
   }
 
+  // 4b. Replace / Edit Movement
+  async replaceMovement(movementId: string, updatedData: Partial<StockMovement> & { productId: string; quantity: number; type: 'entrada' | 'saida' }) {
+    const orig = this.movements.get(movementId);
+    if (!orig) throw new Error('Movimentação original não encontrada');
+    const oldProduct = this.products.get(orig.productId);
+    if (!oldProduct) throw new Error('Produto antigo não encontrado');
+    const newProduct = this.products.get(updatedData.productId) || oldProduct;
+
+    const oldImpact = orig.type === 'entrada' ? orig.quantity : -orig.quantity;
+    const newImpact = updatedData.type === 'entrada' ? updatedData.quantity : -updatedData.quantity;
+
+    if (updatedData.productId === orig.productId) {
+      const netDiff = round2(newImpact - oldImpact);
+      const finalStock = round2(oldProduct.currentStock + netDiff);
+      if (finalStock < 0) throw new Error('Saldo insuficiente para esta substituição');
+      const updated = { ...oldProduct, currentStock: finalStock, lastUpdated: new Date().toISOString() };
+      this.products.set(oldProduct.id, updated);
+      this.movements.set(movementId, { ...orig, ...updatedData, id: movementId });
+      return { updatedProducts: [updated] };
+    } else {
+      const reverted = round2(oldProduct.currentStock - oldImpact);
+      if (reverted < 0) throw new Error('Saldo antigo negativo');
+      const finalNew = round2(newProduct.currentStock + newImpact);
+      if (finalNew < 0) throw new Error('Saldo novo insuficiente');
+      const updOld = { ...oldProduct, currentStock: reverted, lastUpdated: new Date().toISOString() };
+      const updNew = { ...newProduct, currentStock: finalNew, lastUpdated: new Date().toISOString() };
+      this.products.set(oldProduct.id, updOld);
+      this.products.set(newProduct.id, updNew);
+      this.movements.set(movementId, { ...orig, ...updatedData, id: movementId });
+      return { updatedProducts: [updOld, updNew] };
+    }
+  }
+
   // 5. Inventory Adjustment / Marco Zero
   async executeAdjustment(
     opId: string,
@@ -352,6 +385,25 @@ async function runTests() {
   assert(diag.totalExits === 4, 'Auditor computou 4kg de saídas pós-Marco Zero');
   assert(diag.reconstructedBalance === 30, 'Auditor reconstruiu saldo exato de 30kg');
   assert(diag.discrepancy === 0, 'Discrepância matemática igual a 0.00');
+
+  console.log('\n--- TESTE 10: Edição de Movimentação nas Abas de Entradas e Saídas ---');
+  // Edita a entrada 'op-pos-e1' de 10kg para 15kg (aumento de 5kg)
+  await engine.replaceMovement('op-pos-e1', {
+    productId: 'prod-feijao',
+    quantity: 15,
+    type: 'entrada',
+  });
+  const p10_1 = engine.getProduct('prod-feijao')!;
+  assert(p10_1.currentStock === 35, 'Edição da entrada de 10kg para 15kg refletiu imediatamente no saldo (30 + 5 = 35kg)');
+
+  // Edita a saída 'op-pos-s1' de 4kg para 2kg (redução de 2kg na retirada -> estoque ganha 2kg)
+  await engine.replaceMovement('op-pos-s1', {
+    productId: 'prod-feijao',
+    quantity: 2,
+    type: 'saida',
+  });
+  const p10_2 = engine.getProduct('prod-feijao')!;
+  assert(p10_2.currentStock === 37, 'Edição da saída de 4kg para 2kg refletiu imediatamente no saldo (35 + 2 = 37kg)');
 
   console.log('\n===============================================================');
   console.log(`   RESULTADO FINAL DOS TESTES: ${passed} PASSOU / ${failed} FALHOU   `);

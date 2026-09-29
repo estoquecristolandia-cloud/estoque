@@ -744,7 +744,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 </button>
               )}
               <span className="text-xs font-bold px-3 py-1 bg-slate-800 rounded-lg text-emerald-400 border border-slate-700">
-                {filteredProducts.length} itens
+                {filteredProducts.length} itens no catálogo ({Math.round(filteredProducts.reduce((acc, p) => acc + (Number(p.currentStock) || 0), 0)).toLocaleString('pt-BR')} un físicas)
               </span>
             </div>
           </div>

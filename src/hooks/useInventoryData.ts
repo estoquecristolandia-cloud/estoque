@@ -179,10 +179,16 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
           notes,
           clientRequestId
         );
-        setProducts((prev) =>
-          prev.map((p) => (p.id === result.updatedProduct.id ? result.updatedProduct : p))
-        );
-        setMovements((prev) => [result.movement, ...prev.filter((m) => m.id !== result.movement.id)]);
+        setProducts((prev) => {
+          const next = prev.map((p) => (p.id === result.updatedProduct.id ? result.updatedProduct : p));
+          saveProducts(next);
+          return next;
+        });
+        setMovements((prev) => {
+          const next = [result.movement, ...prev.filter((m) => m.id !== result.movement.id)];
+          saveMovements(next);
+          return next;
+        });
         toast.success(`+ ${quantity} ${product.unit} de ${product.name} registrada com sucesso!`);
       } catch (err: any) {
         toast.warning(err.message || 'Erro ao registrar entrada');
@@ -220,10 +226,16 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
           notes,
           clientRequestId
         );
-        setProducts((prev) =>
-          prev.map((p) => (p.id === result.updatedProduct.id ? result.updatedProduct : p))
-        );
-        setMovements((prev) => [result.movement, ...prev.filter((m) => m.id !== result.movement.id)]);
+        setProducts((prev) => {
+          const next = prev.map((p) => (p.id === result.updatedProduct.id ? result.updatedProduct : p));
+          saveProducts(next);
+          return next;
+        });
+        setMovements((prev) => {
+          const next = [result.movement, ...prev.filter((m) => m.id !== result.movement.id)];
+          saveMovements(next);
+          return next;
+        });
         toast.success(`- ${quantity} ${product.unit} de ${product.name} entregue para ${sector}!`);
       } catch (err: any) {
         toast.warning(err.message || 'Erro ao registrar saída');
@@ -259,13 +271,19 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
           notes,
           clientRequestId
         );
-        setProducts((prev) =>
-          prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p)
-        );
-        setMovements((prev) => [
-          ...result.movements,
-          ...prev.filter((m) => !result.movements.some((r) => r.id === m.id)),
-        ]);
+        setProducts((prev) => {
+          const next = prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p);
+          saveProducts(next);
+          return next;
+        });
+        setMovements((prev) => {
+          const next = [
+            ...result.movements,
+            ...prev.filter((m) => !result.movements.some((r) => r.id === m.id)),
+          ];
+          saveMovements(next);
+          return next;
+        });
         const itemsSummary = items
           .map((i) => `${i.quantity} ${i.product.unit} ${i.product.name}`)
           .join(', ');
@@ -289,18 +307,22 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
       }
       try {
         const result = await updateStockMovementTransaction(movementId, updatedData);
-        setProducts((prev) =>
-          prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p)
-        );
+        setProducts((prev) => {
+          const next = prev.map((p) => result.updatedProducts.find((u) => u.id === p.id) || p);
+          saveProducts(next);
+          return next;
+        });
         setMovements((prev) => {
           const updated = prev.map((m) =>
             m.id === movementId ? { ...m, isCompensated: true } : m
           );
           const toAdd = [result.movement];
           if (result.compensationMovement) toAdd.push(result.compensationMovement);
-          return [...toAdd, ...updated];
+          const next = [...toAdd, ...updated];
+          saveMovements(next);
+          return next;
         });
-        toast.success('Movimentação substituída com histórico preservado!');
+        toast.success('Movimentação atualizada e saldo de estoque recalculado com sucesso!');
       } catch (err: any) {
         toast.warning(err.message || 'Erro ao atualizar movimentação');
         throw err;
@@ -321,21 +343,27 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
       }
       try {
         const compResult = await deleteStockMovementTransaction(movementId);
-        setProducts((prev) =>
-          prev.map((p) => (p.id === compResult.updatedProduct.id ? compResult.updatedProduct : p))
-        );
-        setMovements((prev) => [
-          compResult.compensationMovement,
-          ...prev.map((m) =>
-            m.id === movementId
-              ? {
-                  ...m,
-                  isCompensated: true,
-                  compensatedByMovementId: compResult.compensationMovement.id,
-                }
-              : m
-          ),
-        ]);
+        setProducts((prev) => {
+          const next = prev.map((p) => (p.id === compResult.updatedProduct.id ? compResult.updatedProduct : p));
+          saveProducts(next);
+          return next;
+        });
+        setMovements((prev) => {
+          const next = [
+            compResult.compensationMovement,
+            ...prev.map((m) =>
+              m.id === movementId
+                ? {
+                    ...m,
+                    isCompensated: true,
+                    compensatedByMovementId: compResult.compensationMovement.id,
+                  }
+                : m
+            ),
+          ];
+          saveMovements(next);
+          return next;
+        });
         toast.success('Movimentação estornada com sucesso e saldo recalculado!');
       } catch (err: any) {
         toast.warning(err.message || 'Erro ao excluir movimentação');

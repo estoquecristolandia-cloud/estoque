@@ -635,7 +635,7 @@ export async function executeEntryTransaction(
     }
 
     if (!snap.exists()) throw new Error('Produto não encontrado no Firestore.');
-    const product = snap.data() as Product;
+    const product: Product = { ...(snap.data() as Product), id: (snap.data() as Product)?.id || snap.id };
     const now = new Date().toISOString();
     const newStock = round2(Number(product.currentStock || 0) + quantity);
     const movement: StockMovement = { id: opId, operationId: opId, clientRequestId: clientRequestId || opId, productId: product.id, productName: product.name, unit: product.unit, type: 'entrada', quantity, date, time: time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), entryType, supplierOrDonor, receivedBy, notes, createdAt: now };
@@ -672,7 +672,7 @@ export async function executeExitTransaction(
     }
 
     if (!snap.exists()) throw new Error('Produto não encontrado no Firestore.');
-    const product = snap.data() as Product;
+    const product: Product = { ...(snap.data() as Product), id: (snap.data() as Product)?.id || snap.id };
     const currentStock = Number(product.currentStock || 0);
     if (quantity > currentStock) throw new Error(`Quantidade solicitada (${quantity} ${product.unit}) é maior do que o estoque atual (${currentStock} ${product.unit}).`);
     const now = new Date().toISOString();
@@ -728,7 +728,8 @@ export async function executeBatchExitTransaction(
     const products = new Map<string, Product>();
     productSnaps.forEach((snap, index) => {
       if (!snap.exists()) throw new Error('Um dos produtos selecionados não existe mais no estoque.');
-      products.set(productRefs[index].id, snap.data() as Product);
+      const prodData = snap.data() as Product;
+      products.set(productRefs[index].id, { ...prodData, id: prodData?.id || productRefs[index].id });
     });
     const now = new Date().toISOString();
     const updatedProducts: Product[] = [];
@@ -786,7 +787,8 @@ export async function executeDailyKitTransaction(
     const products = new Map<string, Product>();
     productSnaps.forEach((snap, index) => {
       if (!snap.exists()) throw new Error(`Produto do kit não encontrado no cadastro: ${uniqueIds[index]}`);
-      products.set(uniqueIds[index], snap.data() as Product);
+      const pData = snap.data() as Product;
+      products.set(uniqueIds[index], { ...pData, id: pData?.id || uniqueIds[index] });
     });
     const totals = new Map<string, number>();
     kit.items.forEach((item) => totals.set(item.productId, round2((totals.get(item.productId) || 0) + item.quantity)));
@@ -852,7 +854,10 @@ export async function compensateStockMovementTransaction(
     const productRef = doc(db, PRODUCTS_COLLECTION, origMovement.productId);
     const productSnap = await tx.get(productRef);
     if (!productSnap.exists()) throw new Error('Produto associado não encontrado no Firestore.');
-    const product = productSnap.data() as Product;
+    const product: Product = {
+      ...(productSnap.data() as Product),
+      id: (productSnap.data() as Product)?.id || productSnap.id,
+    };
     const currentStock = round2(Number(product.currentStock || 0));
 
     // Cálculo exato do efeito reverso
@@ -983,25 +988,44 @@ export async function replaceStockMovementTransaction(
     ]);
 
     if (!oldProdSnap.exists()) throw new Error('Produto da movimentação original não encontrado.');
-    const oldProduct = oldProdSnap.data() as Product;
-    const newProduct = newProdSnap && newProdSnap.exists() ? (newProdSnap.data() as Product) : oldProduct;
+    const oldProduct: Product = {
+      ...(oldProdSnap.data() as Product),
+      id: (oldProdSnap.data() as Product)?.id || oldProdSnap.id,
+    };
+    const newProduct: Product = newProdSnap && newProdSnap.exists()
+      ? { ...(newProdSnap.data() as Product), id: (newProdSnap.data() as Product)?.id || newProdSnap.id }
+      : oldProduct;
 
-    // Efeito reverso da original
+    // Efeito reverso da original e cálculo da nova movimentação
     const oldImpact = origMovement.type === 'entrada' ? origMovement.quantity : -origMovement.quantity;
-    const revertedOldStock = round2(oldProduct.currentStock - oldImpact);
-    if (revertedOldStock < 0) {
-      throw new Error('A substituição não pode ser aplicada porque o saldo atual não comporta a compensação da movimentação original.');
-    }
-
-    // Efeito da nova movimentação
     const newImpact = updatedData.type === 'entrada' ? newQty : -newQty;
-    const finalNewStock = round2(
-      updatedData.productId === origMovement.productId
-        ? revertedOldStock + newImpact
-        : newProduct.currentStock + newImpact
-    );
-    if (finalNewStock < 0) {
-      throw new Error(`Estoque insuficiente em "${newProduct.name}" para esta substituição (saldo final seria ${finalNewStock} ${newProduct.unit}).`);
+
+    let finalNewStock = 0;
+    let revertedOldStock = 0;
+
+    if (updatedData.productId === origMovement.productId) {
+      // Mesmo produto: cálculo atômico da diferença líquida sem falso-positivo de saldo intermediário negativo
+      const netDiff = round2(newImpact - oldImpact);
+      finalNewStock = round2(oldProduct.currentStock + netDiff);
+      if (finalNewStock < 0) {
+        throw new Error(
+          `Estoque insuficiente em "${oldProduct.name}" para esta alteração (o saldo final ficaria negativo em ${finalNewStock} ${oldProduct.unit}). Saldo atual: ${oldProduct.currentStock} ${oldProduct.unit}.`
+        );
+      }
+    } else {
+      // Produto alterado na edição: anula no produto antigo e debita/credita no novo produto
+      revertedOldStock = round2(oldProduct.currentStock - oldImpact);
+      if (revertedOldStock < 0) {
+        throw new Error(
+          `A substituição de produto não pode ser aplicada porque o saldo atual de "${oldProduct.name}" não comporta a reversão (${revertedOldStock} ${oldProduct.unit}).`
+        );
+      }
+      finalNewStock = round2(newProduct.currentStock + newImpact);
+      if (finalNewStock < 0) {
+        throw new Error(
+          `Estoque insuficiente em "${newProduct.name}" para esta alteração (saldo final seria ${finalNewStock} ${newProduct.unit}).`
+        );
+      }
     }
 
     const now = new Date().toISOString();

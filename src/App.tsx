@@ -37,6 +37,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { ToastContainer } from './components/ToastContainer';
 import { toast } from './utils/toast';
 import { DEFAULT_DML_KIT } from './data/initialDmlData';
+import { getTodayDateString, getNowTimeString } from './utils/storage';
 import { filterProductsByDepartment, filterMovementsByDepartment } from './utils/departmentUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Utensils, Sparkles } from 'lucide-react';
@@ -174,24 +175,32 @@ export default function App() {
     let count = 0;
     for (const entry of entries) {
       try {
-        await handleAddEntry({
-          productId: entry.productId,
-          productName: entry.productName,
-          quantity: entry.quantity,
-          unit: entry.unit,
-          unitPrice: entry.unitPrice,
-          date: entry.date,
-          supplierOrDonor: entry.supplier,
-          notes: entry.notes,
-          category: entry.category,
-        });
+        const prod = departmentProducts.find((p) => p.id === entry.productId) || products.find((p) => p.id === entry.productId);
+        if (!prod) {
+          console.warn('Produto não encontrado para importação de nota:', entry.productId);
+          continue;
+        }
+        await handleAddEntry(
+          prod,
+          Number(entry.quantity) || 1,
+          (entry.category === 'doacao' ? 'Doação' : 'Compra'),
+          entry.supplier || 'Nota Fiscal / Cupom',
+          currentUser?.displayName || 'Marconi Castro (Gestor do Estoque)',
+          entry.date || getTodayDateString(),
+          getNowTimeString(),
+          entry.notes || `Importado via Nota Fiscal (${entry.quantity} ${entry.unit || prod.unit})`
+        );
         count++;
       } catch (err) {
         console.error('Erro ao importar entrada:', err);
       }
     }
-    toast.success(`${count} itens da nota fiscal importados com sucesso!`);
-  }, [handleAddEntry]);
+    if (count > 0) {
+      toast.success(`${count} itens da nota fiscal importados com sucesso!`);
+    } else {
+      toast.warning('Nenhum item pôde ser importado da nota fiscal.');
+    }
+  }, [handleAddEntry, departmentProducts, products, currentUser]);
 
   const handleBackupData = useCallback(() => {
     exportFullSystemJSON({

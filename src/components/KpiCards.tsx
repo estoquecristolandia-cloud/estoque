@@ -53,6 +53,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
   // 1. Total de Produtos & Categorias
   const totalProducts = products.length;
   const activeCategories = new Set(products.map((p) => p.category)).size;
+  const totalPhysicalStock = products.reduce((acc, p) => acc + (Number(p.currentStock) || 0), 0);
 
   // 2. Estoque em Alerta & Zerados
   const zeroStockProducts = products.filter((p) => p.currentStock === 0);
@@ -71,6 +72,8 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
 
   const todayEntries = todayMovements.filter((m) => m.type === 'entrada');
   const todayExits = todayMovements.filter((m) => m.type === 'saida');
+  const todayEntriesQty = todayEntries.reduce((sum, m) => sum + (Number(m.quantity) || 0), 0);
+  const todayExitsQty = todayExits.reduce((sum, m) => sum + (Number(m.quantity) || 0), 0);
 
   // 4. Refeições do Dia
   const todayMealRecord = meals.find(
@@ -134,15 +137,19 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
           </div>
 
           <div className="my-3">
-            <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums">
-              <AnimatedNumber value={totalProducts} />
+            <div className="flex items-baseline gap-2">
+              <div className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight tabular-nums">
+                <AnimatedNumber value={totalProducts} />
+              </div>
+              <span className="text-xs font-bold text-slate-400">itens no catálogo</span>
             </div>
             <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
-              Total de Produtos
+              Produtos Cadastrados
             </p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
-              Cadastrados no catálogo
-            </p>
+            <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-lg w-fit">
+              <span>📦 Saldo Físico Total:</span>
+              <strong>{Math.round(totalPhysicalStock).toLocaleString('pt-BR')} un/L/kg</strong>
+            </div>
           </div>
 
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-bold text-blue-600 dark:text-blue-400 group-hover:underline">
@@ -251,13 +258,13 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
             <p className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1">
               Movimentações do Dia
             </p>
-            <div className="flex items-center gap-1.5 mt-1 text-[11px] font-bold">
+            <div className="flex items-center gap-1.5 mt-1 text-[11px] font-bold flex-wrap">
               <span className="text-emerald-600 dark:text-emerald-400">
-                +{todayEntries.length} Entradas
+                +{todayEntries.length} Entradas {todayEntriesQty > 0 ? `(+${todayEntriesQty} un/L)` : ''}
               </span>
               <span className="text-slate-300 dark:text-slate-700">·</span>
               <span className="text-blue-600 dark:text-blue-400">
-                -{todayExits.length} Saídas
+                -{todayExits.length} Saídas {todayExitsQty > 0 ? `(-${todayExitsQty} un/L)` : ''}
               </span>
             </div>
           </div>

@@ -239,23 +239,34 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
                 {movementsWithBalance.map((mov) => {
                   const isEntry = mov.type === 'entrada';
                   const isAjuste = mov.type === 'ajuste';
+                  const isCompensated = Boolean(mov.isCompensated);
+                  const isCompensation = mov.id.startsWith('comp-');
+
                   return (
                     <div key={mov.id} className="relative group">
                       {/* Node circle */}
                       <div
                         className={`absolute -left-6 top-1 w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] ${
-                          isAjuste
+                          isCompensated
+                            ? 'bg-slate-900 border-slate-600 text-slate-500'
+                            : isCompensation
+                            ? 'bg-purple-950 border-purple-400 text-purple-300'
+                            : isAjuste
                             ? 'bg-purple-950 border-purple-500 text-purple-400'
                             : isEntry
                             ? 'bg-emerald-950 border-emerald-500 text-emerald-400'
                             : 'bg-amber-950 border-amber-500 text-amber-400'
                         }`}
                       >
-                        {isAjuste ? '⚖️' : isEntry ? '+' : '-'}
+                        {isCompensated ? '↩' : isCompensation ? '⚖️' : isAjuste ? '⚖️' : isEntry ? '+' : '-'}
                       </div>
 
                       <div className={`border rounded-xl p-3 text-xs space-y-2 transition-colors ${
-                        isAjuste 
+                        isCompensated
+                          ? 'bg-slate-900/40 border-slate-800 opacity-60'
+                          : isCompensation
+                          ? 'bg-purple-950/20 border-purple-800/60 hover:bg-purple-950/40'
+                          : isAjuste 
                           ? 'bg-purple-950/20 border-purple-800/60 hover:bg-purple-950/40' 
                           : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800/70'
                       }`}>
@@ -263,14 +274,26 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
                           <div className="flex items-center gap-2">
                             <span
                               className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                                isAjuste
+                                isCompensated
+                                  ? 'bg-slate-800 text-slate-400 border border-slate-700'
+                                  : isCompensation
+                                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                  : isAjuste
                                   ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
                                   : isEntry
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                   : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                               }`}
                             >
-                              {isAjuste ? 'Ajuste de Inventário' : isEntry ? `Entrada (${mov.entryType || 'Compra'})` : `Saída: ${mov.sector}`}
+                              {isCompensated
+                                ? 'Estornado / Cancelado'
+                                : isCompensation
+                                ? 'Estorno de Auditoria'
+                                : isAjuste
+                                ? 'Ajuste de Inventário'
+                                : isEntry
+                                ? `Entrada (${mov.entryType || 'Compra'})`
+                                : `Saída: ${mov.sector}`}
                             </span>
                             <span className="text-slate-400">
                               {mov.date} às {mov.time || '00:00'}
@@ -278,7 +301,15 @@ export const ProductTimelineModal: React.FC<ProductTimelineModalProps> = ({
                           </div>
 
                           <span className={`font-black text-sm ${
-                            isAjuste ? 'text-purple-400' : isEntry ? 'text-emerald-400' : 'text-amber-400'
+                            isCompensated
+                              ? 'line-through text-slate-500'
+                              : isCompensation
+                              ? 'text-purple-400'
+                              : isAjuste
+                              ? 'text-purple-400'
+                              : isEntry
+                              ? 'text-emerald-400'
+                              : 'text-amber-400'
                           }`}>
                             {isAjuste 
                               ? `${(mov.difference || 0) > 0 ? '+' : ''}${mov.difference !== undefined ? mov.difference : mov.quantity} ${mov.unit}`

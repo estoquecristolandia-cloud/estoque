@@ -62,6 +62,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
 
   // Stats calculation
   const totalProducts = products.length;
+  const totalPhysicalStock = products.reduce((acc, p) => acc + (Number(p.currentStock) || 0), 0);
   const criticalProducts = products.filter((p) => p.currentStock === 0 || getProductStockStatus(p) === 'critical');
   const warningProducts = products.filter((p) => p.currentStock > 0 && getProductStockStatus(p) === 'warning');
   const normalProducts = products.filter((p) => getProductStockStatus(p) === 'normal');
@@ -115,7 +116,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
                 : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
             }`}
           >
-            Total: {totalProducts}
+            Total: {totalProducts} itens ({Math.round(totalPhysicalStock).toLocaleString('pt-BR')} un físicas)
           </button>
 
           <button

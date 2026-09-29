@@ -23,7 +23,10 @@ import {
   CheckCircle2,
   Plus,
   Scale,
+  Lock,
+  RotateCcw,
 } from 'lucide-react';
+import { isMarcoZeroRecord } from '../services/firestoreService';
 
 interface MovementsHistoryProps {
   movements: StockMovement[];
@@ -136,6 +139,18 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
 
   // Open Edit Modal
   const handleStartEdit = (movement: StockMovement) => {
+    if (movement.isCompensated) {
+      toast.warning('Esta movimentação já foi cancelada/estornada anteriormente e não afeta mais o estoque.');
+      return;
+    }
+    if (movement.id.startsWith('comp-')) {
+      toast.warning('Lançamentos automáticos de estorno são registros contábeis e não podem ser editados.');
+      return;
+    }
+    if (isMarcoZeroRecord(movement.id)) {
+      toast.warning('Registros do Marco Zero Oficial são protegidos contra edição.');
+      return;
+    }
     setEditingMovement(movement);
     setEditFormData({
       productId: movement.productId,
@@ -187,7 +202,6 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
         notes: editFormData.notes,
       });
 
-      toast.success('Movimentação atualizada com sucesso!');
       setEditingMovement(null);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao salvar alteração');
@@ -199,10 +213,25 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
   // Submit Delete
   const handleConfirmDelete = async () => {
     if (!deletingMovement || !onDeleteMovement) return;
+    if (deletingMovement.isCompensated) {
+      toast.warning('Esta movimentação já foi cancelada/estornada anteriormente.');
+      setDeletingMovement(null);
+      return;
+    }
+    if (deletingMovement.id.startsWith('comp-')) {
+      toast.warning('Lançamentos automáticos de estorno não podem ser excluídos.');
+      setDeletingMovement(null);
+      return;
+    }
+    if (isMarcoZeroRecord(deletingMovement.id)) {
+      toast.error('Registros do Marco Zero Oficial são protegidos contra exclusão.');
+      setDeletingMovement(null);
+      return;
+    }
     try {
       setIsDeleting(true);
       await onDeleteMovement(deletingMovement.id);
-      toast.success('Movimentação excluída com sucesso!');
+      toast.success('Movimentação estornada com sucesso!');
       setDeletingMovement(null);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao excluir movimentação');
@@ -584,24 +613,42 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                     {group.movements.map((m) => {
                     const isEntry = m.type === 'entrada';
                     const isAjuste = m.type === 'ajuste';
+                    const isCompensated = Boolean(m.isCompensated);
+                    const isCompensation = m.id.startsWith('comp-');
+                    const isMarcoZero = isMarcoZeroRecord(m.id);
+
                     return (
                       <div
                         key={m.id}
                         className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
-                          isAjuste ? 'bg-purple-50/20 dark:bg-purple-950/10' : ''
+                          isCompensated
+                            ? 'opacity-65 bg-slate-100/50 dark:bg-slate-900/40 border-l-4 border-l-slate-400 dark:border-l-slate-600'
+                            : isCompensation
+                            ? 'bg-purple-50/30 dark:bg-purple-950/20 border-l-4 border-l-purple-400 dark:border-l-purple-600'
+                            : isAjuste
+                            ? 'bg-purple-50/20 dark:bg-purple-950/10'
+                            : ''
                         }`}
                       >
                         <div className="flex items-start gap-3">
                           <div
                             className={`p-2.5 rounded-xl shrink-0 ${
-                              isAjuste
+                              isCompensated
+                                ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700'
+                                : isCompensation
+                                ? 'bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 border border-purple-300 dark:border-purple-800'
+                                : isAjuste
                                 ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800'
                                 : isEntry
                                 ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
                                 : 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
                             }`}
                           >
-                            {isAjuste ? (
+                            {isCompensated ? (
+                              <RotateCcw className="w-4 h-4 text-slate-500" />
+                            ) : isCompensation ? (
+                              <RotateCcw className="w-4 h-4 text-purple-500" />
+                            ) : isAjuste ? (
                               <Scale className="w-4 h-4" />
                             ) : isEntry ? (
                               <ArrowDownLeft className="w-4 h-4" />
@@ -614,21 +661,31 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                             <div className="flex items-center gap-2 flex-wrap">
                               <button
                                 onClick={() => onOpenProductTimeline?.(m.productId)}
-                                className="font-black text-sm text-slate-900 dark:text-white hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer"
+                                className={`font-black text-sm hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer ${
+                                  isCompensated ? 'line-through text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'
+                                }`}
                               >
                                 {m.productName}
                               </button>
 
                               <span
                                 className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                  isAjuste
+                                  isCompensated
+                                    ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600'
+                                    : isCompensation
+                                    ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                                    : isAjuste
                                     ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
                                     : isEntry
                                     ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
                                     : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
                                 }`}
                               >
-                                {isAjuste
+                                {isCompensated
+                                  ? 'ESTORNADO / CANCELADO'
+                                  : isCompensation
+                                  ? 'ESTORNO DE AUDITORIA'
+                                  : isAjuste
                                   ? 'AJUSTE DE INVENTÁRIO'
                                   : isEntry
                                   ? `ENTRADA (${m.entryType || 'Compra'})`
@@ -664,6 +721,12 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                               )}
                             </div>
 
+                            {m.compensatedByMovementId && (
+                              <p className="text-amber-700 dark:text-amber-400 font-semibold text-[11px] flex items-center gap-1 mt-0.5">
+                                ⚠️ Movimentação anulada pelo estorno #{m.compensatedByMovementId.substring(0, 20)}...
+                              </p>
+                            )}
+
                             {m.notes && (
                               <p className="text-slate-500 dark:text-slate-400 italic text-[11px]">
                                 "{m.notes}"
@@ -676,7 +739,11 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                           <div className="text-right">
                             <span
                               className={`text-base sm:text-lg font-black block ${
-                                isAjuste
+                                isCompensated
+                                  ? 'line-through text-slate-400 dark:text-slate-500'
+                                  : isCompensation
+                                  ? 'text-purple-600 dark:text-purple-400'
+                                  : isAjuste
                                   ? 'text-purple-600 dark:text-purple-400'
                                   : isEntry
                                   ? 'text-emerald-600 dark:text-emerald-400'
@@ -696,24 +763,52 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                           {/* Actions: Edit & Delete (Admin Only) */}
                           {isAdmin && (
                             <div className="flex items-center gap-1 border-l border-slate-200 dark:border-slate-800 pl-3">
-                              {onUpdateMovement && (
-                                <button
-                                  onClick={() => handleStartEdit(m)}
-                                  title="Editar esta movimentação"
-                                  className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/60 transition-colors cursor-pointer"
+                              {isCompensated ? (
+                                <span
+                                  title={`Esta movimentação já foi estornada/cancelada anteriormente pelo registro ${m.compensatedByMovementId || ''} e seu saldo já foi revertido no estoque.`}
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 flex items-center gap-1 cursor-not-allowed select-none"
                                 >
-                                  <Pencil className="w-4 h-4" />
-                                </button>
-                              )}
+                                  <Lock className="w-3 h-3" />
+                                  Já Estornada
+                                </span>
+                              ) : isCompensation ? (
+                                <span
+                                  title="Lançamento automático de estorno (contrapartida de auditoria). Não pode ser editado nem excluído diretamente."
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center gap-1 select-none"
+                                >
+                                  <Lock className="w-3 h-3" />
+                                  Estorno
+                                </span>
+                              ) : isMarcoZero ? (
+                                <span
+                                  title="Registro do Marco Zero Oficial. Protegido contra exclusão."
+                                  className="px-2 py-1 rounded-lg text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center gap-1 select-none"
+                                >
+                                  <Lock className="w-3 h-3" />
+                                  Marco Zero
+                                </span>
+                              ) : (
+                                <>
+                                  {onUpdateMovement && (
+                                    <button
+                                      onClick={() => handleStartEdit(m)}
+                                      title="Editar esta movimentação"
+                                      className="p-2 rounded-xl text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-blue-950/60 transition-colors cursor-pointer"
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                  )}
 
-                              {onDeleteMovement && (
-                                <button
-                                  onClick={() => setDeletingMovement(m)}
-                                  title="Excluir movimentação"
-                                  className="p-2 rounded-xl text-slate-600 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-950/60 transition-colors cursor-pointer"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                  {onDeleteMovement && (
+                                    <button
+                                      onClick={() => setDeletingMovement(m)}
+                                      title="Excluir movimentação"
+                                      className="p-2 rounded-xl text-slate-600 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-950/60 transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </>
                               )}
                             </div>
                           )}
