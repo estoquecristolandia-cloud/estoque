@@ -271,6 +271,30 @@ export const MealManager: React.FC<MealManagerProps> = ({
     };
   }, [meals, selectedMonth]);
 
+  // Auditoria de frequência: calcula dias corridos no mês que ficaram sem lançamento
+  const missingDaysInMonth = useMemo(() => {
+    if (!selectedMonth) return [];
+    const [y, m] = selectedMonth.split("-").map(Number);
+    if (!y || !m) return [];
+    const totalDays = new Date(y, m, 0).getDate();
+    const recordedDates = new Set(monthlyStats.monthRecords.map((r) => r.date));
+    const missing: { dateStr: string; dayNum: number; dayOfWeek: string }[] = [];
+
+    for (let d = 1; d <= totalDays; d++) {
+      const dStr = String(d).padStart(2, "0");
+      const fullDate = `${selectedMonth}-${dStr}`;
+      // Considera faltante se a data for anterior ou igual à data de hoje e não tiver lançamento
+      if (fullDate <= todayStr && !recordedDates.has(fullDate)) {
+        missing.push({
+          dateStr: fullDate,
+          dayNum: d,
+          dayOfWeek: getDayOfWeekName(fullDate),
+        });
+      }
+    }
+    return missing;
+  }, [selectedMonth, monthlyStats.monthRecords, todayStr]);
+
   // Stepper helper
   const adjustCount = (
     setter: React.Dispatch<React.SetStateAction<number>>,
@@ -1829,6 +1853,45 @@ E-mail: estoquecristolandia@gmail.com`;
               </p>
             </div>
           </div>
+
+          {/* Alerta de Auditoria: Dias sem Lançamento */}
+          {missingDaysInMonth.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <h4 className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-300">
+                    Auditoria de Frequência: {missingDaysInMonth.length} dia(s) sem lançamento em {formatMonthName(selectedMonth)}
+                  </h4>
+                </div>
+                <span className="text-[11px] font-semibold text-amber-800 dark:text-amber-400">
+                  {monthlyStats.totalDays} dias registrados / {monthlyStats.totalDays + missingDaysInMonth.length} dias decorridos
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300">
+                Os seguintes dias do calendário não possuem lançamento registrado no banco. Se o refeitório funcionou nessas datas, clique no dia para abrir o formulário e lançar:
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {missingDaysInMonth.map((m) => (
+                  <button
+                    key={m.dateStr}
+                    onClick={() => {
+                      setSelectedDate(m.dateStr);
+                      setActiveMealTab("daily");
+                    }}
+                    className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 hover:text-amber-700 dark:hover:text-amber-300 transition-all flex items-center gap-1.5 shadow-xs cursor-pointer group"
+                    title={`Lançar refeições para o dia ${formatDateBr(m.dateStr)}`}
+                  >
+                    <Plus className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                    <span>{formatDateBr(m.dateStr)}</span>
+                    <span className="text-[10px] text-slate-400 font-normal">
+                      ({m.dayOfWeek.split("-")[0]})
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Tabela Analítica Diária do Mês */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">

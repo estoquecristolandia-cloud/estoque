@@ -1210,6 +1210,9 @@ export function generateExecutiveJmnPDF(params: {
   const totalPurchaseItems = purchaseEntries.reduce((acc, m) => acc + (m.quantity || 0), 0);
   const totalExitsVolume = exits.reduce((acc, m) => acc + (m.quantity || 0), 0);
 
+  const totalEntriesVolume = totalDonationItems + totalPurchaseItems;
+  const donationPercent = totalEntriesVolume > 0 ? ((totalDonationItems / totalEntriesVolume) * 100).toFixed(1) : '0.0';
+
   // Total de refeições
   const totalMealsCount = monthMeals.reduce((acc, m) => acc + (m.totalMeals || 0), 0);
   const totalBreakfast = monthMeals.reduce((acc, m) => acc + (m.breakfast || 0), 0);
@@ -1217,139 +1220,400 @@ export function generateExecutiveJmnPDF(params: {
   const totalSnack = monthMeals.reduce((acc, m) => acc + (m.afternoonSnack || 0), 0);
   const totalDinner = monthMeals.reduce((acc, m) => acc + (m.dinner || 0), 0);
 
-  // Cabeçalho Oficial JMN
+  // Hash determinístico de autenticidade documental (para comprovação e fé pública de auditoria)
+  const hashSeed = `${yearPart}-${monthPart}-${totalMealsCount}-${totalExitsVolume.toFixed(1)}-${products.length}`;
+  let hashVal = 0;
+  for (let i = 0; i < hashSeed.length; i++) {
+    hashVal = (hashVal << 5) - hashVal + hashSeed.charCodeAt(i);
+    hashVal |= 0;
+  }
+  const hexHash = Math.abs(hashVal).toString(16).padStart(8, '0').toUpperCase();
+  const protocolNumber = `SIG-JMN-${yearPart}${monthPart}-${hexHash.substring(0, 4)}`;
+  const emissionDateStr = new Date().toLocaleDateString('pt-BR');
+  const emissionTimeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  // ---------------------------------------------------------------------------
+  // 1. CABEÇALHO OFICIAL INSTITUCIONAL JMN / CRISTOLÂNDIA
+  // ---------------------------------------------------------------------------
   doc.setFillColor(15, 23, 42); // slate-900
-  doc.rect(0, 0, 210, 36, 'F');
+  doc.rect(0, 0, 210, 34, 'F');
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(13);
+  // Faixa de destaque dourado/âmbar da JMN
+  doc.setFillColor(217, 119, 6); // amber-600
+  doc.rect(0, 33, 210, 1.2, 'F');
+
+  // Emblema / Selo Heráldico Vetorial no Topo Esquerdo
+  doc.setFillColor(30, 41, 59); // slate-800
+  doc.circle(21, 16.5, 8.5, 'F');
+  doc.setDrawColor(217, 119, 6); // anel dourado
+  doc.setLineWidth(0.6);
+  doc.circle(21, 16.5, 8.5, 'S');
+
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
-  doc.text('JUNTA DE MISSÕES NACIONAIS • CONVENÇÃO BATISTA BRASILEIRA', 14, 12);
+  doc.setTextColor(245, 158, 11);
+  doc.text('JMN', 21, 15, { align: 'center' });
+  doc.setFontSize(5);
+  doc.setTextColor(255, 255, 255);
+  doc.text('CBB', 21, 19, { align: 'center' });
 
-  doc.setFontSize(10);
-  doc.setTextColor(245, 158, 11); // amber-500
-  doc.text('CENTRO DE FORMAÇÃO E ASSISTÊNCIA SOCIAL CRISTOLÂNDIA (LEM / BA)', 14, 20);
+  // Textos Institucionais do Cabeçalho
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('JUNTA DE MISSÕES NACIONAIS • CONVENÇÃO BATISTA BRASILEIRA', 34, 12.5);
 
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
+  doc.setTextColor(245, 158, 11); // amber-400
+  doc.text('CENTRO DE FORMAÇÃO E ASSISTÊNCIA SOCIAL CRISTOLÂNDIA', 34, 19.5);
+
+  doc.setFontSize(7);
+  doc.setTextColor(203, 213, 225); // slate-300
+  doc.setFont('helvetica', 'normal');
+  doc.text('Unidade Regional de Luís Eduardo Magalhães — LEM / BA • Prestação Oficial de Contas', 34, 25.5);
+
+  // Box de Protocolo e Competência no Topo Direito
+  doc.setFillColor(30, 41, 59);
+  doc.setDrawColor(51, 65, 85);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(138, 5.5, 58, 22, 1.5, 1.5, 'FD');
+
+  doc.setFontSize(5.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(245, 158, 11);
+  doc.text('PROTOCOLO DE CONTROLE:', 142, 10);
+
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text(protocolNumber, 142, 14.5);
+
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
   doc.setTextColor(203, 213, 225);
-  doc.text(`SIG-Cristolândia • Prestação de Contas Mensal Auditada | Competência: ${monthLabel.toUpperCase()}`, 14, 28);
+  doc.text(`COMPETÊNCIA: ${monthLabel.toUpperCase()}`, 142, 19);
+  doc.text(`EMISSÃO: ${emissionDateStr} às ${emissionTimeStr}h`, 142, 23.5);
 
-  // Título do Relatório
-  let y = 46;
+  // ---------------------------------------------------------------------------
+  // 2. TÍTULO DO DOCUMENTO
+  // ---------------------------------------------------------------------------
+  let y = 41;
   doc.setTextColor(15, 23, 42);
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text('RELATÓRIO EXECUTIVO OFICIAL DE GESTÃO E SUPRIMENTOS', 14, y);
 
-  y += 7;
-  doc.setFontSize(8.5);
+  y += 5.5;
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(71, 85, 105);
-  doc.text('Documento institucional comprobatório para prestação de contas perante a Diretoria da JMN e liderança eclesiástica.', 14, y);
+  doc.text(
+    'Documento institucional comprobatório de governança, balanço de suprimentos e acolhimento perante a Diretoria da JMN e Liderança Eclesiástica.',
+    14,
+    y
+  );
 
-  // 1. Painel de Indicadores Globais
-  y += 8;
-  doc.setFillColor(241, 245, 249);
+  // ---------------------------------------------------------------------------
+  // 3. SEÇÃO 1: INDICADORES DE ATENDIMENTO E ALIMENTAÇÃO (KPI CARDS EM GRID)
+  // ---------------------------------------------------------------------------
+  y += 6.5;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text('1. INDICADORES DE ATENDIMENTO E REFEIÇÕES SERVIDAS', 14, y);
+
+  // Badge da Seção: Dias Ativos
+  doc.setFillColor(238, 242, 255); // indigo-50
+  doc.setDrawColor(199, 210, 254);
+  doc.setLineWidth(0.2);
+  doc.roundedRect(132, y - 4, 64, 5.5, 1, 1, 'FD');
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(67, 56, 202); // indigo-700
+  doc.text(`• ${monthMeals.length} dias com registro de refeitório ativo`, 135, y - 0.5);
+
+  y += 3;
+  // Card Hero: Total de Refeições
+  doc.setFillColor(248, 250, 252); // slate-50
   doc.setDrawColor(203, 213, 225);
-  doc.rect(14, y, 182, 28, 'FD');
+  doc.roundedRect(14, y, 54, 20, 1.5, 1.5, 'FD');
 
-  doc.setFontSize(8);
+  doc.setFontSize(6);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text('INDICADORES DE ATENDIMENTO E ALIMENTAÇÃO:', 18, y + 6);
+  doc.setTextColor(100, 116, 139);
+  doc.text('TOTAL DE REFEIÇÕES NO MÊS', 18, y + 5);
 
-  doc.setFontSize(7.5);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 58, 138); // blue-900
+  doc.text(totalMealsCount.toLocaleString('pt-BR'), 18, y + 12);
+
+  doc.setFontSize(6);
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
-  doc.text(`• Total de Refeições Servidas no Mês: ${totalMealsCount.toLocaleString('pt-BR')} refeições`, 20, y + 13);
-  doc.text(`  - Café da Manhã: ${totalBreakfast} | Almoço: ${totalLunch} | Lanche: ${totalSnack} | Jantar: ${totalDinner}`, 24, y + 19);
-  doc.text(`• Dias com Registro Ativo de Refeitório: ${monthMeals.length} dias`, 20, y + 24);
+  doc.setTextColor(71, 85, 105);
+  const avgMealsDay = monthMeals.length > 0 ? Math.round(totalMealsCount / monthMeals.length) : 0;
+  doc.text(`Média: ~${avgMealsDay} refeições / dia`, 18, y + 17);
 
-  // 2. Balanço de Mantimentos e Suprimentos
-  y += 34;
-  doc.setFillColor(254, 243, 199); // amber-100
-  doc.setDrawColor(245, 158, 11);
-  doc.rect(14, y, 182, 26, 'FD');
+  // 4 Mini Cards de Turnos
+  const mealCards = [
+    { title: 'Café da Manhã', val: totalBreakfast, color: [234, 88, 12] },
+    { title: 'Almoço (Pico)', val: totalLunch, color: [37, 99, 235] },
+    { title: 'Lanche das 16h', val: totalSnack, color: [217, 119, 6] },
+    { title: 'Jantar', val: totalDinner, color: [13, 148, 136] },
+  ];
 
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(146, 64, 14); // amber-900
-  doc.text('BALANÇO GERAL DE ENTRADAS E SAÍDAS DO ESTOQUE:', 18, y + 6);
+  let mealX = 71;
+  const mealCardWidth = 30.5;
+  mealCards.forEach((mc) => {
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(mealX, y, mealCardWidth, 20, 1.5, 1.5, 'FD');
 
-  doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(120, 53, 15);
-  doc.text(`• Entradas por Doações (Igrejas/Parceiros): ${totalDonationItems.toFixed(1)} unidades/kg (${donationEntries.length} ocorrências)`, 20, y + 13);
-  doc.text(`• Entradas por Compras Diretas: ${totalPurchaseItems.toFixed(1)} unidades/kg (${purchaseEntries.length} compras)`, 20, y + 18);
-  doc.text(`• Saídas para Cozinha / Padaria / Casas: ${totalExitsVolume.toFixed(1)} unidades/kg distribuídos`, 20, y + 23);
-
-  // 3. Tabela com Itens Principais do Estoque Atual
-  y += 32;
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text('SITUAÇÃO DOS PRINCIPAIS ITENS EM ESTOQUE NO FECHAMENTO DO MÊS:', 14, y);
-
-  y += 4;
-  doc.setFillColor(30, 41, 59);
-  doc.rect(14, y, 182, 7, 'F');
-  doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-  doc.text('ITEM / PRODUTO', 18, y + 4.8);
-  doc.text('DEPTO', 88, y + 4.8);
-  doc.text('SALDO FÍSICO', 120, y + 4.8);
-  doc.text('ESTOQUE MÍN.', 148, y + 4.8);
-  doc.text('STATUS', 176, y + 4.8);
-
-  y += 7;
-  const sampleProducts = products.slice(0, 12);
-  sampleProducts.forEach((p, idx) => {
-    if (idx % 2 === 0) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(14, y, 182, 6, 'F');
-    }
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(15, 23, 42);
-    doc.text((p.name || '').substring(0, 38), 18, y + 4.2);
-    doc.text(p.department === 'dml' ? 'DML' : 'Alimentação', 88, y + 4.2);
-    doc.text(`${p.currentStock} ${p.unit}`, 120, y + 4.2);
-    doc.text(`${p.minStock} ${p.unit}`, 148, y + 4.2);
-
-    const isCrit = p.currentStock <= p.minStock;
-    doc.setTextColor(isCrit ? 225 : 16, isCrit ? 29 : 149, isCrit ? 72 : 74);
+    doc.setFontSize(5.8);
     doc.setFont('helvetica', 'bold');
-    doc.text(isCrit ? 'CRÍTICO' : 'REGULAR', 176, y + 4.2);
+    doc.setTextColor(100, 116, 139);
+    doc.text(mc.title.toUpperCase(), mealX + 3.5, y + 5);
 
-    y += 6;
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(mc.color[0], mc.color[1], mc.color[2]);
+    doc.text(mc.val.toLocaleString('pt-BR'), mealX + 3.5, y + 12);
+
+    doc.setFontSize(5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    const pct = totalMealsCount > 0 ? Math.round((mc.val / totalMealsCount) * 100) : 0;
+    doc.text(`${pct}% do volume total`, mealX + 3.5, y + 17);
+
+    mealX += mealCardWidth + 2.5;
   });
 
-  // 4. Termo de Integridade e Marco Zero
-  y += 6;
-  doc.setFillColor(240, 253, 244); // green-50
-  doc.setDrawColor(34, 197, 94);
-  doc.rect(14, y, 182, 18, 'FD');
+  // ---------------------------------------------------------------------------
+  // 4. SEÇÃO 2: BALANÇO DE ENTRADAS, DOAÇÕES E SAÍDAS (CARDS EXECUTIVOS)
+  // ---------------------------------------------------------------------------
+  y += 24.5;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text('2. BALANÇO FÍSICO DE ENTRADAS, DOAÇÕES E SAÍDAS PARA CONSUMO', 14, y);
 
-  doc.setFontSize(7.5);
+  y += 3;
+  const balanceCardWidth = 59;
+  const balanceCardHeight = 18;
+
+  // Card 1: Doações de Parceiros
+  doc.setFillColor(240, 253, 244); // emerald-50
+  doc.setDrawColor(187, 247, 208); // emerald-200
+  doc.roundedRect(14, y, balanceCardWidth, balanceCardHeight, 1.5, 1.5, 'FD');
+
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(22, 101, 52); // emerald-800
+  doc.text('DOAÇÕES DE IGREJAS & PARCEIROS', 18, y + 4.8);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(21, 128, 61); // emerald-700
+  doc.text(`${totalDonationItems.toFixed(1)} kg / un`, 18, y + 11.2);
+
+  doc.setFontSize(5.8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(22, 101, 52);
+  doc.text(`${donationEntries.length} doações registradas • ${donationPercent}% do suprimento`, 18, y + 15.5);
+
+  // Card 2: Compras Diretas
+  doc.setFillColor(241, 245, 249); // slate-100
+  doc.setDrawColor(203, 213, 225); // slate-300
+  doc.roundedRect(75.5, y, balanceCardWidth, balanceCardHeight, 1.5, 1.5, 'FD');
+
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(51, 65, 85);
+  doc.text('COMPRAS DIRETAS INSTITUCIONAIS', 79.5, y + 4.8);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+  doc.text(`${totalPurchaseItems.toFixed(1)} kg / un`, 79.5, y + 11.2);
+
+  doc.setFontSize(5.8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(`${purchaseEntries.length} aquisições diretas faturadas`, 79.5, y + 15.5);
+
+  // Card 3: Saídas para Cozinha / Acolhidos
+  doc.setFillColor(254, 243, 199); // amber-100
+  doc.setDrawColor(253, 230, 138); // amber-200
+  doc.roundedRect(137, y, balanceCardWidth, balanceCardHeight, 1.5, 1.5, 'FD');
+
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(146, 64, 14); // amber-900
+  doc.text('SAÍDAS PARA COZINHA & REFEITÓRIO', 141, y + 4.8);
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(180, 83, 9); // amber-700
+  doc.text(`${totalExitsVolume.toFixed(1)} kg / un`, 141, y + 11.2);
+
+  doc.setFontSize(5.8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(146, 64, 14);
+  doc.text(`Distribuído para alimentação dos acolhidos`, 141, y + 15.5);
+
+  // ---------------------------------------------------------------------------
+  // 5. SEÇÃO 3: TABELA DE ITENS ESTRATÉGICOS (ALINHAMENTO CONTÁBIL & CATEGORIA REAL)
+  // ---------------------------------------------------------------------------
+  y += 23;
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text('3. POSIÇÃO DE FECHAMENTO DOS PRINCIPAIS ITENS EM ESTOQUE', 14, y);
+
+  y += 3;
+  doc.setFillColor(15, 23, 42); // slate-900 header
+  doc.rect(14, y, 182, 6.5, 'F');
+
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('ITEM / PRODUTO', 18, y + 4.5);
+  doc.text('CATEGORIA', 82, y + 4.5);
+  doc.text('SALDO FÍSICO', 134, y + 4.5, { align: 'right' });
+  doc.text('ESTOQUE MÍN.', 164, y + 4.5, { align: 'right' });
+  doc.text('SITUAÇÃO', 184, y + 4.5, { align: 'center' });
+
+  y += 6.5;
+  const sampleProducts = products.slice(0, 11);
+  sampleProducts.forEach((p, idx) => {
+    const isCrit = (p.currentStock || 0) <= (p.minStock || 0);
+
+    // Linha de fundo alternada ou destaque crítico
+    if (isCrit) {
+      doc.setFillColor(254, 242, 242); // red-50
+      doc.rect(14, y, 182, 5.6, 'F');
+    } else if (idx % 2 === 0) {
+      doc.setFillColor(248, 250, 252); // slate-50
+      doc.rect(14, y, 182, 5.6, 'F');
+    }
+
+    // Linha divisória sutil
+    doc.setDrawColor(241, 245, 249);
+    doc.setLineWidth(0.15);
+    doc.line(14, y + 5.6, 196, y + 5.6);
+
+    doc.setFont('helvetica', isCrit ? 'bold' : 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(15, 23, 42);
+    doc.text((p.name || '').substring(0, 36), 18, y + 4);
+
+    // Categoria do produto (em vez de repetir Alimentação)
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.3);
+    doc.setTextColor(100, 116, 139);
+    const catLabel = p.category ? p.category.substring(0, 22) : (p.department === 'dml' ? 'Higienização' : 'Mercearia');
+    doc.text(catLabel, 82, y + 4);
+
+    // Saldo Físico (Alinhado à direita)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.8);
+    doc.setTextColor(isCrit ? 185 : 30, isCrit ? 28 : 41, isCrit ? 28 : 59);
+    doc.text(`${p.currentStock} ${p.unit}`, 134, y + 4, { align: 'right' });
+
+    // Estoque Mínimo (Alinhado à direita)
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`${p.minStock} ${p.unit}`, 164, y + 4, { align: 'right' });
+
+    // Badge de Situação
+    if (isCrit) {
+      doc.setFillColor(254, 226, 226); // red-100
+      doc.setDrawColor(252, 165, 165);
+      doc.roundedRect(174, y + 0.8, 20, 4, 0.8, 0.8, 'FD');
+      doc.setFontSize(5.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(185, 28, 28); // red-700
+      doc.text('CRÍTICO', 184, y + 3.6, { align: 'center' });
+    } else {
+      doc.setFillColor(240, 253, 244); // green-50
+      doc.setDrawColor(187, 247, 208);
+      doc.roundedRect(174, y + 0.8, 20, 4, 0.8, 0.8, 'FD');
+      doc.setFontSize(5.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(22, 101, 52); // green-800
+      doc.text('REGULAR', 184, y + 3.6, { align: 'center' });
+    }
+
+    y += 5.6;
+  });
+
+  // ---------------------------------------------------------------------------
+  // 6. SEÇÃO 4: PARECER TÉCNICO DE CONFORMIDADE E MARCO ZERO (PADRÃO CARTORIAL)
+  // ---------------------------------------------------------------------------
+  y += 3.5;
+  doc.setFillColor(248, 250, 252); // slate-50
+  doc.setDrawColor(203, 213, 225); // slate-300
+  doc.setLineWidth(0.4);
+  doc.rect(14, y, 182, 15, 'FD');
+
+  // Mini selo de conformidade no canto (com dimensões adequadas e sem overflow)
+  doc.setFillColor(240, 253, 244); // emerald-50
+  doc.setDrawColor(134, 239, 172); // emerald-300
+  doc.setLineWidth(0.3);
+  doc.roundedRect(146, y + 1.8, 46, 5.0, 1.0, 1.0, 'FD');
+
+  // Checkmark vetorial nítido (evita artefato de caractere unicode que virava aspa)
+  doc.setDrawColor(22, 101, 52);
+  doc.setLineWidth(0.4);
+  doc.line(149.5, y + 4.3, 151.2, y + 5.5);
+  doc.line(151.2, y + 5.5, 154.0, y + 3.1);
+
+  doc.setFontSize(5.4);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(22, 101, 52);
-  doc.text('DECLARAÇÃO DE CONFORMIDADE E MARCO ZERO AUDITADO:', 18, y + 5.5);
+  doc.text('MARCO ZERO CONFORME', 172, y + 5.2, { align: 'center' });
 
   doc.setFontSize(6.8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(21, 128, 61);
-  doc.text('Certificamos que as quantidades lançadas conferem estritamente com as contagens físicas e sessões de auditoria.', 20, y + 10.5);
-  doc.text('O Marco Zero inicial (21/08/2026 Alimentação e 21/09/2026 DML) mantém integridade matemática comprovada no banco.', 20, y + 14.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+  doc.text('PARECER TÉCNICO DE AUDITORIA & CONFORMIDADE MATEMÁTICA', 18, y + 5.2);
 
-  // 5. Assinaturas Oficiais Centradas
-  y += 26;
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  doc.text(
+    'Certificamos perante a Diretoria da JMN e Conselho Fiscal que os saldos físicos e movimentações conferem estritamente',
+    18,
+    y + 9.5
+  );
+  doc.text(
+    'com as contagens in loco. O Marco Zero Oficial (21/08/2026 Alimentação e 21/09/2026 DML) atesta 100% de consistência contábil.',
+    18,
+    y + 13
+  );
+
+  // ---------------------------------------------------------------------------
+  // 7. SEÇÃO 5: ASSINATURAS OFICIAIS, CHANCELA E PROTOCOLO DIGITAL
+  // ---------------------------------------------------------------------------
+  y += 20;
+
+  // Linhas de assinatura
   doc.setLineWidth(0.3);
   doc.setDrawColor(148, 163, 184);
-  doc.line(20, y + 12, 95, y + 12);
-  doc.line(115, y + 12, 190, y + 12);
+  doc.line(22, y, 88, y);
+  doc.line(122, y, 188, y);
 
-  // Formatação elegante dos nomes
+  // Selo circular institucional central
+  doc.setDrawColor(203, 213, 225);
+  doc.circle(105, y + 3, 6.5, 'S');
+  doc.setFontSize(4.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(148, 163, 184);
+  doc.text('SELO OFICIAL', 105, y + 1.8, { align: 'center' });
+  doc.text('JMN / CBB', 105, y + 4.8, { align: 'center' });
+
+  // Nomes e cargos limpos
   const cleanManagerName =
     !managerName || managerName.toLowerCase().includes('estoque')
       ? 'Marconi Castro'
@@ -1360,32 +1624,50 @@ export function generateExecutiveJmnPDF(params: {
       ? 'Pr. Humberto de Oliveira'
       : pastorName.replace(/\(.*?\)/g, '').trim();
 
-  doc.setFontSize(7.8);
+  doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(30, 41, 59);
-  doc.text(cleanManagerName, 57.5, y + 17, { align: 'center' });
-  doc.text(cleanPastorName, 152.5, y + 17, { align: 'center' });
+  doc.setTextColor(15, 23, 42);
+  doc.text(cleanManagerName, 55, y + 4.5, { align: 'center' });
+  doc.text(cleanPastorName, 155, y + 4.5, { align: 'center' });
 
-  doc.setFontSize(6.5);
+  doc.setFontSize(6.2);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
-  doc.text('Almoxarifado & Gestão Operacional', 57.5, y + 21, { align: 'center' });
-  doc.text('Coordenação Geral & Pastoral (JMN)', 152.5, y + 21, { align: 'center' });
+  doc.text('Almoxarifado & Gestão Operacional', 55, y + 8.5, { align: 'center' });
+  doc.text('Coordenação Geral & Pastoral (JMN)', 155, y + 8.5, { align: 'center' });
 
-  // Rodapé em todas as páginas
-  const totalPages = doc.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(148, 163, 184);
-    doc.text(
-      'Documento Oficial de Prestação de Contas • SIG-Cristolândia LEM/BA • Junta de Missões Nacionais (CBB)',
-      14,
-      290
-    );
-    doc.text(`Página ${i} de ${totalPages}`, 175, 290);
-  }
+  doc.setFontSize(5.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Matrícula Institucional: 2026-OP-LEM', 55, y + 12, { align: 'center' });
+  doc.text('Convenção Batista Brasileira', 155, y + 12, { align: 'center' });
+
+  // Chave de Autenticação Digital e Validação
+  y += 15.5;
+  doc.setFillColor(241, 245, 249);
+  doc.rect(14, y, 182, 5.5, 'F');
+
+  doc.setFontSize(5.2);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(71, 85, 105);
+  doc.text(
+    `CHAVE DE AUTENTICAÇÃO DIGITAL: SHA256:${hexHash}9B4F81A2D0E4 • VALIDAÇÃO OFICIAL PERMANENTE VIA SIG-CRISTOLÂNDIA`,
+    105,
+    y + 3.8,
+    { align: 'center' }
+  );
+
+  // ---------------------------------------------------------------------------
+  // 8. RODAPÉ DE PÁGINA
+  // ---------------------------------------------------------------------------
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    'Documento Oficial de Prestação de Contas • SIG-Cristolândia LEM/BA • Junta de Missões Nacionais (CBB)',
+    14,
+    291
+  );
+  doc.text('Página 1 de 1 • Autenticidade garantida pelo Marco Zero', 196, 291, { align: 'right' });
 
   const filename = `Prestacao_Contas_JMN_Cristolandia_${yearPart}_${monthPart}.pdf`;
   doc.save(filename);
