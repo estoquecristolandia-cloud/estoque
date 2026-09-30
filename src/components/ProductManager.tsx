@@ -752,14 +752,14 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-100 dark:bg-slate-800/80 text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                <tr className="bg-slate-100 dark:bg-slate-800/80 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
                   <th className="p-3.5">Produto</th>
-                  <th className="p-3.5 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300">
+                  <th className="p-3.5 text-right bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300">
                     Estoque Real Atual
                   </th>
-                  <th className="p-3.5">Consumo & Frequência</th>
-                  <th className="p-3.5">Autonomia Estimada</th>
-                  <th className="p-3.5">Ponto de Alerta</th>
+                  <th className="p-3.5 text-right">Consumo & Frequência</th>
+                  <th className="p-3.5 text-center">Autonomia Estimada</th>
+                  <th className="p-3.5 text-right">Ponto de Alerta</th>
                   <th className="p-3.5">Local</th>
                   <th className="p-3.5 text-right">Ações</th>
                 </tr>
@@ -773,17 +773,17 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                   return (
                     <tr
                       key={p.id}
-                      className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                      className="even:bg-slate-50/50 dark:even:bg-slate-900/30 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors"
                     >
-                      <td className="p-3.5 font-bold text-slate-900 dark:text-white">
+                      <td className="p-3.5 text-slate-900 dark:text-white">
                         <div className="flex flex-col">
-                          <span className="text-sm font-black">{p.name}</span>
+                          <span className="text-sm font-semibold">{p.name}</span>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] text-slate-400 uppercase">
+                            <span className="text-[10px] text-slate-400 uppercase font-normal">
                               {p.category}
                             </span>
                             {p.barcode && (
-                              <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">
+                              <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500 font-normal tabular-nums">
                                 EAN: {p.barcode}
                               </span>
                             )}
@@ -791,49 +791,49 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                         </div>
                       </td>
 
-                      <td className="p-3.5 bg-emerald-50/30 dark:bg-emerald-950/10 font-black text-slate-900 dark:text-white">
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                      <td className="p-3.5 bg-emerald-50/30 dark:bg-emerald-950/10 text-right text-slate-900 dark:text-white">
+                        <div className="flex items-baseline justify-end gap-1 font-normal tabular-nums">
+                          <span className="text-lg font-normal text-emerald-600 dark:text-emerald-400 tabular-nums">
                             {p.currentStock}
                           </span>
-                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">
+                          <span className="text-xs font-normal text-slate-500 dark:text-slate-400 uppercase">
                             {p.unit}s
                           </span>
                         </div>
                         {detailedNote && (
-                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium block mt-0.5">
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-normal block mt-0.5 text-right">
                             💡 {detailedNote}
                           </span>
                         )}
                       </td>
 
-                      <td className="p-3.5 text-slate-700 dark:text-slate-300">
+                      <td className="p-3.5 text-right text-slate-700 dark:text-slate-300 font-normal tabular-nums">
                         {p.id === "prod-flocao" ||
                         p.name.toLowerCase().includes("flocão") ||
                         p.name.toLowerCase().includes("flocao") ? (
                           <>
-                            <div className="font-bold text-amber-600 dark:text-amber-400">
+                            <div className="font-normal text-amber-600 dark:text-amber-400 tabular-nums">
                               20 pacotes / preparo
                             </div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal mt-0.5">
                               Somente Quartas e Domingos (não diário)
                             </div>
                           </>
                         ) : (
                           <>
-                            <div className="font-bold">
+                            <div className="font-normal tabular-nums">
                               {p.dailyAvgConsumption} {p.unit}/dia
                             </div>
-                            <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
+                            <div className="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal mt-0.5">
                               {p.usageFrequency || "Uso Diário"}
                             </div>
                           </>
                         )}
                       </td>
 
-                      <td className="p-3.5 font-bold">
+                      <td className="p-3.5 text-center font-normal">
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium tabular-nums ${
                             days > 10
                               ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
                               : days > 3
@@ -845,16 +845,16 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                         </span>
                       </td>
 
-                      <td className="p-3.5 text-slate-600 dark:text-slate-400">
-                        <span className="text-xs font-semibold">
+                      <td className="p-3.5 text-right text-slate-600 dark:text-slate-400 font-normal tabular-nums">
+                        <span className="text-xs font-normal tabular-nums">
                           {p.minStock} {p.unit}
                         </span>
-                        <span className="text-[10px] text-slate-400 block">
+                        <span className="text-[10px] text-slate-400 block tabular-nums">
                           ({alertDaysNum}d de reserva)
                         </span>
                       </td>
 
-                      <td className="p-3.5 text-slate-500 dark:text-slate-400 text-xs truncate max-w-[140px]">
+                      <td className="p-3.5 text-slate-500 dark:text-slate-400 text-xs truncate max-w-[140px] font-normal">
                         {p.location}
                       </td>
 

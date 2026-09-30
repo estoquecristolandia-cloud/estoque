@@ -621,7 +621,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                     return (
                       <div
                         key={m.id}
-                        className={`p-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                        className={`p-4 even:bg-slate-50/40 dark:even:bg-slate-900/30 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
                           isCompensated
                             ? 'opacity-65 bg-slate-100/50 dark:bg-slate-900/40 border-l-4 border-l-slate-400 dark:border-l-slate-600'
                             : isCompensation
@@ -662,7 +662,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                             <div className="flex items-center gap-2 flex-wrap">
                               <button
                                 onClick={() => onOpenProductTimeline?.(m.productId)}
-                                className={`font-black text-sm hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer ${
+                                className={`font-semibold text-sm hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer ${
                                   isCompensated ? 'line-through text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'
                                 }`}
                               >
@@ -693,44 +693,44 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                                   : `SAÍDA: ${m.sector}`}
                               </span>
 
-                              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                              <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded tabular-nums">
                                 🕒 {m.time || '00:00'}
                               </span>
                             </div>
 
-                            <div className="text-slate-600 dark:text-slate-300 flex items-center gap-2 flex-wrap text-xs">
+                            <div className="text-slate-600 dark:text-slate-300 flex items-center gap-2 flex-wrap text-xs font-normal">
                               {isAjuste ? (
                                 <>
-                                  <span>Motivo: <strong>{m.reason || 'Conferência física'}</strong></span>
-                                  <span>• Responsável: <strong>{m.responsible || 'Administrador'}</strong></span>
+                                  <span>Motivo: <span className="font-normal">{m.reason || 'Conferência física'}</span></span>
+                                  <span>• Responsável: <span className="font-normal">{m.responsible || 'Administrador'}</span></span>
                                   {m.previousStock !== undefined && m.physicalStock !== undefined && (
-                                    <span className="text-[11px] text-slate-500">
+                                    <span className="text-[11px] text-slate-500 tabular-nums">
                                       (De {m.previousStock} {m.unit} para {m.physicalStock} {m.unit})
                                     </span>
                                   )}
                                 </>
                               ) : isEntry ? (
                                 <>
-                                  <span>Fornecedor/Doador: <strong>{m.supplierOrDonor || 'Não especificado'}</strong></span>
-                                  <span>• Recebido por: <strong>{m.receivedBy || 'Marconi Castro'}</strong></span>
+                                  <span>Fornecedor/Doador: <span className="font-normal">{m.supplierOrDonor || 'Não especificado'}</span></span>
+                                  <span>• Recebido por: <span className="font-normal">{m.receivedBy || 'Marconi Castro'}</span></span>
                                 </>
                               ) : (
                                 <>
                                   <span>Retirado por: </span>
                                   <ResponsibleBadge movement={m} fallbackName={m.retrievedBy} />
-                                  <span>• Entregue por: <strong>{m.deliveredBy || 'Marconi Castro'}</strong></span>
+                                  <span>• Entregue por: <span className="font-normal">{m.deliveredBy || 'Marconi Castro'}</span></span>
                                 </>
                               )}
                             </div>
 
                             {m.compensatedByMovementId && (
-                              <p className="text-amber-700 dark:text-amber-400 font-semibold text-[11px] flex items-center gap-1 mt-0.5">
+                              <p className="text-amber-700 dark:text-amber-400 font-normal text-[11px] flex items-center gap-1 mt-0.5">
                                 ⚠️ Movimentação anulada pelo estorno #{m.compensatedByMovementId.substring(0, 20)}...
                               </p>
                             )}
 
                             {m.notes && (
-                              <p className="text-slate-500 dark:text-slate-400 italic text-[11px]">
+                              <p className="text-slate-500 dark:text-slate-400 italic text-[11px] font-normal">
                                 "{m.notes}"
                               </p>
                             )}
@@ -740,7 +740,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                         <div className="flex items-center gap-4 justify-between sm:justify-end shrink-0">
                           <div className="text-right">
                             <span
-                              className={`text-base sm:text-lg font-black block ${
+                              className={`text-base sm:text-lg font-bold tabular-nums block ${
                                 isCompensated
                                   ? 'line-through text-slate-400 dark:text-slate-500'
                                   : isCompensation
@@ -756,7 +756,7 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                                 ? `${(m.difference || 0) > 0 ? '+' : ''}${m.difference !== undefined ? m.difference : m.quantity} ${m.unit}`
                                 : `${isEntry ? '+' : '-'}${m.quantity} ${m.unit}`}
                             </span>
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[10px] text-slate-400 font-mono tabular-nums">
                               ID: {m.id.substring(0, 12)}
                             </span>
                           </div>

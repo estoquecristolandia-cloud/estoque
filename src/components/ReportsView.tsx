@@ -936,48 +936,48 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {dayGroup.items.map((m) => (
-                          <tr key={m.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                            <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 font-semibold">
+                          <tr key={m.id} className="even:bg-slate-50/50 dark:even:bg-slate-900/30 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors">
+                            <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400 font-normal tabular-nums">
                               {m.time || '--:--'}
                             </td>
                             <td className="py-3 px-3">
                               {m.type === 'entrada' ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                   <ArrowDownLeft className="w-3 h-3 text-emerald-500" />
                                   ENTRADA
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
                                   <ArrowUpRight className="w-3 h-3 text-rose-500" />
                                   SAÍDA
                                 </span>
                               )}
                             </td>
-                            <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                            <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">
                               {m.productName}
                             </td>
-                            <td className="py-3 px-4 text-right font-black">
+                            <td className="py-3 px-4 text-right font-normal tabular-nums">
                               {m.type === 'entrada' ? (
-                                <span className="text-emerald-600 dark:text-emerald-400">+{m.quantity} {m.unit}</span>
+                                <span className="text-emerald-600 dark:text-emerald-400 tabular-nums">+{m.quantity} {m.unit}</span>
                               ) : (
-                                <span className="text-rose-600 dark:text-rose-400">-{m.quantity} {m.unit}</span>
+                                <span className="text-rose-600 dark:text-rose-400 tabular-nums">-{m.quantity} {m.unit}</span>
                               )}
                             </td>
-                            <td className="py-3 px-4 text-slate-700 dark:text-slate-300 font-semibold">
+                            <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-normal">
                               {m.type === 'entrada' ? (
-                                <span className="text-emerald-700 dark:text-emerald-300 font-medium">
+                                <span className="text-emerald-700 dark:text-emerald-300 font-normal">
                                   {m.supplierOrDonor || m.entryType || 'Doação / Compra'}
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-normal">
                                   {m.sector || 'Cozinha'}
                                 </span>
                               )}
                             </td>
-                            <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-medium">
+                            <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-normal">
                               <ResponsibleBadge movement={m} fallbackName={m.retrievedBy || m.receivedBy || m.deliveredBy} />
                             </td>
-                            <td className="py-3 px-4 text-slate-400 dark:text-slate-500 italic max-w-xs truncate">
+                            <td className="py-3 px-4 text-slate-400 dark:text-slate-500 italic max-w-xs truncate font-normal">
                               {m.notes || '-'}
                             </td>
                           </tr>
@@ -1081,22 +1081,22 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                         </thead>
                         <tbody className="divide-y divide-slate-200/60 dark:divide-slate-700/40">
                           {productItems.map((p) => (
-                            <tr key={p.productName} className="hover:bg-white/80 dark:hover:bg-slate-800/80">
-                              <td className="py-3 px-3 font-bold text-slate-900 dark:text-white">
+                            <tr key={p.productName} className="even:bg-slate-50/50 dark:even:bg-slate-900/30 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3 px-3 font-semibold text-slate-900 dark:text-white">
                                 {p.productName}
                               </td>
-                              <td className="py-3 px-3 text-right font-black text-slate-900 dark:text-white text-sm">
+                              <td className="py-3 px-3 text-right font-normal tabular-nums text-slate-800 dark:text-slate-200 text-sm">
                                 {p.totalQty} {p.unit}
                               </td>
-                              <td className="py-3 px-3 text-center font-semibold text-slate-600 dark:text-slate-300">
+                              <td className="py-3 px-3 text-center font-normal tabular-nums text-slate-600 dark:text-slate-300">
                                 {p.withdrawalsCount}x
                               </td>
-                              <td className="py-3 px-3">
+                              <td className="py-3 px-3 font-normal">
                                 <div className="flex flex-wrap gap-1.5">
                                   {Object.entries(p.responsibles).map(([rName, rQty]) => (
                                     <span
                                       key={rName}
-                                      className="inline-flex items-center gap-1 text-[11px] font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700"
+                                      className="inline-flex items-center gap-1 text-[11px] font-normal bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 tabular-nums"
                                     >
                                       <UserCheck className="w-3 h-3 text-indigo-500" />
                                       {rName} ({rQty} {p.unit})
@@ -1137,11 +1137,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
                   <th className="py-3 px-3">Produto</th>
                   <th className="py-3 px-3">Categoria</th>
-                  <th className="py-3 px-3">Saldo Inicial</th>
-                  <th className="py-3 px-3">Entradas (+)</th>
-                  <th className="py-3 px-3">Saídas (-)</th>
-                  <th className="py-3 px-3">Saldo Calculado</th>
-                  <th className="py-3 px-3">Estoque Atual</th>
+                  <th className="py-3 px-3 text-right">Saldo Inicial</th>
+                  <th className="py-3 px-3 text-right">Entradas (+)</th>
+                  <th className="py-3 px-3 text-right">Saídas (-)</th>
+                  <th className="py-3 px-3 text-right">Saldo Calculado</th>
+                  <th className="py-3 px-3 text-right">Estoque Atual</th>
                   <th className="py-3 px-3">Auditoria</th>
                 </tr>
               </thead>
@@ -1149,26 +1149,26 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 {products.map((p) => {
                   const audit = verifyProductAudit(p, movements, startDate, endDate);
                   return (
-                    <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="py-3.5 px-3 font-bold text-slate-900 dark:text-white">
+                    <tr key={p.id} className="even:bg-slate-50/50 dark:even:bg-slate-900/30 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="py-3.5 px-3 font-semibold text-slate-900 dark:text-white">
                         {p.name}
                       </td>
-                      <td className="py-3.5 px-3 text-slate-500">
+                      <td className="py-3.5 px-3 text-slate-500 font-normal">
                         {p.category}
                       </td>
-                      <td className="py-3.5 px-3 font-semibold text-slate-600 dark:text-slate-300">
+                      <td className="py-3.5 px-3 text-right font-normal tabular-nums text-slate-600 dark:text-slate-300">
                         {audit.initialStock} {p.unit}
                       </td>
-                      <td className="py-3.5 px-3 font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="py-3.5 px-3 text-right font-normal tabular-nums text-emerald-600 dark:text-emerald-400">
                         +{audit.totalEntries} {p.unit}
                       </td>
-                      <td className="py-3.5 px-3 font-bold text-rose-600 dark:text-rose-400">
+                      <td className="py-3.5 px-3 text-right font-normal tabular-nums text-rose-600 dark:text-rose-400">
                         -{audit.totalExits} {p.unit}
                       </td>
-                      <td className="py-3.5 px-3 font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                      <td className="py-3.5 px-3 text-right font-normal tabular-nums text-indigo-600 dark:text-indigo-400 text-sm">
                         {audit.calculatedBalance} {p.unit}
                       </td>
-                      <td className="py-3.5 px-3 font-black text-slate-900 dark:text-white text-sm">
+                      <td className="py-3.5 px-3 text-right font-normal tabular-nums text-slate-900 dark:text-white text-sm">
                         {p.currentStock} {p.unit}
                       </td>
                       <td className="py-3.5 px-3">
@@ -1178,13 +1178,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                               Saldo Perfeito
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-[10px] text-slate-400 font-mono tabular-nums">
                               ({audit.initialStock} + {audit.totalEntries} - {audit.totalExits} = {audit.calculatedBalance} {p.unit})
                             </span>
                           </div>
                         ) : (
                           <div className="flex flex-col items-start gap-1">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800 tabular-nums">
                               Divergência: {audit.discrepancy} {p.unit}
                             </span>
                           </div>
@@ -1220,20 +1220,20 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {Object.entries(personSummary).map(([personName, data]) => (
-                  <tr key={personName} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="py-3.5 px-3 font-bold text-slate-900 dark:text-white">
+                  <tr key={personName} className="even:bg-slate-50/50 dark:even:bg-slate-900/30 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="py-3.5 px-3 font-semibold text-slate-900 dark:text-white">
                       {personName}
                     </td>
-                    <td className="py-3.5 px-3 text-slate-600 dark:text-slate-300">
+                    <td className="py-3.5 px-3 text-slate-600 dark:text-slate-300 font-normal">
                       {data.sector}
                     </td>
-                    <td className="py-3.5 px-3 font-semibold text-slate-700 dark:text-slate-300">
+                    <td className="py-3.5 px-3 font-normal tabular-nums text-slate-700 dark:text-slate-300">
                       {data.count} retiradas
                     </td>
-                    <td className="py-3.5 px-3 text-slate-500 max-w-xs">
+                    <td className="py-3.5 px-3 text-slate-500 max-w-xs font-normal">
                       <span className="truncate block text-xs">{data.itemsList.join(', ')}</span>
                     </td>
-                    <td className="py-3.5 px-3 text-right font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                    <td className="py-3.5 px-3 text-right font-normal tabular-nums text-indigo-600 dark:text-indigo-400 text-sm">
                       {data.totalRetrieved} vol.
                     </td>
                   </tr>
@@ -1326,60 +1326,60 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
                     <th className="py-3 px-3">Produto</th>
-                    <th className="py-3 px-3">Base / Marco Zero</th>
-                    <th className="py-3 px-3 text-emerald-600 dark:text-emerald-400">Entradas (+)</th>
-                    <th className="py-3 px-3 text-rose-600 dark:text-rose-400">Saídas (-)</th>
-                    <th className="py-3 px-3 text-amber-600 dark:text-amber-400">Ajustes (±)</th>
-                    <th className="py-3 px-3 text-indigo-600 dark:text-indigo-400">Saldo Reconstruído</th>
-                    <th className="py-3 px-3 font-bold text-slate-900 dark:text-white">currentStock Atual</th>
-                    <th className="py-3 px-3">Diferença</th>
-                    <th className="py-3 px-3">Status</th>
+                    <th className="py-3 px-3 text-right">Base / Marco Zero</th>
+                    <th className="py-3 px-3 text-right text-emerald-600 dark:text-emerald-400">Entradas (+)</th>
+                    <th className="py-3 px-3 text-right text-rose-600 dark:text-rose-400">Saídas (-)</th>
+                    <th className="py-3 px-3 text-right text-amber-600 dark:text-amber-400">Ajustes (±)</th>
+                    <th className="py-3 px-3 text-right text-indigo-600 dark:text-indigo-400">Saldo Reconstruído</th>
+                    <th className="py-3 px-3 text-right font-bold text-slate-900 dark:text-white">currentStock Atual</th>
+                    <th className="py-3 px-3 text-right">Diferença</th>
+                    <th className="py-3 px-3 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {mathematicalAuditReport.diagnostics.map((diag) => (
-                    <tr key={diag.productId} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                    <tr key={diag.productId} className="even:bg-slate-50/50 dark:even:bg-slate-900/30 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 transition-colors">
                       <td className="py-3.5 px-3">
-                        <div className="font-bold text-slate-900 dark:text-white">{diag.productName}</div>
-                        <div className="text-[10px] text-slate-400 font-mono">{diag.movementsCount} movimentações</div>
+                        <div className="font-semibold text-slate-900 dark:text-white">{diag.productName}</div>
+                        <div className="text-[10px] text-slate-400 font-mono tabular-nums font-normal">{diag.movementsCount} movimentações</div>
                       </td>
-                      <td className="py-3.5 px-3">
+                      <td className="py-3.5 px-3 text-right font-normal tabular-nums">
                         {diag.hasMarcoZero ? (
                           <div>
-                            <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                            <span className="font-normal tabular-nums text-indigo-600 dark:text-indigo-400">
                               {diag.marcoZeroStock} {diag.unit}
                             </span>
-                            <span className="block text-[10px] text-slate-400">{diag.marcoZeroDate}</span>
+                            <span className="block text-[10px] text-slate-400 tabular-nums">{diag.marcoZeroDate}</span>
                           </div>
                         ) : (
                           <span className="text-slate-400 text-[11px] italic">Cadastro Base</span>
                         )}
                       </td>
-                      <td className="py-3.5 px-3 font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="py-3.5 px-3 text-right font-normal tabular-nums text-emerald-600 dark:text-emerald-400">
                         +{diag.totalEntries} {diag.unit}
                       </td>
-                      <td className="py-3.5 px-3 font-bold text-rose-600 dark:text-rose-400">
+                      <td className="py-3.5 px-3 text-right font-normal tabular-nums text-rose-600 dark:text-rose-400">
                         -{diag.totalExits} {diag.unit}
                       </td>
-                      <td className="py-3.5 px-3 font-bold text-amber-600 dark:text-amber-400">
+                      <td className="py-3.5 px-3 text-right font-normal tabular-nums text-amber-600 dark:text-amber-400">
                         {diag.totalAdjustments >= 0 ? `+${diag.totalAdjustments}` : diag.totalAdjustments} {diag.unit}
                       </td>
-                      <td className="py-3.5 px-3 font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                      <td className="py-3.5 px-3 text-right font-normal tabular-nums text-indigo-600 dark:text-indigo-400 text-sm">
                         {diag.reconstructedBalance} {diag.unit}
                       </td>
-                      <td className="py-3.5 px-3 font-black text-slate-900 dark:text-white text-sm">
+                      <td className="py-3.5 px-3 text-right font-normal tabular-nums text-slate-900 dark:text-white text-sm">
                         {diag.currentStock} {diag.unit}
                       </td>
-                      <td className="py-3.5 px-3 font-mono text-xs">
+                      <td className="py-3.5 px-3 text-right font-mono text-xs tabular-nums font-normal">
                         {diag.discrepancy === 0 ? (
-                          <span className="text-emerald-600 dark:text-emerald-400 font-bold">0.00</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-bold tabular-nums">0.00</span>
                         ) : (
-                          <span className="text-rose-600 dark:text-rose-400 font-bold">
+                          <span className="text-rose-600 dark:text-rose-400 font-bold tabular-nums">
                             {diag.discrepancy > 0 ? `+${diag.discrepancy}` : diag.discrepancy}
                           </span>
                         )}
                       </td>
-                      <td className="py-3.5 px-3">
+                      <td className="py-3.5 px-3 text-center">
                         {diag.status === 'OK' ? (
                           <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />

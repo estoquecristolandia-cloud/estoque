@@ -649,95 +649,202 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 shrink-0">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
+        {/* Navigation - 3 Blocos Semânticos (Operação, Gestão, Análise) */}
+        <nav className="flex-1 space-y-3 shrink-0 overflow-y-auto pr-0.5">
+          {/* BLOCO 1: OPERAÇÃO */}
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 py-1 block">
+              Operação
+            </span>
+
+            {/* Painel Principal */}
+            <button
+              onClick={() => {
+                soundFeedback.play('click');
+                setActiveTab('dashboard');
+              }}
+              className={`w-full flex items-center space-x-2.5 py-1.5 px-3 rounded-xl transition-all text-xs font-semibold cursor-pointer ${
+                activeTab === 'dashboard'
+                  ? 'bg-blue-600/20 text-blue-400 shadow-sm'
+                  : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4 shrink-0" />
+              <span className="truncate">{isAdmin ? 'Painel Principal' : 'Painel de Consulta'}</span>
+            </button>
+
+            {/* Entradas */}
+            <button
+              onClick={() => {
+                soundFeedback.play('click');
+                setActiveTab('entries');
+              }}
+              className={`w-full flex items-center space-x-2.5 py-1.5 px-3 rounded-xl transition-all text-xs font-semibold cursor-pointer ${
+                activeTab === 'entries'
+                  ? 'bg-emerald-600/20 text-emerald-400 shadow-sm'
+                  : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
+              }`}
+            >
+              <ArrowDownLeft className="w-4 h-4 shrink-0" />
+              <span className="truncate">{isAdmin ? (isDml ? 'Entradas & Doações' : 'Entradas') : 'Extrato de Entradas'}</span>
+            </button>
+
+            {/* Saídas */}
+            <button
+              onClick={() => {
+                soundFeedback.play('click');
+                setActiveTab('exits');
+              }}
+              className={`w-full flex items-center space-x-2.5 py-1.5 px-3 rounded-xl transition-all text-xs font-semibold cursor-pointer ${
+                activeTab === 'exits'
+                  ? (isDml ? 'bg-cyan-600/20 text-cyan-400' : 'bg-amber-600/20 text-amber-400') + ' shadow-sm'
+                  : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
+              }`}
+            >
+              <ArrowUpRight className="w-4 h-4 shrink-0" />
+              <span className="truncate">{isAdmin ? (isDml ? 'Saídas & Kits Acolhidos' : 'Saídas') : 'Extrato de Saídas'}</span>
+            </button>
+
+            {/* Refeições (Alimentação) */}
+            {!isDml && (
               <button
-                key={item.id}
                 onClick={() => {
                   soundFeedback.play('click');
-                  setActiveTab(item.id);
+                  setActiveTab('meals');
                 }}
-                className={`w-full flex items-center space-x-2.5 py-2 px-3 rounded-xl transition-all text-xs font-semibold cursor-pointer ${
-                  isActive
-                    ? `${item.activeColor} shadow-sm`
+                className={`w-full flex items-center space-x-2.5 py-1.5 px-3 rounded-xl transition-all text-xs font-semibold cursor-pointer ${
+                  activeTab === 'meals'
+                    ? 'bg-amber-500/20 text-amber-400 shadow-sm'
                     : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
                 }`}
               >
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
+                <UtensilsCrossed className="w-4 h-4 shrink-0" />
+                <span className="truncate">{isAdmin ? 'Refeições (4 Turnos)' : 'Refeições Servidas'}</span>
               </button>
-            );
-          })}
+            )}
+          </div>
+
+          {/* BLOCO 2: GESTÃO */}
+          <div className="space-y-0.5 pt-1">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 py-1 block">
+              Gestão
+            </span>
+
+            {/* Produtos & Estoque */}
+            <button
+              onClick={() => {
+                soundFeedback.play('click');
+                setActiveTab('products');
+              }}
+              className={`w-full flex items-center space-x-2.5 py-1.5 px-3 rounded-xl transition-all text-xs font-semibold cursor-pointer ${
+                activeTab === 'products'
+                  ? (isDml ? 'bg-cyan-600/20 text-cyan-400' : 'bg-blue-600/20 text-blue-400') + ' shadow-sm'
+                  : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
+              }`}
+            >
+              <Package className="w-4 h-4 shrink-0" />
+              <span className="truncate">{isDml ? 'Produtos de Limpeza' : 'Produtos & Estoque'}</span>
+            </button>
+
+            {/* + Kit Cozinha Diário */}
+            {isAdmin && (
+              <button
+                onClick={onOpenKitModal}
+                className="w-full flex items-center space-x-2.5 py-1.5 px-3 rounded-xl transition-all text-xs font-semibold text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 cursor-pointer"
+              >
+                <Utensils className="w-4 h-4 shrink-0 text-amber-400" />
+                <span className="truncate">+ Kit Cozinha Diário</span>
+              </button>
+            )}
+
+            {/* Missionários & Turnos */}
+            {isAdmin && onOpenMissionariesModal && (
+              <button
+                onClick={onOpenMissionariesModal}
+                className="w-full flex items-center space-x-2.5 py-1.5 px-3 rounded-xl transition-all text-xs font-semibold text-slate-400 hover:bg-slate-800/80 hover:text-white cursor-pointer"
+              >
+                <Users className="w-4 h-4 shrink-0 text-amber-500" />
+                <span className="truncate">Missionários & Turnos</span>
+              </button>
+            )}
+          </div>
+
+          {/* BLOCO 3: ANÁLISE */}
+          <div className="space-y-0.5 pt-1">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3 py-1 block">
+              Análise
+            </span>
+
+            {/* Relatórios & Auditoria */}
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  soundFeedback.play('click');
+                  setActiveTab('reports');
+                }}
+                className={`w-full flex items-center space-x-2.5 py-1.5 px-3 rounded-xl transition-all text-xs font-semibold cursor-pointer ${
+                  activeTab === 'reports'
+                    ? (isDml ? 'bg-cyan-600/20 text-cyan-400' : 'bg-indigo-600/20 text-indigo-400') + ' shadow-sm'
+                    : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
+                }`}
+              >
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="truncate">{isDml ? 'Previsão & Relatórios DML' : 'Relatórios & Auditoria'}</span>
+              </button>
+            )}
+
+            {/* Assistente IA */}
+            <button
+              onClick={() => {
+                soundFeedback.play('click');
+                setActiveTab('ai_assistant');
+              }}
+              className={`w-full flex items-center space-x-2.5 py-1.5 px-3 rounded-xl transition-all text-xs font-semibold cursor-pointer ${
+                activeTab === 'ai_assistant'
+                  ? (isDml ? 'bg-cyan-600/20 text-cyan-400' : 'bg-emerald-600/20 text-emerald-400') + ' font-bold shadow-sm'
+                  : 'text-slate-400 hover:bg-slate-800/80 hover:text-white'
+              }`}
+            >
+              <Bot className="w-4 h-4 shrink-0 text-emerald-400" />
+              <span className="truncate">Assistente IA</span>
+            </button>
+
+            {/* Prévia de Conciliação */}
+            {isAdmin && onOpenReconciliationPreview && (
+              <button
+                onClick={onOpenReconciliationPreview}
+                className="w-full flex items-center space-x-2.5 py-1.5 px-3 rounded-xl transition-all text-xs font-semibold text-amber-300 hover:text-white hover:bg-amber-950/40 cursor-pointer"
+                title="Abrir Prévia da Conciliação Física (Marco Zero)"
+              >
+                <Eye className="w-4 h-4 shrink-0 text-amber-400" />
+                <span className="truncate">Prévia de Conciliação</span>
+              </button>
+            )}
+
+            {/* Inventário Físico */}
+            {isAdmin && onOpenPhysicalInventory && (
+              <button
+                onClick={onOpenPhysicalInventory}
+                className="w-full flex items-center space-x-2.5 py-1.5 px-3 rounded-xl transition-all text-xs font-semibold text-purple-300 hover:text-white hover:bg-purple-950/40 cursor-pointer"
+                title="Abrir Conferência de Inventário Físico e Ajustes Auditados"
+              >
+                <Scale className="w-4 h-4 shrink-0 text-purple-400" />
+                <span className="truncate">Inventário Físico</span>
+              </button>
+            )}
+          </div>
         </nav>
 
         {/* Footer Actions */}
         <div className="mt-3 space-y-1.5 pt-3 border-t border-slate-800 shrink-0">
-          {/* Seção Colapsável: Auditoria & Governança */}
-          {isAdmin && (onOpenReconciliationPreview || onOpenPhysicalInventory || onOpenWhatsAppModal) && (
-            <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setAuditSectionOpen(!auditSectionOpen)}
-                className="w-full flex items-center justify-between p-2 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
-                title="Ferramentas de Auditoria, Conciliação e Alertas"
-              >
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Auditoria & Governança</span>
-                </div>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform text-slate-400 ${auditSectionOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {auditSectionOpen && (
-                <div className="p-1.5 space-y-1 bg-slate-950/60 border-t border-slate-800">
-                  {onOpenReconciliationPreview && (
-                    <button
-                      onClick={onOpenReconciliationPreview}
-                      className="w-full py-1.5 px-2 bg-amber-950/50 hover:bg-amber-900/80 border border-amber-500/40 text-amber-300 hover:text-white rounded-lg text-[11px] font-semibold transition-all flex items-center gap-2 cursor-pointer"
-                      title="Abrir Prévia da Conciliação Física (Marco Zero)"
-                    >
-                      <Eye className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span className="truncate">Prévia Conciliação</span>
-                    </button>
-                  )}
-
-                  {onOpenPhysicalInventory && (
-                    <button
-                      onClick={onOpenPhysicalInventory}
-                      className="w-full py-1.5 px-2 bg-purple-950/50 hover:bg-purple-900/80 border border-purple-700/40 text-purple-300 hover:text-white rounded-lg text-[11px] font-semibold transition-all flex items-center gap-2 cursor-pointer"
-                      title="Abrir Conferência de Inventário Físico e Ajustes Auditados"
-                    >
-                      <Scale className="w-3 h-3 text-purple-400 shrink-0" />
-                      <span className="truncate">Inventário Físico</span>
-                    </button>
-                  )}
-
-                  {onOpenWhatsAppModal && (
-                    <button
-                      onClick={onOpenWhatsAppModal}
-                      className="w-full py-1.5 px-2 bg-emerald-950/50 hover:bg-emerald-900/80 border border-emerald-700/40 text-emerald-300 hover:text-white rounded-lg text-[11px] font-semibold transition-all flex items-center gap-2 cursor-pointer"
-                      title="Abrir Alerta de Estoque para Chefe Marcos (+55 62 99974-6823)"
-                    >
-                      <MessageCircle className="w-3 h-3 text-emerald-400 shrink-0" />
-                      <span className="truncate">Alerta WhatsApp</span>
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {isAdmin && (
+          {isAdmin && onOpenWhatsAppModal && (
             <button
-              onClick={onOpenKitModal}
-              className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 rounded-xl text-xs font-black shadow-md shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+              onClick={onOpenWhatsAppModal}
+              className="w-full py-1.5 px-2 bg-emerald-950/50 hover:bg-emerald-900/80 border border-emerald-700/40 text-emerald-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              title="Abrir Alerta de Estoque para Chefe Marcos (+55 62 99974-6823)"
             >
-              <Utensils className="w-3.5 h-3.5" />
-              <span>+ Kit Cozinha Diário</span>
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+              <span>📲 Alerta WhatsApp (Marcos)</span>
             </button>
           )}
 
@@ -747,7 +854,7 @@ export const Header: React.FC<HeaderProps> = ({
                 soundFeedback.play('click');
                 onOpenQuickGuide();
               }}
-              className="w-full py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
               title="Abrir Manual de Operação e Guia Rápido (PVPS & Kit Cozinha)"
             >
               <BookOpen className="w-3.5 h-3.5 text-amber-400" />
@@ -755,20 +862,10 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {isAdmin && onOpenMissionariesModal && (
-            <button
-              onClick={onOpenMissionariesModal}
-              className="w-full py-2 bg-slate-900 border border-slate-800 text-slate-300 hover:text-amber-400 rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Users className="w-3.5 h-3.5 text-amber-500" />
-              <span>Missionários & Turnos</span>
-            </button>
-          )}
-
           {canInstallPwa && onInstallPwa && (
             <button
               onClick={onInstallPwa}
-              className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-700/30 flex items-center justify-center gap-2 cursor-pointer transition-all animate-pulse"
+              className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-700/30 flex items-center justify-center gap-2 cursor-pointer transition-all animate-pulse"
               title="Instalar o SIG-Cristolândia na tela inicial como Aplicativo Nativo"
             >
               <Smartphone className="w-3.5 h-3.5" />
@@ -779,7 +876,7 @@ export const Header: React.FC<HeaderProps> = ({
           {onBackupData && (
             <button
               onClick={onBackupData}
-              className="w-full py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-amber-300 hover:text-amber-200 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-amber-300 hover:text-amber-200 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 cursor-pointer"
               title="Exportar Backup Completo (JSON e Planilha)"
             >
               <Save className="w-3.5 h-3.5 text-amber-400" />

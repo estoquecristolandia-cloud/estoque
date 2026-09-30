@@ -956,7 +956,7 @@ E-mail: estoquecristolandia@gmail.com`;
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                  ☕ Café da Manhã
+                  Café da Manhã
                 </span>
                 <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
                   <Coffee className="w-4 h-4" />
@@ -979,7 +979,7 @@ E-mail: estoquecristolandia@gmail.com`;
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                  🍛 Almoço (Pico)
+                  Almoço (Pico)
                 </span>
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                   <Utensils className="w-4 h-4" />
@@ -1002,7 +1002,7 @@ E-mail: estoquecristolandia@gmail.com`;
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                  🥪 Lanche das 16h
+                  Lanche das 16h
                 </span>
                 <div className="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center">
                   <SunMedium className="w-4 h-4" />
@@ -1025,7 +1025,7 @@ E-mail: estoquecristolandia@gmail.com`;
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                  🍲 Jantar
+                  Jantar
                 </span>
                 <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                   <Soup className="w-4 h-4" />
@@ -1513,10 +1513,10 @@ E-mail: estoquecristolandia@gmail.com`;
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200 dark:border-slate-800">
                     <th className="py-3 px-4 rounded-l-xl">Data / Dia</th>
-                    <th className="py-3 px-3 text-center">☕ Café</th>
-                    <th className="py-3 px-3 text-center">🍛 Almoço</th>
-                    <th className="py-3 px-3 text-center">🥪 Lanche 16h</th>
-                    <th className="py-3 px-3 text-center">🍲 Jantar</th>
+                    <th className="py-3 px-3 text-center">Café</th>
+                    <th className="py-3 px-3 text-center">Almoço</th>
+                    <th className="py-3 px-3 text-center">Lanche 16h</th>
+                    <th className="py-3 px-3 text-center">Jantar</th>
                     <th className="py-3 px-4 text-center font-black">
                       Total Dia
                     </th>
@@ -1760,7 +1760,7 @@ E-mail: estoquecristolandia@gmail.com`;
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                  ☕ Café da Manhã
+                  Café da Manhã
                 </span>
                 <Coffee className="w-4 h-4 text-amber-500" />
               </div>
@@ -1778,7 +1778,7 @@ E-mail: estoquecristolandia@gmail.com`;
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                  🍛 Almoço
+                  Almoço
                 </span>
                 <Utensils className="w-4 h-4 text-emerald-500" />
               </div>
@@ -1796,7 +1796,7 @@ E-mail: estoquecristolandia@gmail.com`;
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                  🥪 Lanche 16h
+                  Lanche 16h
                 </span>
                 <SunMedium className="w-4 h-4 text-orange-500" />
               </div>
@@ -1814,7 +1814,7 @@ E-mail: estoquecristolandia@gmail.com`;
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                  🍲 Jantar
+                  Jantar
                 </span>
                 <Soup className="w-4 h-4 text-indigo-500" />
               </div>
@@ -1856,10 +1856,10 @@ E-mail: estoquecristolandia@gmail.com`;
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200 dark:border-slate-800">
                     <th className="py-3 px-4 rounded-l-xl">Data / Dia</th>
-                    <th className="py-3 px-3 text-center">☕ Café</th>
-                    <th className="py-3 px-3 text-center">🍛 Almoço</th>
-                    <th className="py-3 px-3 text-center">🥪 Lanche 16h</th>
-                    <th className="py-3 px-3 text-center">🍲 Jantar</th>
+                    <th className="py-3 px-3 text-center">Café</th>
+                    <th className="py-3 px-3 text-center">Almoço</th>
+                    <th className="py-3 px-3 text-center">Lanche 16h</th>
+                    <th className="py-3 px-3 text-center">Jantar</th>
                     <th className="py-3 px-4 text-center font-black">
                       Total Dia
                     </th>
