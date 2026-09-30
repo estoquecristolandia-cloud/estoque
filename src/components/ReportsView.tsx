@@ -7,6 +7,7 @@ import { exportFullSystemJSON, exportExcelCompatibleCSV } from '../utils/backupE
 import { runStockMathematicalAudit } from '../utils/stockAuditor';
 import { PurchaseForecastReport } from './PurchaseForecastReport';
 import { DonationReceiptModal } from './DonationReceiptModal';
+import { ResponsibleBadge } from './ui/ResponsibleBadge';
 import {
   FileText,
   Printer,
@@ -21,6 +22,7 @@ import {
   Package,
   Filter,
   ChevronRight,
+  ChevronDown,
   Calendar,
   Calculator,
   ArrowDownLeft,
@@ -90,6 +92,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<string>('todos');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
   const [isDonationReceiptModalOpen, setIsDonationReceiptModalOpen] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   // Geração de Relatório Executivo Oficial JMN
   const handleGenerateJmnPDF = () => {
@@ -483,63 +486,119 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </p>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons - Compressed & Hierarchical */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleGenerateJmnPDF}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-600 hover:to-indigo-700 text-white font-black text-xs shadow-md shadow-indigo-900/30 cursor-pointer transition-all hover:scale-[1.02]"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-600 hover:to-indigo-700 text-white font-black text-xs shadow-md shadow-indigo-900/30 cursor-pointer transition-all hover:scale-[1.02]"
             title="Gerar Relatório Executivo Oficial de Prestação de Contas para a Junta de Missões Nacionais (JMN)"
           >
             <Award className="w-4 h-4 text-amber-400" />
-            <span>🏛️ Prestação de Contas JMN (PDF)</span>
+            <span>🏛️ Prestação JMN</span>
           </button>
           <button
             onClick={() => setIsDonationReceiptModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md shadow-emerald-700/20 cursor-pointer transition-all hover:scale-[1.02]"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md shadow-emerald-700/20 cursor-pointer transition-all hover:scale-[1.02]"
             title="Emitir Recibo Oficial Timbrado de Doação para Igrejas ou Parceiros"
           >
             <FileText className="w-4 h-4" />
-            <span>📜 Recibo de Doação</span>
+            <span>📜 Recibo Doação</span>
           </button>
-          <button
-            onClick={handleFullBackup}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-black text-xs border border-amber-500/40 shadow-sm cursor-pointer transition-all"
-            title="Exportar Backup Completo com 1 clique (JSON estruturado + Planilha Excel)"
-          >
-            <Save className="w-4 h-4 text-amber-400" />
-            <span>💾 Backup em 1 Clique</span>
-          </button>
-          <button
-            onClick={() => generateMovementsDetailedPDF(filteredMovements, 'Extrato Oficial de Entradas e Saídas (Dia a Dia)', startDate, endDate)}
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20 cursor-pointer transition-all hover:scale-[1.02]"
-            title="Baixar Extrato Completo com todas as Entradas e Saídas Dia a Dia em PDF"
-          >
-            <FileText className="w-4 h-4" />
-            <span>📄 Extrato Dia a Dia</span>
-          </button>
-          <button
-            onClick={() => generateInventoryPDF(products, movements, 'Relatório Oficial de Auditoria e Controle de Estoque')}
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 cursor-pointer transition-all"
-            title="Baixar Relatório de Saldo e Inventário Atual em PDF"
-          >
-            <PackageCheck className="w-4 h-4 text-indigo-500" />
-            <span>📦 Saldo do Estoque</span>
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800 cursor-pointer transition-all"
-            title="Baixar planilha formatada para Excel com todas as movimentações"
-          >
-            <Download className="w-4 h-4 text-emerald-600" />
-            <span>Exportar CSV</span>
-          </button>
-          <button
-            onClick={handlePrint}
-            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md shadow-indigo-600/20 cursor-pointer transition-all"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Imprimir</span>
-          </button>
+
+          {/* Menu Suspenso Compacto: Exportar & Ações */}
+          <div className="relative">
+            <button
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 cursor-pointer transition-all shadow-2xs"
+              title="Mais Opções de Exportação, Planilhas e Backup"
+            >
+              <Download className="w-4 h-4 text-indigo-500" />
+              <span>Exportar & Ações</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isExportMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsExportMenuOpen(false)}
+                />
+                <div className="absolute right-0 mt-1.5 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-100">
+                  <button
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      generateMovementsDetailedPDF(filteredMovements, 'Extrato Oficial de Entradas e Saídas (Dia a Dia)', startDate, endDate);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-amber-500" />
+                    <div>
+                      <p className="font-bold">Extrato Dia a Dia (PDF)</p>
+                      <p className="text-[10px] text-slate-500">Histórico de entradas e saídas</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      generateInventoryPDF(products, movements, 'Relatório Oficial de Auditoria e Controle de Estoque');
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors cursor-pointer"
+                  >
+                    <PackageCheck className="w-4 h-4 text-indigo-500" />
+                    <div>
+                      <p className="font-bold">Saldo do Estoque (PDF)</p>
+                      <p className="text-[10px] text-slate-500">Inventário oficial atualizado</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      handleExportCSV();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors cursor-pointer"
+                  >
+                    <Download className="w-4 h-4 text-emerald-500" />
+                    <div>
+                      <p className="font-bold">Planilha Excel (CSV)</p>
+                      <p className="text-[10px] text-slate-500">Compatível com Excel e Sheets</p>
+                    </div>
+                  </button>
+
+                  <div className="border-t border-slate-100 dark:border-slate-800 my-1" />
+
+                  <button
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      handleFullBackup();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors cursor-pointer"
+                  >
+                    <Save className="w-4 h-4 text-amber-500" />
+                    <div>
+                      <p className="font-bold">Backup em 1 Clique</p>
+                      <p className="text-[10px] text-slate-500">JSON estruturado + Planilha</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      handlePrint();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors cursor-pointer"
+                  >
+                    <Printer className="w-4 h-4 text-slate-500" />
+                    <div>
+                      <p className="font-bold">Imprimir Relatório</p>
+                      <p className="text-[10px] text-slate-500">Versão física em papel</p>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -916,7 +975,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                               )}
                             </td>
                             <td className="py-3 px-4 text-slate-600 dark:text-slate-400 font-medium">
-                              {m.retrievedBy || m.receivedBy || m.deliveredBy || '-'}
+                              <ResponsibleBadge movement={m} fallbackName={m.retrievedBy || m.receivedBy || m.deliveredBy} />
                             </td>
                             <td className="py-3 px-4 text-slate-400 dark:text-slate-500 italic max-w-xs truncate">
                               {m.notes || '-'}

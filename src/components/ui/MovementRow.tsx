@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowDownLeft, ArrowUpRight, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { StockMovement } from '../../types';
+import { ResponsibleBadge } from './ResponsibleBadge';
 
 interface MovementRowProps {
   movement: StockMovement;
@@ -100,7 +101,7 @@ export const MovementRow: React.FC<MovementRowProps> = ({
               <span className="mx-1.5 opacity-40">·</span>
               <span>{sectorOrOrigin}</span>
               <span className="mx-1.5 opacity-40">·</span>
-              <span className="text-text-muted">{responsiblePerson}</span>
+              <ResponsibleBadge movement={movement} fallbackName={responsiblePerson === 'Almoxarifado' ? undefined : responsiblePerson} />
             </p>
           </div>
         </div>

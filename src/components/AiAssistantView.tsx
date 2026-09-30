@@ -51,7 +51,7 @@ import {
   Loader2,
   AudioWaveform,
 } from 'lucide-react';
-import jsPDF from 'jspdf';
+import { exportAiAssistantReportPDF } from '../utils/aiPdfExport';
 
 interface AiAssistantViewProps {
   products: Product[];
@@ -414,70 +414,8 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
   const handleExportPDF = () => {
     if (!currentResponse) return;
     try {
-      const doc = new jsPDF();
-      doc.setFontSize(16);
-      doc.setTextColor(isDml ? 14 : 22, isDml ? 116 : 101, isDml ? 144 : 52);
-      doc.text(
-        isDml
-          ? 'ESTOQUE CRISTOLÂNDIA — DML & HIGIENE (LEM / BA)'
-          : 'ESTOQUE CRISTOLÂNDIA — ALIMENTAÇÃO (LEM / BA)',
-        14,
-        18
-      );
-
-      doc.setFontSize(10);
-      doc.setTextColor(100, 116, 139);
-      doc.text('Centro de Formação e Assistência Social • Junta de Missões Nacionais', 14, 24);
-      doc.text(`Relatório do Assistente IA emitido em: ${new Date().toLocaleString('pt-BR')}`, 14, 29);
-
-      doc.setDrawColor(203, 213, 225);
-      doc.line(14, 33, 196, 33);
-
-      doc.setFontSize(12);
-      doc.setTextColor(15, 23, 42);
-      doc.text(`Consulta: "${currentResponse.query}"`, 14, 42);
-
-      doc.setFontSize(11);
-      doc.setTextColor(30, 41, 59);
-      const splitSummary = doc.splitTextToSize(currentResponse.summary, 180);
-      doc.text(splitSummary, 14, 52);
-
-      let yPos = 52 + splitSummary.length * 6 + 6;
-
-      doc.setFontSize(11);
-      doc.setTextColor(isDml ? 14 : 22, isDml ? 116 : 144, isDml ? 144 : 52);
-      doc.text('Base de Cálculo & Rastreabilidade:', 14, yPos);
-      yPos += 6;
-
-      doc.setFontSize(9);
-      doc.setTextColor(51, 65, 85);
-      doc.text(`• Período Analisado: ${currentResponse.calculationBase.periodAnalyzed}`, 14, yPos);
-      yPos += 5;
-      doc.text(`• Movimentações Consideradas: ${currentResponse.calculationBase.movementsCount}`, 14, yPos);
-      yPos += 5;
-      doc.text(`• Total Calculado: ${currentResponse.calculationBase.totalQuantity} ${currentResponse.calculationBase.unit || ''}`, 14, yPos);
-      yPos += 8;
-
-      if (currentResponse.calculationBase.movementsSummary && currentResponse.calculationBase.movementsSummary.length > 0) {
-        doc.setFontSize(10);
-        doc.setTextColor(15, 23, 42);
-        doc.text('Lançamentos Analisados:', 14, yPos);
-        yPos += 6;
-
-        doc.setFontSize(8);
-        currentResponse.calculationBase.movementsSummary.slice(0, 25).forEach((m) => {
-          if (yPos > 270) {
-            doc.addPage();
-            yPos = 20;
-          }
-          const line = `${m.date} ${m.time || ''} | ${m.quantity} ${m.unit} | ${m.productName} | Resp: ${m.responsible || '-'} | Setor: ${m.sector || '-'}`;
-          doc.text(line, 14, yPos);
-          yPos += 4.5;
-        });
-      }
-
-      doc.save(`relatorio-ia-cristolandia-${Date.now()}.pdf`);
-      toast.success('PDF do relatório gerado com sucesso!');
+      exportAiAssistantReportPDF(currentResponse, isDml);
+      toast.success('Relatório Executivo Oficial gerado com sucesso em PDF!');
     } catch (err: any) {
       toast.error('Erro ao gerar PDF: ' + err.message);
     }

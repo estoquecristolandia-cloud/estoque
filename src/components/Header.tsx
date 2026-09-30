@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye, Bot, Sparkles, Droplets, Layers, ScanBarcode, Camera, Save, Smartphone, Search, Volume2, VolumeX, BookOpen, HelpCircle } from 'lucide-react';
+import { Package, LayoutDashboard, ArrowDownLeft, ArrowUpRight, FileText, Utensils, UtensilsCrossed, Menu, X, User, Users, Sun, Moon, LogOut, MessageCircle, Scale, Eye, Bot, Sparkles, Droplets, Layers, ScanBarcode, Camera, Save, Smartphone, Search, Volume2, VolumeX, BookOpen, HelpCircle, ChevronDown, ShieldCheck } from 'lucide-react';
 import { AppUserProfile, ROLE_LABELS } from '../firebase';
 import { Department } from '../types';
 import { CristolandiaLogo } from './CristolandiaLogo';
@@ -56,6 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [soundOn, setSoundOn] = useState(() => soundFeedback.isEnabled());
+  const [auditSectionOpen, setAuditSectionOpen] = useState(false);
 
   const handleToggleSound = () => {
     const newState = soundFeedback.toggle();
@@ -675,37 +676,59 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Footer Actions */}
         <div className="mt-3 space-y-1.5 pt-3 border-t border-slate-800 shrink-0">
-          {isAdmin && onOpenReconciliationPreview && (
-            <button
-              onClick={onOpenReconciliationPreview}
-              className="w-full py-2 bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/60 text-amber-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-              title="Abrir Prévia da Conciliação Física (Marco Zero)"
-            >
-              <Eye className="w-3.5 h-3.5 text-amber-400" />
-              <span>🔍 Prévia de Conciliação</span>
-            </button>
-          )}
+          {/* Seção Colapsável: Auditoria & Governança */}
+          {isAdmin && (onOpenReconciliationPreview || onOpenPhysicalInventory || onOpenWhatsAppModal) && (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/60 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setAuditSectionOpen(!auditSectionOpen)}
+                className="w-full flex items-center justify-between p-2 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+                title="Ferramentas de Auditoria, Conciliação e Alertas"
+              >
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Auditoria & Governança</span>
+                </div>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform text-slate-400 ${auditSectionOpen ? 'rotate-180' : ''}`} />
+              </button>
 
-          {isAdmin && onOpenPhysicalInventory && (
-            <button
-              onClick={onOpenPhysicalInventory}
-              className="w-full py-2 bg-purple-950/60 hover:bg-purple-900/80 border border-purple-700/60 text-purple-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-              title="Abrir Conferência de Inventário Físico e Ajustes Auditados"
-            >
-              <Scale className="w-3.5 h-3.5 text-purple-400" />
-              <span>⚖️ Inventário Físico</span>
-            </button>
-          )}
+              {auditSectionOpen && (
+                <div className="p-1.5 space-y-1 bg-slate-950/60 border-t border-slate-800">
+                  {onOpenReconciliationPreview && (
+                    <button
+                      onClick={onOpenReconciliationPreview}
+                      className="w-full py-1.5 px-2 bg-amber-950/50 hover:bg-amber-900/80 border border-amber-500/40 text-amber-300 hover:text-white rounded-lg text-[11px] font-semibold transition-all flex items-center gap-2 cursor-pointer"
+                      title="Abrir Prévia da Conciliação Física (Marco Zero)"
+                    >
+                      <Eye className="w-3 h-3 text-amber-400 shrink-0" />
+                      <span className="truncate">Prévia Conciliação</span>
+                    </button>
+                  )}
 
-          {isAdmin && onOpenWhatsAppModal && (
-            <button
-              onClick={onOpenWhatsAppModal}
-              className="w-full py-2 bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-700/60 text-emerald-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-              title="Abrir Alerta de Estoque para Chefe Marcos (+55 62 99974-6823)"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-              <span>📲 Alerta WhatsApp (Marcos)</span>
-            </button>
+                  {onOpenPhysicalInventory && (
+                    <button
+                      onClick={onOpenPhysicalInventory}
+                      className="w-full py-1.5 px-2 bg-purple-950/50 hover:bg-purple-900/80 border border-purple-700/40 text-purple-300 hover:text-white rounded-lg text-[11px] font-semibold transition-all flex items-center gap-2 cursor-pointer"
+                      title="Abrir Conferência de Inventário Físico e Ajustes Auditados"
+                    >
+                      <Scale className="w-3 h-3 text-purple-400 shrink-0" />
+                      <span className="truncate">Inventário Físico</span>
+                    </button>
+                  )}
+
+                  {onOpenWhatsAppModal && (
+                    <button
+                      onClick={onOpenWhatsAppModal}
+                      className="w-full py-1.5 px-2 bg-emerald-950/50 hover:bg-emerald-900/80 border border-emerald-700/40 text-emerald-300 hover:text-white rounded-lg text-[11px] font-semibold transition-all flex items-center gap-2 cursor-pointer"
+                      title="Abrir Alerta de Estoque para Chefe Marcos (+55 62 99974-6823)"
+                    >
+                      <MessageCircle className="w-3 h-3 text-emerald-400 shrink-0" />
+                      <span className="truncate">Alerta WhatsApp</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           {isAdmin && (

@@ -27,6 +27,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { isMarcoZeroRecord } from '../services/firestoreService';
+import { ResponsibleBadge } from './ui/ResponsibleBadge';
 
 interface MovementsHistoryProps {
   movements: StockMovement[];
@@ -715,7 +716,8 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                                 </>
                               ) : (
                                 <>
-                                  <span>Retirado por: <strong>{m.retrievedBy || 'Não especificado'}</strong></span>
+                                  <span>Retirado por: </span>
+                                  <ResponsibleBadge movement={m} fallbackName={m.retrievedBy} />
                                   <span>• Entregue por: <strong>{m.deliveredBy || 'Marconi Castro'}</strong></span>
                                 </>
                               )}
