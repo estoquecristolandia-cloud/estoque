@@ -290,7 +290,10 @@ export async function syncInitialFirestoreData(): Promise<void> {
     'prod-arroz': { dailyAvgConsumption: 15, minStock: 45 },
     'prod-feijao': { dailyAvgConsumption: 8, minStock: 24 },
     'prod-cafe': { dailyAvgConsumption: 1.5, minStock: 4.5 },
-    'prod-oleo': { dailyAvgConsumption: 1, minStock: 3 },
+    'prod-acucar': { dailyAvgConsumption: 4, minStock: 16 },
+    'prod-oleo': { dailyAvgConsumption: 1.5, minStock: 4.5 },
+    'prod-alho': { dailyAvgConsumption: 1.5, minStock: 4.5 },
+    'prod-sal': { dailyAvgConsumption: 1.5, minStock: 4.5 },
   };
 
   for (const [prodId, props] of Object.entries(adjustedCatalogProps)) {
@@ -322,9 +325,21 @@ export async function syncInitialFirestoreData(): Promise<void> {
         needsUpdate = true;
         return { ...item, quantity: 1.5 };
       }
-      if (item.productId === 'prod-oleo' && (item.quantity === 1.5 || !item.quantity)) {
+      if (item.productId === 'prod-acucar' && item.quantity !== 4) {
         needsUpdate = true;
-        return { ...item, quantity: 1 };
+        return { ...item, quantity: 4 };
+      }
+      if (item.productId === 'prod-oleo' && item.quantity !== 1.5) {
+        needsUpdate = true;
+        return { ...item, quantity: 1.5 };
+      }
+      if (item.productId === 'prod-alho' && item.quantity !== 1.5) {
+        needsUpdate = true;
+        return { ...item, quantity: 1.5 };
+      }
+      if (item.productId === 'prod-sal' && item.quantity !== 1.5) {
+        needsUpdate = true;
+        return { ...item, quantity: 1.5 };
       }
       return item;
     });

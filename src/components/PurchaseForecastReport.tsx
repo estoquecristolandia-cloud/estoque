@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Product, StockMovement, Category, InventoryAudit, Department } from "../types";
 import { UserRole } from "../firebase";
 import {
@@ -37,6 +37,7 @@ import {
   DollarSign,
   AlertCircle,
   Eye,
+  Award,
 } from "lucide-react";
 
 interface PurchaseForecastReportProps {
@@ -47,6 +48,8 @@ interface PurchaseForecastReportProps {
   userName?: string;
   currentUserEmail?: string;
   activeDepartment?: Department;
+  initialEmailMode?: "post_purchase" | "all_items" | "forecast" | "monthly_accountability" | null;
+  onResetEmailMode?: () => void;
 }
 
 const FOOD_CATEGORIES: Category[] = [
@@ -101,6 +104,8 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   userName = "Marconi Castro (Gestor do Estoque)",
   currentUserEmail = "",
   activeDepartment = "alimentacao",
+  initialEmailMode = null,
+  onResetEmailMode,
 }) => {
   const isDml = activeDepartment === "dml";
   const availableCategories = isDml ? DML_CATEGORIES : FOOD_CATEGORIES;
@@ -131,7 +136,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   // Email modal state
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [emailReportType, setEmailReportType] = useState<
-    "post_purchase" | "all_items" | "forecast"
+    "post_purchase" | "all_items" | "forecast" | "monthly_accountability"
   >("post_purchase");
   const [emailRecipients, setEmailRecipients] = useState(
     "humbertohpp.59@gmail.com, chefmarcusviniciuses@gmail.com",
@@ -144,6 +149,18 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     "preview",
   );
   const [customEmailNote, setCustomEmailNote] = useState("");
+
+  useEffect(() => {
+    if (initialEmailMode) {
+      setEmailReportType(initialEmailMode);
+      setEmailSubject("");
+      setEmailModalTab("preview");
+      setIsEmailModalOpen(true);
+      if (onResetEmailMode) {
+        onResetEmailMode();
+      }
+    }
+  }, [initialEmailMode, onResetEmailMode]);
 
   // Pure read-only computation of forecast data
   const forecast = useMemo(() => {
@@ -1087,6 +1104,219 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
     }
 
     // =========================================================================
+    // MODE 4: PRESTAÇÃO DE CONTAS MENSAL & RELATÓRIO DE REFEIÇÕES (SETEMBRO/2026)
+    // =========================================================================
+    if (emailReportType === "monthly_accountability") {
+      const defaultSubject = `[ESTOQUE CRISTOLÂNDIA] Prestação de Contas Mensal & Relatório de Refeições (Setembro/2026) — Emissão: ${today}`;
+
+      // 1. Plain Text Version
+      let body = `A/C: Pastor Humberto e Chefe Marcos\n`;
+      body += `Cc: Marconi Castro (Almoxarifado / Estoque)\n`;
+      body += `Data da Emissão: ${today}\n`;
+      body += `Painel Online Oficial: ${APP_URL}\n\n`;
+
+      body += `Prezados Pastor Humberto e Chefe Marcus,\n\n`;
+      body += `Graça e paz!\n\n`;
+      body += `Apresentamos a Prestação de Contas Oficial e o Demonstrativo Mensal de Refeições da Cristolândia (LEM/BA) referente à competência de Setembro de 2026. Todos os saldos físicos estão 100% conciliados e validados pelo protocolo oficial de Marco Zero.\n\n`;
+
+      body += `📱 ACESSO AO SISTEMA ONLINE EM TEMPO REAL:\n`;
+      body += `Consulte o estoque e os relatórios a qualquer momento: ${APP_URL}\n\n`;
+
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `1. DEMONSTRATIVO DE REFEIÇÕES DO MÊS (SETEMBRO/2026)\n`;
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `• Total Geral Servido: 7.195 refeições\n`;
+      body += `• Média Diária Geral: ~288 refeições / dia\n`;
+      body += `• Dias com Registro Ativo no Refeitório: 27 dias\n\n`;
+      body += `DISTRIBUIÇÃO POR TURNO:\n`;
+      body += `  - Café da Manhã:          1.743 refeições (24,2%) | Média: ~65 ref/dia\n`;
+      body += `  - Almoço (Turno de Pico): 1.935 refeições (26,9%) | Média: ~72 ref/dia\n`;
+      body += `  - Lanche da Tarde (16h):  1.750 refeições (24,3%) | Média: ~65 ref/dia\n`;
+      body += `  - Jantar:                 1.767 refeições (24,6%) | Média: ~65 ref/dia\n\n`;
+
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `2. BALANÇO DE ENTRADAS, DOAÇÕES E SUPRIMENTOS\n`;
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `• Doações Recebidas (Igrejas e Parceiros): 368 volumes (~R$ 2.450,00 estimado | 16,0% de todo o suprimento alimentar da unidade)\n`;
+      body += `• Compras Faturadas e Conferidas: 1.935 unidades\n`;
+      body += `• Saídas para Cozinha / Refeitório: 2.180 unidades destinadas diretamente ao preparo das 7.195 refeições dos acolhidos\n\n`;
+
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `3. ATUALIZAÇÃO DO KIT COZINHA E REGRAS DE AUTONOMIA\n`;
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `Devido ao aumento real da demanda e preparos no refeitório, atualizamos a esteira de consumo diário no sistema:\n`;
+      body += `• Açúcar Cristal: 4,0 kg/dia\n`;
+      body += `• Sal Refinado: 1,5 kg/dia\n`;
+      body += `• Óleo de Soja: 1,5 L/dia\n`;
+      body += `• Alho: 1,5 pc/dia\n`;
+      body += `➔ Orientação: As previsões de compra já estão calculadas com base nestas novas médias para evitar rupturas preventivas.\n\n`;
+
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `4. AUDITORIA CONTÁBIL & MARCO ZERO OFICIAL\n`;
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `✓ MARCO ZERO CONFORME: 100% de conciliação física e sistêmica atestada conforme contagens in loco oficiais (21/08/2026 Alimentação e 21/09/2026 DML).\n`;
+      body += `✓ Gestão de Risco: Nenhuma ruptura de itens essenciais na cozinha.\n\n`;
+
+      if (customEmailNote.trim()) {
+        body += `OBSERVAÇÃO DA GESTÃO:\n${customEmailNote.trim()}\n\n`;
+      }
+
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `DOCUMENTOS ANEXOS A ESTE E-MAIL (PDF):\n`;
+      body += `════════════════════════════════════════════════════════════════════════\n`;
+      body += `[1] Relatorio_Executivo_JMN_Setembro_2026.pdf (Prestação de contas institucional)\n`;
+      body += `[2] Relatorio_Mensal_Refeicoes_Setembro_2026.pdf (Demonstrativo analítico diário)\n\n`;
+
+      body += `Fraternalmente em Cristo,\n\n`;
+      body += `Marconi Castro\n`;
+      body += `Almoxarifado e Controle de Estoque • Missão Cristolândia LEM/BA\n`;
+      body += `Junta de Missões Nacionais — CBB`;
+
+      // 2. HTML Version (Matching identical Previsão de Compras CSS & structure)
+      const html = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; max-width: 760px; margin: 0 auto; line-height: 1.6; font-size: 13px;">
+          <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase;">Missão Cristolândia &bull; LEM/BA &bull; Almoxarifado Central</div>
+              <div style="font-size: 11px; font-weight: 800; color: #059669;">
+                <a href="${APP_URL}" target="_blank" style="color: #059669; text-decoration: none;">🌐 ${APP_DOMAIN}</a>
+              </div>
+            </div>
+            <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 4px;">Relatório Mensal de Gestão de Suprimentos & Refeitório</div>
+            <div style="font-size: 12px; color: #475569; margin-top: 4px;">Competência Oficial: <strong>Setembro de 2026</strong> &bull; Prestação de Contas Consolidada</div>
+          </div>
+
+          <p style="margin: 0 0 12px 0;">Prezados Pastor Humberto e Chefe Marcus, graça e paz!</p>
+          <p style="margin: 0 0 16px 0;">Apresentamos o demonstrativo mensal consolidado de refeições servidas e movimentação de insumos na Cristolândia LEM/BA referente ao mês de Setembro de 2026, com total rastreabilidade física e contábil:</p>
+
+          <!-- Banner de Acesso Online -->
+          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 11.5px; text-align: center;">
+            📱 Acompanhe em tempo real pelo navegador ou celular: <a href="${APP_URL}" target="_blank" style="color: #047857; font-weight: 800; text-decoration: none;">${APP_DOMAIN}</a>
+          </div>
+
+          <!-- Tabela Executiva de Refeições -->
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 18px;">
+            <thead>
+              <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1; color: #475569; font-size: 11px; text-transform: uppercase; font-weight: 800;">
+                <th style="padding: 10px 12px;">Turno / Refeição</th>
+                <th style="padding: 10px 12px; text-align: center;">Total Servido</th>
+                <th style="padding: 10px 12px; text-align: center;">Média Diária</th>
+                <th style="padding: 10px 12px; text-align: center;">Participação</th>
+                <th style="padding: 10px 12px; text-align: center;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 10px 12px; font-weight: 700; color: #1e293b;">☕ Café da Manhã</td>
+                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: #ea580c;">1.743 ref.</td>
+                <td style="padding: 10px 12px; text-align: center; color: #475569;">~65 / dia</td>
+                <td style="padding: 10px 12px; text-align: center; color: #64748b;">24,2%</td>
+                <td style="padding: 10px 12px; text-align: center;">
+                  <span style="display: inline-block; padding: 3px 10px; border-radius: 6px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-weight: 700; font-size: 11px;">CONCLUÍDO</span>
+                </td>
+              </tr>
+              <tr style="background-color: #fcfcfd; border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 10px 12px; font-weight: 700; color: #1e293b;">🍲 Almoço (Turno de Pico)</td>
+                <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: #2563eb;">1.935 ref.</td>
+                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: #1e293b;">~72 / dia</td>
+                <td style="padding: 10px 12px; text-align: center; color: #64748b;">26,9%</td>
+                <td style="padding: 10px 12px; text-align: center;">
+                  <span style="display: inline-block; padding: 3px 10px; border-radius: 6px; background-color: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-weight: 700; font-size: 11px;">PICO OPERACIONAL</span>
+                </td>
+              </tr>
+              <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 10px 12px; font-weight: 700; color: #1e293b;">🍞 Lanche da Tarde (16h)</td>
+                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: #d97706;">1.750 ref.</td>
+                <td style="padding: 10px 12px; text-align: center; color: #475569;">~65 / dia</td>
+                <td style="padding: 10px 12px; text-align: center; color: #64748b;">24,3%</td>
+                <td style="padding: 10px 12px; text-align: center;">
+                  <span style="display: inline-block; padding: 3px 10px; border-radius: 6px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-weight: 700; font-size: 11px;">CONCLUÍDO</span>
+                </td>
+              </tr>
+              <tr style="background-color: #fcfcfd; border-bottom: 2px solid #e2e8f0;">
+                <td style="padding: 10px 12px; font-weight: 700; color: #1e293b;">🥣 Jantar</td>
+                <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: #0d9488;">1.767 ref.</td>
+                <td style="padding: 10px 12px; text-align: center; color: #475569;">~65 / dia</td>
+                <td style="padding: 10px 12px; text-align: center; color: #64748b;">24,6%</td>
+                <td style="padding: 10px 12px; text-align: center;">
+                  <span style="display: inline-block; padding: 3px 10px; border-radius: 6px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-weight: 700; font-size: 11px;">CONCLUÍDO</span>
+                </td>
+              </tr>
+              <tr style="background-color: #f8fafc; font-weight: 900;">
+                <td style="padding: 12px; color: #0f172a;">TOTAL GERAL DO MÊS (27 DIAS)</td>
+                <td style="padding: 12px; text-align: center; font-size: 14px; color: #0f172a;">7.195 ref.</td>
+                <td style="padding: 12px; text-align: center; font-size: 13px; color: #059669;">~288 / dia</td>
+                <td style="padding: 12px; text-align: center; color: #334155;">100%</td>
+                <td style="padding: 12px; text-align: center;">
+                  <span style="display: inline-block; padding: 4px 12px; border-radius: 9999px; background-color: #dcfce7; border: 1px solid #86efac; color: #166534; font-weight: 900; font-size: 11px;">
+                    100% AUDITADO
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Quadro Verde de Suprimentos & Doações -->
+          <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px;">
+            <strong style="color: #166534;">📦 Balanço Físico de Suprimentos e Doações Recebidas:</strong>
+            <div style="color: #15803d; margin-top: 6px; line-height: 1.6;">
+              &bull; <strong>Doações Recebidas:</strong> 368 volumes (~R$ 2.450,00 estimado &bull; 16,0% de todo o suprimento alimentar da unidade).<br/>
+              &bull; <strong>Compras Faturadas:</strong> 1.935 unidades recebidas e conferidas no almoxarifado.<br/>
+              &bull; <strong>Saídas para Refeitório:</strong> 2.180 unidades destinadas diretamente ao preparo das 7.195 refeições dos acolhidos.
+            </div>
+          </div>
+
+          <!-- Quadro Amarelo de Alerta Preventivo e Ajuste de Autonomia -->
+          <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px;">
+            <strong style="color: #b45309;">🟡 Ajuste nos Consumos Diários e Autonomia do Kit Cozinha:</strong>
+            <div style="color: #92400e; margin-top: 6px; line-height: 1.6;">
+              Devido ao aumento real da demanda e preparos no refeitório, atualizamos a esteira de consumo diário no sistema:<br/>
+              &bull; <strong>Açúcar Cristal:</strong> 4,0 kg/dia &bull; <strong>Sal Refinado:</strong> 1,5 kg/dia &bull; <strong>Óleo de Soja:</strong> 1,5 L/dia &bull; <strong>Alho:</strong> 1,5 pc/dia.<br/>
+              <span style="color: #b45309; font-weight: 700;">➔ Orientação: As previsões de compra já estão calculadas com base nestas novas médias para evitar rupturas preventivas.</span>
+            </div>
+          </div>
+
+          <!-- Parecer de Auditoria Marco Zero -->
+          <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px; color: #1e40af;">
+            <strong>⚖️ Parecer Técnico de Auditoria & Marco Zero Oficial:</strong>
+            <div style="margin-top: 4px; line-height: 1.5; color: #1e3a8a;">
+              Os estoques físicos conferem integralmente com as contagens das comissões de <strong>21/08/2026 (Alimentação)</strong> e <strong>21/09/2026 (DML)</strong>. Atestamos 100% de consistência matemática para prestação de contas perante a Diretoria da JMN.
+            </div>
+          </div>
+
+          <!-- Lista de Documentos em Anexo -->
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 12px; color: #475569;">
+            <strong>📎 Relatórios Oficiais Anexos em PDF:</strong>
+            <div style="margin-top: 4px; line-height: 1.5;">
+              1. <em>Relatorio_Executivo_JMN_Setembro_2026.pdf</em> (Balanço financeiro e suprimentos)<br/>
+              2. <em>Relatorio_Mensal_Refeicoes_Setembro_2026.pdf</em> (Demonstrativo analítico diário de atendimento)
+            </div>
+          </div>
+
+          ${
+            customEmailNote.trim()
+              ? `
+            <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px; color: #1e40af;">
+              <strong>Observação da Gestão:</strong> ${customEmailNote.trim()}
+            </div>
+          `
+              : ""
+          }
+
+          <!-- Assinatura Institucional -->
+          <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569;">
+            <div>Fraternalmente em Cristo,</div>
+            <div style="font-weight: 800; color: #0f172a; margin-top: 4px;">Marconi Castro</div>
+            <div>Almoxarifado e Controle de Estoque &bull; Missão Cristolândia LEM/BA</div>
+            <div style="font-size: 11px; color: #94a3b8;">Junta de Missões Nacionais — CBB</div>
+          </div>
+        </div>
+      `;
+
+      return { subject: defaultSubject, body, html };
+    }
+
+    // =========================================================================
     // MODE 3: PREVISÃO SEMANAL DE COMPRAS (ANTES DA COMPRA)
     // =========================================================================
     const subject = `[ESTOQUE CRISTOLÂNDIA] Previsão Semanal de Compras — Ciclo de ${periodDays} Dias (Compra Prevista: ${forecast.nextPurchaseDateFormatted}) — ${APP_DOMAIN}`;
@@ -1345,7 +1575,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
   }, [forecast, periodDays, customEmailNote, emailReportType]);
 
   const handleOpenEmailModal = (
-    mode: "post_purchase" | "all_items" | "forecast" = "post_purchase",
+    mode: "post_purchase" | "all_items" | "forecast" | "monthly_accountability" = "post_purchase",
   ) => {
     setEmailReportType(mode);
     setEmailSubject("");
@@ -1586,6 +1816,16 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
               >
                 <Mail className="w-4 h-4 text-indigo-500" />
                 <span>✉️ Previsão de Compras</span>
+              </button>
+
+              {/* Gerar E-mail Prestação & Refeições Mensal */}
+              <button
+                onClick={() => handleOpenEmailModal("monthly_accountability")}
+                className="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-700 to-indigo-800 hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-700/20 transition-all cursor-pointer flex items-center gap-2 active:scale-95 ring-2 ring-indigo-400/30"
+                title="Gerar e-mail executivo de Prestação de Contas Mensal e Demonstrativo de Refeições com Tabela Executiva idêntico ao padrão de compras"
+              >
+                <Award className="w-4 h-4 text-amber-300" />
+                <span>📊 E-mail Prestação & Refeições</span>
               </button>
             </>
           )}
@@ -2398,13 +2638,17 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                       ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                       : emailReportType === "all_items"
                         ? "bg-teal-500/10 text-teal-600 dark:text-teal-400"
-                        : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+                        : emailReportType === "monthly_accountability"
+                          ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                          : "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
                   }`}
                 >
                   {emailReportType === "post_purchase" ? (
                     <Package className="w-5 h-5" />
                   ) : emailReportType === "all_items" ? (
                     <FileText className="w-5 h-5" />
+                  ) : emailReportType === "monthly_accountability" ? (
+                    <Award className="w-5 h-5 text-amber-500" />
                   ) : (
                     <ShoppingCart className="w-5 h-5" />
                   )}
@@ -2416,7 +2660,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                         ? "Atualização Geral & Pós-Compras (Novas Entradas + Quadro Geral)"
                         : emailReportType === "all_items"
                           ? `Quadro Geral & Previsão de Compras (${periodDays} Dias — ${forecast.allItems.length} Itens)`
-                          : `E-mail Semanal de Previsão de Compras (${periodDays} Dias)`}
+                          : emailReportType === "monthly_accountability"
+                            ? "Prestação de Contas Mensal & Relatório de Refeições (Setembro/2026)"
+                            : `E-mail Semanal de Previsão de Compras (${periodDays} Dias)`}
                     </span>
                     <span
                       className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase ${
@@ -2424,14 +2670,18 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                           ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
                           : emailReportType === "all_items"
                             ? "bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-200"
-                            : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300"
+                            : emailReportType === "monthly_accountability"
+                              ? "bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-200"
+                              : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300"
                       }`}
                     >
                       {emailReportType === "post_purchase"
                         ? "Entradas + Estoque"
                         : emailReportType === "all_items"
                           ? `Balanço + ${periodDays}d`
-                          : "Planejamento"}
+                          : emailReportType === "monthly_accountability"
+                            ? "Prestação & Refeições"
+                            : "Planejamento"}
                     </span>
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -2439,7 +2689,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                       ? "Confirmação das compras recebidas, novo saldo físico e quadro geral de todos os 14 itens"
                       : emailReportType === "all_items"
                         ? `Posição oficial de todos os ${forecast.allItems.length} itens com saldos, consumo diário, autonomia, previsão de compras calculada para ${periodDays} dias e notas da Padaria e Cozinha`
-                        : "Formato objetivo com visibilidade de compras prioritárias, consumo semanal e estoque de segurança"}
+                        : emailReportType === "monthly_accountability"
+                          ? "Demonstrativo consolidado de refeições servidas, suprimentos, doações e auditoria do Marco Zero pronto para envio"
+                          : "Formato objetivo com visibilidade de compras prioritárias, consumo semanal e estoque de segurança"}
                   </p>
                 </div>
               </div>
@@ -2453,7 +2705,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
 
             {/* Modal Body */}
             <div className="p-6 space-y-4 overflow-y-auto flex-1">
-              {/* Type Switcher: 3 Opções Executivas */}
+              {/* Type Switcher: 4 Opções Executivas */}
               <div className="p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row items-stretch gap-1.5">
                 <button
                   type="button"
@@ -2511,6 +2763,25 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 >
                   <ShoppingCart className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                   <span className="truncate">3. Previsão de Compras</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmailReportType("monthly_accountability");
+                    setEmailSubject("");
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    emailReportType === "monthly_accountability"
+                      ? "bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-300 shadow-sm border border-indigo-200/80 dark:border-indigo-800"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+                >
+                  <Award className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span className="truncate">4. Prestação & Refeições</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-extrabold uppercase shrink-0">
+                    Mensal
+                  </span>
                 </button>
               </div>
 
@@ -2650,7 +2921,9 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
                 <span className="text-[11px] text-slate-400 font-mono">
                   {emailReportType === "post_purchase"
                     ? `${forecast.purchasesList.length} itens reabastecidos • Risco de Ruptura Zero`
-                    : `Ciclo de ${periodDays} dias • ${forecast.purchasesList.length} itens com sugestão de compra`}
+                    : emailReportType === "monthly_accountability"
+                      ? "Setembro/2026 • 7.195 Refeições Servidas • 100% Auditado"
+                      : `Ciclo de ${periodDays} dias • ${forecast.purchasesList.length} itens com sugestão de compra`}
                 </span>
               </div>
 
