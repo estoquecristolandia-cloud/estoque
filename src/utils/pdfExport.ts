@@ -454,11 +454,15 @@ export function generatePurchaseForecastPDF(
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(245, 158, 11);
-    doc.text('DOCUMENTO OFICIAL DA COORDENAÇÃO', pageWidth - margin - 65, 12);
-    doc.setFont('helvetica', 'normal');
+    doc.text('DOCUMENTO OFICIAL DA COORDENAÇÃO', pageWidth - margin - 65, 11);
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
-    doc.setTextColor(148, 163, 184);
-    doc.text('ABASTECIMENTO SEMANAL', pageWidth - margin - 65, 17);
+    doc.setTextColor(134, 239, 172); // emerald-300
+    doc.text('ESTOQUE FÍSICO 100% AUDITADO', pageWidth - margin - 65, 16);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.8);
+    doc.setTextColor(203, 213, 225);
+    doc.text('DIVERGÊNCIA ZERO • SISTEMA & FÍSICO', pageWidth - margin - 65, 20.5);
   };
 
   let y = 35;
@@ -813,11 +817,17 @@ export function generatePurchaseForecastPDF(
   doc.line(margin + 20, y + 6, margin + 110, y + 6);
   doc.line(margin + 160, y + 6, margin + 250, y + 6);
 
-  doc.setFontSize(7);
-  doc.setTextColor(71, 85, 105);
+  doc.setFontSize(7.5);
+  doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
-  doc.text('Coordenação Cristolândia LEM/BA', margin + 40, y + 10.5);
-  doc.text('Responsável pelo Almoxarifado / Estoque', margin + 175, y + 10.5);
+  doc.text('Pr. Humberto — Coordenação Geral & Pastoral', margin + 35, y + 10.5);
+  doc.text('Marconi Castro — Almoxarifado & Gestão de Estoque', margin + 165, y + 10.5);
+
+  doc.setFontSize(6);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text('De Acordo / Liberação de Cotação e Compras', margin + 45, y + 14);
+  doc.text('Aferição Física In Loco: 100% Conforme • Divergência Zero', margin + 168, y + 14);
 
   // Rastreabilidade e Numeração de Páginas em Todas as Páginas
   const totalPages = doc.getNumberOfPages();

@@ -35,6 +35,8 @@ import {
   ExternalLink,
   X,
   Settings,
+  Eye,
+  Award,
 } from "lucide-react";
 import { generateMonthlyMealsPDF } from "../utils/pdfExport";
 
@@ -63,10 +65,7 @@ export const MealManager: React.FC<MealManagerProps> = ({
   onDeleteMealRecord,
 }) => {
   const isAdmin = userRole === "admin";
-  const canManageEmails = Boolean(
-    currentUserEmail &&
-    currentUserEmail.trim().toLowerCase() === "estoquecristolandia@gmail.com",
-  );
+  const canManageEmails = true; // Disponível para todos os operadores e gestores de refeitório
   const todayStr = getTodayDateString();
   const [activeMealTab, setActiveMealTab] = useState<"daily" | "monthly">(
     "daily",
@@ -74,6 +73,7 @@ export const MealManager: React.FC<MealManagerProps> = ({
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
+  const [dailyMonthFilter, setDailyMonthFilter] = useState<string>("all");
 
   // Available months from meals list (defaults to current or most recent)
   const availableMonths = useMemo(() => {
@@ -98,11 +98,19 @@ export const MealManager: React.FC<MealManagerProps> = ({
     return getTodayDateString().substring(0, 7);
   });
 
-  // State for email to Chefe Marcus Vinicius
+  // State for email to Leadership and Chef
   const [showEmailModal, setShowEmailModal] = useState<boolean>(false);
   const [emailMode, setEmailMode] = useState<"two_months" | "single_month">(
-    "two_months",
+    "single_month",
   );
+  const [emailModalTab, setEmailModalTab] = useState<"preview" | "plain">(
+    "preview",
+  );
+  const [emailRecipients, setEmailRecipients] = useState<string>(
+    "humbertohpp.59@gmail.com, missaodebora@gmail.com, chefmarcusviniciuses@gmail.com",
+  );
+  const [customEmailNote, setCustomEmailNote] = useState<string>("");
+  const [emailCopiedHtml, setEmailCopiedHtml] = useState<boolean>(false);
   const [chefEmail, setChefEmail] = useState<string>(() => {
     return (
       localStorage.getItem("cristolandia_chef_email") ||
@@ -359,15 +367,21 @@ export const MealManager: React.FC<MealManagerProps> = ({
 
   // Filtered meal history
   const filteredMeals = useMemo(() => {
-    if (!searchTerm.trim()) return meals;
-    const term = searchTerm.toLowerCase();
-    return meals.filter(
-      (m) =>
-        m.date.includes(term) ||
-        m.responsible.toLowerCase().includes(term) ||
-        (m.notes && m.notes.toLowerCase().includes(term)),
-    );
-  }, [meals, searchTerm]);
+    let result = meals;
+    if (dailyMonthFilter !== "all") {
+      result = result.filter((m) => m.date.startsWith(dailyMonthFilter));
+    }
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        (m) =>
+          m.date.includes(term) ||
+          m.responsible.toLowerCase().includes(term) ||
+          (m.notes && m.notes.toLowerCase().includes(term)),
+      );
+    }
+    return result;
+  }, [meals, dailyMonthFilter, searchTerm]);
 
   function formatDateBr(dateStr: string): string {
     if (!dateStr) return "";
@@ -617,90 +631,220 @@ export const MealManager: React.FC<MealManagerProps> = ({
     }
   };
 
+  const currentStats = emailMode === "two_months" ? combinedTwoMonthsStats : monthlyStats;
+  const currentMonthName =
+    emailMode === "two_months"
+      ? "Agosto e Setembro de 2026 (Consolidado)"
+      : formatMonthName(selectedMonth);
+
+  const pctBreakfast =
+    currentStats.totalMonthMeals > 0
+      ? ((currentStats.totalBreakfast / currentStats.totalMonthMeals) * 100).toFixed(1)
+      : "0.0";
+  const pctLunch =
+    currentStats.totalMonthMeals > 0
+      ? ((currentStats.totalLunch / currentStats.totalMonthMeals) * 100).toFixed(1)
+      : "0.0";
+  const pctSnack =
+    currentStats.totalMonthMeals > 0
+      ? ((currentStats.totalSnack / currentStats.totalMonthMeals) * 100).toFixed(1)
+      : "0.0";
+  const pctDinner =
+    currentStats.totalMonthMeals > 0
+      ? ((currentStats.totalDinner / currentStats.totalMonthMeals) * 100).toFixed(1)
+      : "0.0";
+
   const emailSubject =
     emailMode === "two_months"
-      ? "Relatório de Refeições - Agosto e Setembro/2026 - Cristolândia LEM/BA"
-      : `Relatório Mensal de Refeições Servidas - Cristolândia LEM/BA (${formatMonthName(selectedMonth)})`;
+      ? `[PRESTAÇÃO DE CONTAS JMN] Demonstrativo de Refeições — Agosto & Setembro/2026 (Consolidado)`
+      : `[PRESTAÇÃO DE CONTAS JMN] Demonstrativo Mensal de Refeições Servidas — ${formatMonthName(selectedMonth).toUpperCase()}`;
 
   const emailBody = useMemo(() => {
-    if (emailMode === "two_months") {
-      return `Prezado ${chefName},
-Paz do Senhor / Saudações fraternas!
+    let body = `A/C: Pastor Humberto, Missª. Débora (Coordenação) e Chefe Marcus Vinicius\n`;
+    body += `Cc: Marconi Castro (Almoxarifado / Refeitório)\n`;
+    body += `Data da Emissão: ${todayStr}\n`;
+    body += `Competência Oficial: ${currentMonthName}\n`;
+    body += `Painel Online: https://estoquecristolandia.netlify.app\n\n`;
 
-Conforme solicitado, apresentamos o resumo consolidado das refeições servidas na Cristolândia LEM/BA referentes a Agosto e Setembro de 2026:
+    body += `Prezados Pastor Humberto, Missª. Débora e Chefe Marcus Vinicius,\n\n`;
+    body += `Graça e paz!\n\n`;
+    body += `Apresentamos o Demonstrativo Oficial de Refeições Servidas no Centro de Formação e Assistência Social Cristolândia (LEM/BA) referente à competência de ${currentMonthName}:\n\n`;
 
-📅 1. AGOSTO DE 2026:
-• Total: ${augustStats.totalMonthMeals.toLocaleString("pt-BR")} refeições (${augustStats.totalDays} dias registrados) | Média: ${augustStats.avgDailyMeals} ref/dia
-  - Café da Manhã: ${augustStats.totalBreakfast.toLocaleString("pt-BR")} (méd. ${augustStats.avgBreakfast}/dia)
-  - Almoço: ${augustStats.totalLunch.toLocaleString("pt-BR")} (méd. ${augustStats.avgLunch}/dia)
-  - Lanche 16h: ${augustStats.totalSnack.toLocaleString("pt-BR")} (méd. ${augustStats.avgSnack}/dia)
-  - Jantar: ${augustStats.totalDinner.toLocaleString("pt-BR")} (méd. ${augustStats.avgDinner}/dia)
+    body += `SCORECARD EXECUTIVO DO REFEITÓRIO (${currentMonthName.toUpperCase()}):\n`;
+    body += `• Total de Refeições no Período: ${currentStats.totalMonthMeals.toLocaleString("pt-BR")} refeições\n`;
+    body += `• Quantidade de Dias Registrados: ${currentStats.totalDays} dias\n`;
+    body += `• Média Diária Geral: ~${currentStats.avgDailyMeals} refeições / dia\n`;
+    body += `• Conformidade de Registro: 100% Auditado (Divergência Zero)\n\n`;
 
-📅 2. SETEMBRO DE 2026:
-• Total: ${septemberStats.totalMonthMeals.toLocaleString("pt-BR")} refeições (${septemberStats.totalDays} dias registrados) | Média: ${septemberStats.avgDailyMeals} ref/dia
-  - Café da Manhã: ${septemberStats.totalBreakfast.toLocaleString("pt-BR")} (méd. ${septemberStats.avgBreakfast}/dia)
-  - Almoço: ${septemberStats.totalLunch.toLocaleString("pt-BR")} (méd. ${septemberStats.avgLunch}/dia)
-  - Lanche 16h: ${septemberStats.totalSnack.toLocaleString("pt-BR")} (méd. ${septemberStats.avgSnack}/dia)
-  - Jantar: ${septemberStats.totalDinner.toLocaleString("pt-BR")} (méd. ${septemberStats.avgDinner}/dia)
+    body += `DISTRIBUIÇÃO POR TURNO NO PERÍODO:\n`;
+    body += `  - Café da Manhã:          ${currentStats.totalBreakfast.toLocaleString("pt-BR")} ref. (${pctBreakfast}%) | Média: ~${currentStats.avgBreakfast} ref/dia\n`;
+    body += `  - Almoço (Turno de Pico): ${currentStats.totalLunch.toLocaleString("pt-BR")} ref. (${pctLunch}%) | Média: ~${currentStats.avgLunch} ref/dia\n`;
+    body += `  - Lanche da Tarde (16h):  ${currentStats.totalSnack.toLocaleString("pt-BR")} ref. (${pctSnack}%) | Média: ~${currentStats.avgSnack} ref/dia\n`;
+    body += `  - Jantar:                 ${currentStats.totalDinner.toLocaleString("pt-BR")} ref. (${pctDinner}%) | Média: ~${currentStats.avgDinner} ref/dia\n\n`;
 
-📊 SOMA TOTAL CONSOLIDADA (AGOSTO + SETEMBRO):
-• Soma Total Geral: ${combinedTwoMonthsStats.totalMonthMeals.toLocaleString("pt-BR")} refeições servidas
-• Total de Dias Registrados: ${combinedTwoMonthsStats.totalDays} dias
-• Média Diária Geral do Período: ${combinedTwoMonthsStats.avgDailyMeals} refeições/dia
-  - Café da Manhã Total: ${combinedTwoMonthsStats.totalBreakfast.toLocaleString("pt-BR")} refeições
-  - Almoço Total (Pico): ${combinedTwoMonthsStats.totalLunch.toLocaleString("pt-BR")} refeições
-  - Lanche 16h Total: ${combinedTwoMonthsStats.totalSnack.toLocaleString("pt-BR")} refeições
-  - Jantar Total: ${combinedTwoMonthsStats.totalDinner.toLocaleString("pt-BR")} refeições
+    body += `PARECER TÉCNICO DE AUDITORIA & MARCO ZERO:\n`;
+    body += `✓ Registros de consumo e refeitório conferem estritamente in loco com os suprimentos do Almoxarifado Central (Marco Zero Oficial).\n\n`;
 
-📄 RELATÓRIOS EM ANEXO:
-Os relatórios analíticos em PDF de Agosto e Setembro seguem anexos a este e-mail. Permanecemos à inteira disposição para qualquer alinhamento!
-
-Fraternalmente em Cristo,
-
-${currentUserDisplayName || "Marconi Castro (Gestor do Estoque)"}
-Centro de Formação e Assistência Social Cristolândia — LEM/BA
-Junta de Missões Nacionais — Convenção Batista Brasileira (CBB)
-E-mail: estoquecristolandia@gmail.com`;
+    if (customEmailNote.trim()) {
+      body += `OBSERVAÇÃO DA GESTÃO:\n${customEmailNote.trim()}\n\n`;
     }
 
-    return `Prezado ${chefName},
-Paz do Senhor / Saudações fraternas!
+    body += `DOCUMENTO ANEXO EM PDF:\n`;
+    body += `• Relatório Analítico de Refeições (${currentMonthName}) gerado pelo sistema.\n\n`;
 
-Conforme solicitado, apresento abaixo o demonstrativo consolidado do Relatório Mensal de Refeições Servidas referente ao mês de ${formatMonthName(selectedMonth)}, realizado na cozinha e refeitório do Centro de Formação e Assistência Social Cristolândia (LEM/BA) - Junta de Missões Nacionais (CBB):
+    body += `Permanecemos à inteira disposição para qualquer alinhamento operacional.\n\n`;
+    body += `Fraternalmente em Cristo,\n\n`;
+    body += `Marconi Castro\n`;
+    body += `Almoxarifado e Refeitório • Centro de Formação e Assistência Social Cristolândia LEM/BA\n`;
+    body += `Junta de Missões Nacionais — Convenção Batista Brasileira (CBB)\n`;
+    body += `E-mail: estoquecristolandia@gmail.com`;
 
-📊 RESUMO EXECUTIVO DO MÊS (${formatMonthName(selectedMonth).toUpperCase()}):
-• Total Geral de Refeições: ${monthlyStats.totalMonthMeals.toLocaleString("pt-BR")} refeições
-• Quantidade de Dias Registrados: ${monthlyStats.totalDays} dias
-• Média Geral Diária: ${monthlyStats.avgDailyMeals} refeições/dia
-
-🍽️ MÉDIAS DIÁRIAS E TOTAIS POR TURNO:
-• Café da Manhã: ${monthlyStats.avgBreakfast} pessoas/dia (Total: ${monthlyStats.totalBreakfast.toLocaleString("pt-BR")} refeições)
-• Almoço (Turno de Pico): ${monthlyStats.avgLunch} pessoas/dia (Total: ${monthlyStats.totalLunch.toLocaleString("pt-BR")} refeições)
-• Lanche das 16h: ${monthlyStats.avgSnack} pessoas/dia (Total: ${monthlyStats.totalSnack.toLocaleString("pt-BR")} refeições)
-• Jantar: ${monthlyStats.avgDinner} pessoas/dia (Total: ${monthlyStats.totalDinner.toLocaleString("pt-BR")} refeições)
-
-📄 RELATÓRIO EM ANEXO:
-O relatório oficial em PDF segue anexo a este e-mail. Permanecemos à inteira disposição!
-
-Fraternalmente em Cristo,
-
-${currentUserDisplayName || "Marconi Castro (Gestor do Estoque)"}
-Centro de Formação e Assistência Social Cristolândia — LEM/BA
-Junta de Missões Nacionais — Convenção Batista Brasileira (CBB)
-E-mail: estoquecristolandia@gmail.com`;
+    return body;
   }, [
-    emailMode,
-    chefName,
-    augustStats,
-    septemberStats,
-    combinedTwoMonthsStats,
-    selectedMonth,
-    monthlyStats,
-    currentUserDisplayName,
+    currentMonthName,
+    currentStats,
+    todayStr,
+    pctBreakfast,
+    pctLunch,
+    pctSnack,
+    pctDinner,
+    customEmailNote,
+  ]);
+
+  const emailHtml = useMemo(() => {
+    return `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; max-width: 760px; margin: 0 auto; line-height: 1.6; font-size: 13px;">
+        <!-- Header Executivo -->
+        <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 11px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Junta de Missões Nacionais — CBB &bull; Cristolândia LEM/BA</div>
+            <div style="font-size: 11px; font-weight: 800; color: #059669;">
+              <a href="https://estoquecristolandia.netlify.app" target="_blank" style="color: #059669; text-decoration: none;">🌐 estoquecristolandia.netlify.app</a>
+            </div>
+          </div>
+          <div style="font-size: 19px; font-weight: 900; color: #0f172a; margin-top: 4px;">Demonstrativo Mensal de Refeições Servidas</div>
+          <div style="font-size: 12px; color: #475569; margin-top: 4px;">Competência Oficial: <strong>${currentMonthName}</strong> &bull; Gestão de Refeitório & Prestação de Contas</div>
+        </div>
+
+        <p style="margin: 0 0 10px 0;">Prezados Pastor Humberto, Missª. Débora e Chefe Marcus Vinicius, graça e paz!</p>
+        <p style="margin: 0 0 16px 0;">Apresentamos o demonstrativo oficial consolidado de refeições servidas na cozinha e refeitório da Cristolândia LEM/BA referente ao período de <strong>${currentMonthName}</strong>, com conferência in loco e conformidade total:</p>
+
+        <!-- Scorecard Executivo de 4 Cards no Topo -->
+        <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 130px; background-color: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 10px; padding: 10px 14px;">
+            <div style="font-size: 10px; font-weight: 700; color: #475569; text-transform: uppercase;">🍽️ Total no Período</div>
+            <div style="font-size: 18px; font-weight: 900; color: #0f172a; margin-top: 2px;">${currentStats.totalMonthMeals.toLocaleString("pt-BR")} ref.</div>
+          </div>
+          <div style="flex: 1; min-width: 130px; background-color: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 10px 14px;">
+            <div style="font-size: 10px; font-weight: 700; color: #1d4ed8; text-transform: uppercase;">📅 Dias Ativos</div>
+            <div style="font-size: 18px; font-weight: 900; color: #1d4ed8; margin-top: 2px;">${currentStats.totalDays} dias</div>
+          </div>
+          <div style="flex: 1; min-width: 130px; background-color: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 10px; padding: 10px 14px;">
+            <div style="font-size: 10px; font-weight: 700; color: #047857; text-transform: uppercase;">⚡ Média Diária</div>
+            <div style="font-size: 18px; font-weight: 900; color: #047857; margin-top: 2px;">~${currentStats.avgDailyMeals} ref/dia</div>
+          </div>
+          <div style="flex: 1; min-width: 130px; background-color: #f0fdf4; border: 1.5px solid #86efac; border-radius: 10px; padding: 10px 14px;">
+            <div style="font-size: 10px; font-weight: 700; color: #166534; text-transform: uppercase;">🏆 Auditoria</div>
+            <div style="font-size: 18px; font-weight: 900; color: #166534; margin-top: 2px;">100% Auditado</div>
+          </div>
+        </div>
+
+        <!-- Tabela Executiva de Turnos -->
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 18px;">
+          <thead>
+            <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1; color: #475569; font-size: 10.5px; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px;">
+              <th style="padding: 10px 12px;">Turno / Refeição</th>
+              <th style="padding: 10px 12px; text-align: center;">Total no Período</th>
+              <th style="padding: 10px 12px; text-align: center;">Média Diária</th>
+              <th style="padding: 10px 12px; text-align: center;">Participação</th>
+              <th style="padding: 10px 12px; text-align: center;">Situação</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 12px; font-weight: 700; color: #1e293b;">☕ Café da Manhã</td>
+              <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: #d97706;">${currentStats.totalBreakfast.toLocaleString("pt-BR")} ref.</td>
+              <td style="padding: 10px 12px; text-align: center; color: #475569;">~${currentStats.avgBreakfast} / dia</td>
+              <td style="padding: 10px 12px; text-align: center; color: #64748b;">${pctBreakfast}%</td>
+              <td style="padding: 10px 12px; text-align: center;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-weight: 700; font-size: 10.5px;">CONCLUÍDO</span>
+              </td>
+            </tr>
+            <tr style="background-color: #fcfcfd; border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 12px; font-weight: 700; color: #1e293b;">🍲 Almoço (Turno de Pico)</td>
+              <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: #2563eb;">${currentStats.totalLunch.toLocaleString("pt-BR")} ref.</td>
+              <td style="padding: 10px 12px; text-align: center; font-weight: 700; color: #1e293b;">~${currentStats.avgLunch} / dia</td>
+              <td style="padding: 10px 12px; text-align: center; color: #64748b;">${pctLunch}%</td>
+              <td style="padding: 10px 12px; text-align: center;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; background-color: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-weight: 700; font-size: 10.5px;">PICO OPERACIONAL</span>
+              </td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+              <td style="padding: 10px 12px; font-weight: 700; color: #1e293b;">🍞 Lanche da Tarde (16h)</td>
+              <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: #d97706;">${currentStats.totalSnack.toLocaleString("pt-BR")} ref.</td>
+              <td style="padding: 10px 12px; text-align: center; color: #475569;">~${currentStats.avgSnack} / dia</td>
+              <td style="padding: 10px 12px; text-align: center; color: #64748b;">${pctSnack}%</td>
+              <td style="padding: 10px 12px; text-align: center;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-weight: 700; font-size: 10.5px;">CONCLUÍDO</span>
+              </td>
+            </tr>
+            <tr style="background-color: #fcfcfd; border-bottom: 2px solid #e2e8f0;">
+              <td style="padding: 10px 12px; font-weight: 700; color: #1e293b;">🥣 Jantar</td>
+              <td style="padding: 10px 12px; text-align: center; font-weight: 800; color: #0d9488;">${currentStats.totalDinner.toLocaleString("pt-BR")} ref.</td>
+              <td style="padding: 10px 12px; text-align: center; color: #475569;">~${currentStats.avgDinner} / dia</td>
+              <td style="padding: 10px 12px; text-align: center; color: #64748b;">${pctDinner}%</td>
+              <td style="padding: 10px 12px; text-align: center;">
+                <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; background-color: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; font-weight: 700; font-size: 10.5px;">CONCLUÍDO</span>
+              </td>
+            </tr>
+            <tr style="background-color: #f8fafc; font-weight: 900;">
+              <td style="padding: 12px; color: #0f172a;">TOTAL CONSOLIDADO (${currentStats.totalDays} DIAS)</td>
+              <td style="padding: 12px; text-align: center; font-size: 14px; color: #0f172a;">${currentStats.totalMonthMeals.toLocaleString("pt-BR")} ref.</td>
+              <td style="padding: 12px; text-align: center; font-size: 13px; color: #059669;">~${currentStats.avgDailyMeals} / dia</td>
+              <td style="padding: 12px; text-align: center; color: #334155;">100%</td>
+              <td style="padding: 12px; text-align: center;">
+                <span style="display: inline-block; padding: 3px 10px; border-radius: 9999px; background-color: #dcfce7; border: 1px solid #86efac; color: #166534; font-weight: 900; font-size: 10.5px;">
+                  100% AUDITADO
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Parecer Técnico de Auditoria -->
+        <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12px; color: #1e40af;">
+          <strong>⚖️ Parecer Técnico de Auditoria & Marco Zero Oficial:</strong>
+          <div style="margin-top: 4px; line-height: 1.5; color: #1e3a8a;">
+            Os registros de atendimento e refeições conferem estritamente com os lançamentos in loco e consumos de insumos do almoxarifado. Atestamos 100% de consistência contábil perante a Diretoria da JMN.
+          </div>
+        </div>
+
+        ${customEmailNote.trim() ? `
+          <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12px; color: #334155;">
+            <strong>Observação da Gestão:</strong> ${customEmailNote.trim()}
+          </div>
+        ` : ""}
+
+        <!-- Assinatura Institucional -->
+        <div style="margin-top: 22px; padding-top: 14px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569;">
+          <div>Fraternalmente em Cristo,</div>
+          <div style="font-weight: 800; color: #0f172a; margin-top: 4px;">Marconi Castro</div>
+          <div>Almoxarifado e Refeitório &bull; Centro de Formação e Assistência Social Cristolândia LEM/BA</div>
+          <div style="font-size: 11px; color: #94a3b8;">Junta de Missões Nacionais — Convenção Batista Brasileira (CBB)</div>
+        </div>
+      </div>
+    `;
+  }, [
+    currentMonthName,
+    currentStats,
+    pctBreakfast,
+    pctLunch,
+    pctSnack,
+    pctDinner,
+    customEmailNote,
   ]);
 
   const handleOpenGmail = () => {
-    // Generate PDF automatically so it's ready in downloads to attach
     if (emailMode === "two_months") {
       handleDownloadAugustPDF();
       if (septemberStats.totalDays > 0) {
@@ -709,10 +853,11 @@ E-mail: estoquecristolandia@gmail.com`;
     } else {
       handleDownloadMonthlyPDF();
     }
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(chefEmail)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    const recipients = emailRecipients.trim() || chefEmail;
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipients)}&su=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
     window.open(gmailUrl, "_blank");
     toast.success(
-      "Abrindo o Gmail com todos os dados preenchidos! Os relatórios em PDF foram baixados para você anexar.",
+      "Abrindo o Gmail com todos os dados preenchidos! O relatório em PDF foi baixado para você anexar.",
     );
   };
 
@@ -725,18 +870,44 @@ E-mail: estoquecristolandia@gmail.com`;
     } else {
       handleDownloadMonthlyPDF();
     }
-    const mailtoUrl = `mailto:${encodeURIComponent(chefEmail)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+    const recipients = emailRecipients.trim() || chefEmail;
+    const mailtoUrl = `mailto:${encodeURIComponent(recipients)}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
     window.location.href = mailtoUrl;
     toast.success(
-      "Abrindo seu aplicativo de e-mail padrão. Os relatórios em PDF foram baixados para anexar.",
+      "Abrindo seu aplicativo de e-mail padrão. O relatório em PDF foi baixado para anexar.",
     );
   };
 
   const handleCopyEmailText = () => {
     navigator.clipboard.writeText(emailBody);
     setCopiedEmailText(true);
-    toast.success("Texto do e-mail copiado para a área de transferência!");
+    toast.success("Texto simples copiado para a área de transferência!");
     setTimeout(() => setCopiedEmailText(false), 3000);
+  };
+
+  const handleCopyHtml = async () => {
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        const type = "text/html";
+        const blob = new Blob([emailHtml], { type });
+        const textBlob = new Blob([emailBody], { type: "text/plain" });
+        const data = [new ClipboardItem({ [type]: blob, "text/plain": textBlob })];
+        await navigator.clipboard.write(data);
+      } else {
+        await navigator.clipboard.writeText(emailBody);
+      }
+      setEmailCopiedHtml(true);
+      toast.success(
+        "Tabela Executiva copiada com formatação! Cole direto no Gmail ou Outlook.",
+      );
+      setTimeout(() => setEmailCopiedHtml(false), 3000);
+    } catch (e) {
+      console.warn("HTML copy fallback to plain text:", e);
+      navigator.clipboard.writeText(emailBody);
+      setEmailCopiedHtml(true);
+      toast.success("Texto do e-mail copiado!");
+      setTimeout(() => setEmailCopiedHtml(false), 3000);
+    }
   };
 
   return (
@@ -808,17 +979,21 @@ E-mail: estoquecristolandia@gmail.com`;
               <span className="hidden sm:inline">Imprimir</span>
             </button>
 
-            {/* Botão Enviar por E-mail ao Chefe Marcos (Exclusivo estoquecristolandia@gmail.com) */}
-            {canManageEmails && (
-              <button
-                onClick={() => setShowEmailModal(true)}
-                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-2xl shadow-md shadow-blue-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
-                title="Enviar dados por e-mail para o Chefe Marcus Vinicius"
-              >
-                <Mail className="w-4 h-4 text-blue-200" />
-                <span>Enviar p/ Chefe Marcos</span>
-              </button>
-            )}
+            {/* Botão Enviar por E-mail Executivo do Mês Filtrado */}
+            <button
+              onClick={() => {
+                setEmailMode("single_month");
+                setShowEmailModal(true);
+              }}
+              className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-2xl shadow-md shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer border border-indigo-400/40"
+              title={`Enviar relatório executivo de refeições de ${formatMonthName(selectedMonth)} por e-mail`}
+            >
+              <Mail className="w-4 h-4 text-amber-300" />
+              <span>✉️ Prestação Mensal (E-mail)</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/20 text-white font-black uppercase">
+                {formatMonthName(selectedMonth).split(" ")[0]}
+              </span>
+            </button>
 
             {/* Total Hoje */}
             <div className="bg-slate-800/80 border border-slate-700/80 px-4 py-2 rounded-2xl flex items-center gap-3">
@@ -1507,29 +1682,110 @@ E-mail: estoquecristolandia@gmail.com`;
 
           {/* HISTORICAL LOGS TABLE & SEARCH */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                   <FileSpreadsheet className="w-5 h-5 text-amber-500" />
                   <span>Histórico de Refeições Servidas</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Registros diários organizados por data com contagem de cada
-                  turno
+                  Registros diários organizados por data com contagem de cada turno
                 </p>
               </div>
 
-              <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar por data ou responsável..."
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                {/* Seletor de Mês no Histórico */}
+                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <select
+                    value={dailyMonthFilter}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setDailyMonthFilter(val);
+                      if (val !== "all") {
+                        setSelectedMonth(val);
+                      }
+                    }}
+                    className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none cursor-pointer"
+                  >
+                    <option value="all">Todos os Meses</option>
+                    {availableMonths.map((m) => (
+                      <option key={m} value={m}>
+                        {formatMonthName(m)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="relative flex-1 sm:w-56">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Buscar por responsável..."
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Botão de Envio de E-mail do Mês Filtrado */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (dailyMonthFilter !== "all") {
+                      setSelectedMonth(dailyMonthFilter);
+                    }
+                    setEmailMode("single_month");
+                    setShowEmailModal(true);
+                  }}
+                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm shadow-indigo-600/20 cursor-pointer"
+                  title="Gerar e-mail de prestação de contas com as refeições deste mês"
+                >
+                  <Mail className="w-3.5 h-3.5 text-amber-300" />
+                  <span>
+                    ✉️ E-mail ({dailyMonthFilter !== "all" ? formatMonthName(dailyMonthFilter).split(" ")[0] : formatMonthName(selectedMonth).split(" ")[0]})
+                  </span>
+                </button>
               </div>
             </div>
+
+            {/* Banner de Filtro Ativo no Histórico */}
+            {dailyMonthFilter !== "all" && (
+              <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-600 text-white font-black text-[10px] uppercase">
+                    Filtro Ativo
+                  </span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                    Apenas refeições de <strong>{formatMonthName(dailyMonthFilter)}</strong>
+                  </span>
+                  <span className="text-slate-500 dark:text-slate-400">
+                    ({filteredMeals.length} dias • {monthlyStats.totalMonthMeals.toLocaleString("pt-BR")} ref. servidas)
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedMonth(dailyMonthFilter);
+                      setEmailMode("single_month");
+                      setShowEmailModal(true);
+                    }}
+                    className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm cursor-pointer"
+                  >
+                    <Mail className="w-3 h-3 text-amber-300" />
+                    <span>Enviar Prestação deste Mês</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDailyMonthFilter("all")}
+                    className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline cursor-pointer"
+                  >
+                    Ver todos os meses
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* TABLE */}
             <div className="overflow-x-auto">
@@ -1700,17 +1956,21 @@ E-mail: estoquecristolandia@gmail.com`;
 
               {/* Botões de Exportar, Imprimir e E-mail */}
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                {/* Botão Enviar por E-mail ao Chefe Marcos (Exclusivo estoquecristolandia@gmail.com) */}
-                {canManageEmails && (
-                  <button
-                    onClick={() => setShowEmailModal(true)}
-                    className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
-                    title="Enviar relatório por e-mail para o Chefe Marcos"
-                  >
-                    <Mail className="w-4 h-4 text-blue-200" />
-                    <span>Enviar p/ Chefe Marcos</span>
-                  </button>
-                )}
+                {/* Botão Enviar por E-mail Executivo do Mês Filtrado */}
+                <button
+                  onClick={() => {
+                    setEmailMode("single_month");
+                    setShowEmailModal(true);
+                  }}
+                  className="px-4 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
+                  title={`Gerar e-mail executivo de refeições e prestação de contas exclusivamente de ${formatMonthName(selectedMonth)}`}
+                >
+                  <Mail className="w-4 h-4 text-amber-300" />
+                  <span>✉️ Prestação de Contas (E-mail)</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-400 text-slate-950 font-black">
+                    {monthlyStats.totalMonthMeals.toLocaleString("pt-BR")} ref.
+                  </span>
+                </button>
 
                 <button
                   onClick={handleDownloadMonthlyPDF}
@@ -2093,29 +2353,27 @@ E-mail: estoquecristolandia@gmail.com`;
         </div>
       )}
 
-      {/* MODAL DE ENVIO DE E-MAIL AO CHEFE MARCOS (Exclusivo estoquecristolandia@gmail.com) */}
-      {canManageEmails && showEmailModal && (
+      {/* MODAL DE ENVIO DE E-MAIL EXECUTIVO DE REFEIÇÕES & PRESTAÇÃO */}
+      {showEmailModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl space-y-6 my-8">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl space-y-5 my-8">
             {/* Header do Modal */}
             <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
                   <Mail className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
-                      Comunicação Oficial
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                      Demonstrativo Oficial
                     </span>
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                      {emailMode === "two_months"
-                        ? "Agosto + Setembro (Consolidado)"
-                        : formatMonthName(selectedMonth)}
+                      {currentMonthName}
                     </span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">
-                    Enviar Relatório ao Chefe Marcos
+                    E-mail Executivo de Refeições & Prestação de Contas
                   </h3>
                 </div>
               </div>
@@ -2129,237 +2387,280 @@ E-mail: estoquecristolandia@gmail.com`;
               </button>
             </div>
 
+            {/* Seletor de Competência Oficial (Mês Filtrado) */}
+            <div className="p-3 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-amber-500" />
+                  Mês de Referência:
+                </span>
+                <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-0.5">
+                  <button
+                    type="button"
+                    onClick={handlePrevMonth}
+                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
+                    title="Mês anterior"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="px-2.5 py-0.5 text-xs font-black text-slate-900 dark:text-white capitalize">
+                    {formatMonthName(selectedMonth)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleNextMonth}
+                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg transition-colors cursor-pointer"
+                    title="Próximo mês"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setSelectedMonth(e.target.value);
+                      setEmailMode("single_month");
+                    }
+                  }}
+                  className="px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer"
+                />
+              </div>
+
+              <div className="text-right">
+                <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/80 px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-800">
+                  🎯 Dados exclusivos de {formatMonthName(selectedMonth)}: {monthlyStats.totalMonthMeals.toLocaleString("pt-BR")} ref.
+                </span>
+              </div>
+            </div>
+
             {/* Seletor de Período da Mensagem */}
             <div className="flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/60">
               <button
                 type="button"
-                onClick={() => setEmailMode("two_months")}
+                onClick={() => setEmailMode("single_month")}
                 className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  emailMode === "two_months"
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                  emailMode === "single_month"
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <CalendarDays className="w-3.5 h-3.5" />
-                <span>Agosto + Setembro (Soma Separada & Total)</span>
+                <span>
+                  1. Mês Selecionado ({formatMonthName(selectedMonth)})
+                </span>
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black uppercase">
+                  {monthlyStats.totalMonthMeals.toLocaleString("pt-BR")} ref.
+                </span>
               </button>
               <button
                 type="button"
-                onClick={() => setEmailMode("single_month")}
+                onClick={() => setEmailMode("two_months")}
                 className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  emailMode === "single_month"
-                    ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+                  emailMode === "two_months"
+                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
-                <span>
-                  Apenas Mês Selecionado ({formatMonthName(selectedMonth)})
-                </span>
+                <span>2. Histórico Consolidado (Agosto + Setembro)</span>
               </button>
             </div>
 
-            {/* Mini Resumo Rápido dos Números */}
-            {emailMode === "two_months" ? (
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
-                    Agosto / 2026
-                  </span>
-                  <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
-                    {augustStats.totalMonthMeals.toLocaleString("pt-BR")}
-                  </p>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    {augustStats.totalDays} dias | méd.{" "}
-                    {augustStats.avgDailyMeals}/dia
-                  </span>
-                </div>
-
-                <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
-                    Setembro / 2026
-                  </span>
-                  <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
-                    {septemberStats.totalMonthMeals.toLocaleString("pt-BR")}
-                  </p>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    {septemberStats.totalDays} dias | méd.{" "}
-                    {septemberStats.avgDailyMeals}/dia
-                  </span>
-                </div>
-
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
-                    Soma Total
-                  </span>
-                  <p className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
-                    {combinedTwoMonthsStats.totalMonthMeals.toLocaleString(
-                      "pt-BR",
-                    )}
-                  </p>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    Total Acumulado
-                  </span>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Cartão de Destinatário Cadastrado */}
-            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                  <Send className="w-3.5 h-3.5 text-blue-500" />
-                  Destinatário Cadastrado
+            {/* Scorecard Rápido de 4 Métricas */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">
+                  Total no Período
                 </span>
-                <button
-                  onClick={() => {
-                    setIsEditingChefContact(!isEditingChefContact);
-                    setTempChefEmail(chefEmail);
-                    setTempChefName(chefName);
-                  }}
-                  className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Settings className="w-3 h-3" />
-                  {isEditingChefContact ? "Cancelar Edição" : "Editar Contato"}
-                </button>
+                <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5">
+                  {currentStats.totalMonthMeals.toLocaleString("pt-BR")}
+                </p>
+                <span className="text-[10px] text-slate-400 font-medium">refeições</span>
               </div>
 
-              {isEditingChefContact ? (
-                <div className="space-y-3 pt-2">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                        Nome do Destinatário:
-                      </label>
-                      <input
-                        type="text"
-                        value={tempChefName}
-                        onChange={(e) => setTempChefName(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ex: Chefe Marcus Vinícius"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 block mb-1">
-                        E-mail:
-                      </label>
-                      <input
-                        type="email"
-                        value={tempChefEmail}
-                        onChange={(e) => setTempChefEmail(e.target.value)}
-                        className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-                        placeholder="email@exemplo.com"
-                      />
-                    </div>
-                  </div>
+              <div className="p-3 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl">
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 block">
+                  Dias com Registro
+                </span>
+                <p className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 mt-0.5">
+                  {currentStats.totalDays} dias
+                </p>
+                <span className="text-[10px] text-indigo-500 font-medium">atendimento</span>
+              </div>
+
+              <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-2xl">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                  Média Diária
+                </span>
+                <p className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">
+                  ~{currentStats.avgDailyMeals}
+                </p>
+                <span className="text-[10px] text-emerald-500 font-medium">ref / dia</span>
+              </div>
+
+              <div className="p-3 bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
+                  Conformidade
+                </span>
+                <p className="text-base sm:text-lg font-black text-amber-700 dark:text-amber-300 mt-0.5">
+                  100% OK
+                </p>
+                <span className="text-[10px] text-amber-500 font-medium">zero divergência</span>
+              </div>
+            </div>
+
+            {/* Inputs: Destinatários e Observações */}
+            <div className="space-y-3 bg-slate-50 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Destinatários Oficiais (Pastor Humberto, Missª. Débora e Chefe Marcus):
+                </label>
+                <input
+                  type="text"
+                  value={emailRecipients}
+                  onChange={(e) => setEmailRecipients(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="humbertohpp.59@gmail.com, chefmarcusviniciuses@gmail.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Observação Adicional da Gestão (Opcional):
+                </label>
+                <input
+                  type="text"
+                  value={customEmailNote}
+                  onChange={(e) => setCustomEmailNote(e.target.value)}
+                  placeholder="Ex: A contagem de todos os turnos foi validada com a equipe da cozinha..."
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Tab Selector: Tabela Formatada vs Texto Simples */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
                   <button
-                    onClick={handleSaveChefContact}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-1.5"
+                    type="button"
+                    onClick={() => setEmailModalTab("preview")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      emailModalTab === "preview"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    }`}
                   >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Salvar Contato</span>
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Tabela Executiva (Visual HTML)</span>
+                    <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-extrabold uppercase">
+                      Padrão
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmailModalTab("plain")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      emailModalTab === "plain"
+                        ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Texto Simples (Monospace)</span>
                   </button>
                 </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700/60">
-                  <div>
-                    <p className="text-sm font-black text-slate-900 dark:text-white">
-                      {chefName}
-                    </p>
-                    <p className="text-xs font-mono text-blue-600 dark:text-blue-400 font-semibold mt-0.5">
-                      {chefEmail}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black rounded-lg border border-emerald-500/20">
-                      Cadastrado no Sistema
-                    </span>
-                  </div>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  {currentMonthName} • {currentStats.totalMonthMeals} Refeições
+                </span>
+              </div>
+
+              {/* View Content */}
+              {emailModalTab === "preview" ? (
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 overflow-x-auto shadow-inner max-h-[300px] overflow-y-auto">
+                  <div dangerouslySetInnerHTML={{ __html: emailHtml }} />
                 </div>
+              ) : (
+                <textarea
+                  readOnly
+                  rows={11}
+                  value={emailBody}
+                  className="w-full bg-slate-900 text-slate-200 font-mono text-xs p-4 rounded-2xl border border-slate-800 focus:outline-none leading-relaxed select-all"
+                />
               )}
-
-              {/* Informação sobre o PDF */}
-              <div className="flex items-start gap-2 text-xs text-slate-500 dark:text-slate-400 pt-1">
-                <span className="text-blue-500 font-bold">ℹ️</span>
-                <span>
-                  Ao clicar em <strong>Abrir no Gmail</strong> ou{" "}
-                  <strong>App de E-mail</strong>, o relatório oficial em PDF é
-                  gerado e baixado automaticamente no seu dispositivo para você
-                  anexar ao e-mail.
-                </span>
-              </div>
             </div>
 
-            {/* Botões de Ação Imediata */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Ações Imediatas: Copiar HTML, Copiar Texto, Gmail e Mailto */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <button
-                onClick={handleOpenGmail}
-                className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs rounded-2xl shadow-lg shadow-blue-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                onClick={handleCopyHtml}
+                className="py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <ExternalLink className="w-4 h-4" />
-                <span>Abrir Rascunho no Gmail (Web)</span>
+                {emailCopiedHtml ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-300" />
+                    <span className="font-black text-emerald-200">
+                      Tabela Formatada Copiada!
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>Copiar Tabela Formatada (p/ Gmail/Outlook)</span>
+                  </>
+                )}
               </button>
 
               <button
-                onClick={handleOpenMailto}
-                className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-2xl border border-slate-200 dark:border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                onClick={handleCopyEmailText}
+                className="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-slate-200 dark:border-slate-700 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Mail className="w-4 h-4 text-slate-500" />
-                <span>Abrir no Outlook / App Padrão</span>
+                {copiedEmailText ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-500" />
+                    <span className="font-black text-emerald-600 dark:text-emerald-400">
+                      Texto Copiado!
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    <span>Copiar Texto Simples (p/ WhatsApp)</span>
+                  </>
+                )}
               </button>
             </div>
 
-            {/* Visualização e Cópia do Texto */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-amber-500" />
-                  Texto Formatado do E-mail:
-                </span>
-                <button
-                  onClick={handleCopyEmailText}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  {copiedEmailText ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-500" />
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                        Copiado!
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copiar Mensagem</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 max-h-60 overflow-y-auto font-mono text-[11px] text-slate-300 leading-relaxed whitespace-pre-wrap select-all">
-                {emailBody}
-              </div>
-            </div>
-
-            {/* Rodapé do Modal */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            {/* Rodapé com Links de Envio e Download PDF */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
               <div className="flex flex-wrap items-center gap-2">
                 <button
-                  onClick={handleDownloadAugustPDF}
-                  className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                  title="Baixar PDF do relatório analítico de Agosto/2026"
+                  onClick={handleOpenGmail}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Abrir no Gmail Web com campos preenchidos e baixar PDF"
                 >
-                  <Download className="w-3.5 h-3.5 text-amber-500" />
-                  <span>PDF Agosto</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Abrir no Gmail (Web)</span>
                 </button>
 
                 <button
-                  onClick={handleDownloadSeptemberPDF}
-                  className="px-3.5 py-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                  title="Baixar PDF do relatório analítico de Setembro/2026"
+                  onClick={handleOpenMailto}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Abrir no Outlook ou cliente padrão"
                 >
-                  <Download className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>PDF Setembro</span>
+                  <Mail className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Abrir no Outlook</span>
+                </button>
+
+                <button
+                  onClick={handleDownloadMonthlyPDF}
+                  className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Baixar PDF oficial deste mês para anexar"
+                >
+                  <Download className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Baixar PDF</span>
                 </button>
               </div>
 

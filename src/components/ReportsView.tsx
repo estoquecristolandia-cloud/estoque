@@ -89,7 +89,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 }) => {
   const isDml = activeDepartment === 'dml';
   const [activeReportTab, setActiveReportTab] = useState<'daily_ledger' | 'product' | 'sector' | 'person' | 'shopping' | 'audit' | 'live_audit'>('daily_ledger');
-  const [requestedEmailMode, setRequestedEmailMode] = useState<'post_purchase' | 'all_items' | 'forecast' | 'monthly_accountability' | null>(null);
+  const [requestedEmailMode, setRequestedEmailMode] = useState<'post_purchase' | 'all_items' | 'forecast' | null>(null);
   const [bufferDays, setBufferDays] = useState<number>(30); // Target buffer days e.g. 15 or 30 days
   const [selectedSectorFilter, setSelectedSectorFilter] = useState<string>('todos');
   const [copiedWhatsApp, setCopiedWhatsApp] = useState(false);
@@ -497,17 +497,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           >
             <Award className="w-4 h-4 text-amber-400" />
             <span>🏛️ Prestação JMN</span>
-          </button>
-          <button
-            onClick={() => {
-              setActiveReportTab('shopping');
-              setRequestedEmailMode('monthly_accountability');
-            }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-700 hover:from-indigo-500 hover:to-purple-600 text-white font-black text-xs shadow-md shadow-purple-900/20 cursor-pointer transition-all hover:scale-[1.02]"
-            title="Gerar e-mail de Prestação de Contas Mensal e Refeições idêntico ao modelo da Previsão de Compras"
-          >
-            <Mail className="w-4 h-4 text-amber-300" />
-            <span>✉️ E-mail Prestação & Refeições</span>
           </button>
           <button
             onClick={() => setIsDonationReceiptModalOpen(true)}
