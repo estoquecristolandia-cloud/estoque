@@ -17,24 +17,24 @@ async function runTests() {
   });
   console.log('  ✅ 1. Metadados de RBAC no Design System cumprem requisitos de badge, contraste e rótulo.');
 
-  // 2. Regra de Flocão em ProductManager (22 pc/preparo)
+  // 2. Regra de Flocão em ProductManager (20 pc/preparo oficial)
   const mockFlocao: Product = {
     id: 'prod-flocao',
     name: 'Flocão de Milho',
     category: 'Grãos e Cereais',
     unit: 'pacote',
     currentStock: 48,
-    minStock: 44,
-    idealStock: 88,
-    dailyAvgConsumption: 6.29,
+    minStock: 40,
+    idealStock: 80,
+    dailyAvgConsumption: 5.71,
     location: 'Prateleira 4',
     lastUpdated: '2026-08-21T17:30:00',
   };
   const note = getDetailedStockNote(mockFlocao);
   assert(note !== null, 'Flocão deve ter nota detalhada');
-  assert(note.includes('22 pc/preparo'), 'Nota de Flocão deve indicar estritamente 22 pc/preparo');
-  assert(note.includes('44 pc/sem'), 'Nota de Flocão deve indicar 44 pc/sem');
-  console.log('  ✅ 2. Nota visual do Flocão no Design System alinhada com a regra de 22/preparo (44/sem).');
+  assert(note.includes('20 pc/preparo'), 'Nota de Flocão deve indicar estritamente 20 pc/preparo');
+  assert(note.includes('40 pc/sem'), 'Nota de Flocão deve indicar 40 pc/sem');
+  console.log('  ✅ 2. Nota visual do Flocão no Design System alinhada com a regra de 20/preparo (40/sem).');
 
   // 3. Arroz e Feijão no ProductManager
   const mockArroz: Product = {

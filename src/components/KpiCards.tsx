@@ -88,7 +88,7 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
       (activeMealRecord.breakfast || 0) +
         (activeMealRecord.lunch || 0) +
         (activeMealRecord.dinner || 0) +
-        (activeMealRecord.snack || 0)
+        ((activeMealRecord.afternoonSnack ?? (activeMealRecord as any).snack) || 0)
     : 0;
 
   // 5. Kit Cozinha Diário Status Check

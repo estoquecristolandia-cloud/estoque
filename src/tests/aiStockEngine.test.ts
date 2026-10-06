@@ -478,3 +478,12 @@ export function runAllAiEngineTests(): { passed: number; failed: number; results
 
   return { passed, failed, results };
 }
+
+const aiEngineResult = runAllAiEngineTests();
+console.log(`\n===============================================================`);
+console.log(`   MOTOR DA IA: ${aiEngineResult.passed} PASSOU / ${aiEngineResult.failed} FALHOU (38 verificações)`);
+console.log(`===============================================================\n`);
+if (aiEngineResult.failed > 0) {
+  process.exit(1);
+}
+

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Product, InventoryAudit, InventorySessionSummary } from '../types';
+import { Product, InventoryAudit, InventorySessionSummary, Department } from '../types';
 import { UserRole, MASTER_ADMIN_EMAIL } from '../firebase';
 import {
   executeInventoryAdjustmentTransaction,
@@ -27,7 +27,7 @@ interface PhysicalInventoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   products: productsList;
-  department?: 'alimentacao' | 'dml';
+  department?: Department;
   userRole?: UserRole;
   currentUserEmail?: string;
   currentUserUid?: string;

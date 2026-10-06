@@ -421,11 +421,11 @@ export const FirestoreLiveAuditReport: React.FC<FirestoreLiveAuditReportProps> =
       // A) FLOCÃO
       if (normId.includes('flocao') || normName.includes('flocão') || normName.includes('cuscuz')) {
         isSpecialRule = true;
-        // 3 preparos fixos (Dom 20/09, Qua 23/09, Dom 27/09) de 22 pacotes = 66 pc
-        projected10d = 66;
-        chosenAvgReason = '3 preparos fixos (22 pc/preparo)';
-        safetyStock = 22; // 1 preparo reserva técnica
-        chosenAvg = 6.6; // equivalente 66 / 10
+        // 3 preparos fixos (Dom 20/09, Qua 23/09, Dom 27/09) de 20 pacotes = 60 pc
+        projected10d = 60;
+        chosenAvgReason = '3 preparos fixos (20 pc/preparo)';
+        safetyStock = 20; // 1 preparo reserva técnica
+        chosenAvg = 6.0; // equivalente 60 / 10
       }
       // B) MACARRÃO
       else if (normId.includes('macarrao') || normName.includes('macarrão')) {
@@ -575,7 +575,7 @@ export const FirestoreLiveAuditReport: React.FC<FirestoreLiveAuditReportProps> =
     simulationData.forEach((p) => {
       let motivo = '';
       if (p.id.includes('flocao')) {
-        motivo = '3 preparos fixos (22 pc/preparo = 66) + reserva (22) - estoque atual (67) = 21 pacotes.';
+        motivo = '3 preparos fixos (20 pc/preparo = 60) + reserva (20) - estoque atual (67) = 13 pacotes.';
       } else if (p.id.includes('macarrao')) {
         motivo = '3 preparos fixos (10 pc/preparo = 30) + reserva (10) - estoque atual (48) = -8 (Estoque cobre 100%). Compra = 0.';
       } else if (p.id.includes('pipoca')) {
@@ -969,7 +969,7 @@ export const FirestoreLiveAuditReport: React.FC<FirestoreLiveAuditReportProps> =
                       <td className="p-2.5 text-slate-600 dark:text-slate-300">
                         {p.id.includes('flocao') && (
                           <span className="text-amber-700 dark:text-amber-300 font-semibold">
-                            3 preparos fixos (22 pc x 3 = 66) + reserva técnica (22) - estoque atual (67) = 21 pacotes.
+                            3 preparos fixos (20 pc x 3 = 60) + reserva técnica (20) - estoque atual (67) = 13 pacotes.
                           </span>
                         )}
                         {p.id.includes('macarrao') && (

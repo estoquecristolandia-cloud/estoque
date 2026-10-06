@@ -7,7 +7,7 @@ const testSuites = [
   { name: '4. Motor da IA (Auditoria & Rastreabilidade)', file: 'src/tests/aiStockEngine.test.ts' },
   { name: '5. Contexto Autoritativo da IA no Backend', file: 'src/tests/aiBackendContext.test.ts' },
   { name: '6. Desacoplamento de Hooks (App.tsx)', file: 'src/tests/decoupledHooks.test.ts' },
-  { name: '7. Previsão de Compras (Regra Flocão 44pc/sem & Horizontes)', file: 'src/tests/flocaoPurchasesForecast.test.ts' },
+  { name: '7. Previsão de Compras (Regra Flocão 40pc/sem & Horizontes)', file: 'src/tests/flocaoPurchasesForecast.test.ts' },
   { name: '8. Voz e Resiliência de Captura/Transcrição', file: 'src/tests/voiceCaptureResilience.test.ts' },
   { name: '9. Design System & Contratos Visuais', file: 'src/tests/designSystemContracts.test.ts' },
   { name: '10. RBAC (Controle de Acesso & Blindagem)', file: 'src/tests/rbacEnforcement.test.ts' },

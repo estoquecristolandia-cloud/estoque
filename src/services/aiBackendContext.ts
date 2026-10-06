@@ -32,14 +32,6 @@ export async function verifyFirebaseToken(
     return null;
   }
 
-  // Suporte a tokens de teste automatizados em ambiente seguro
-  if (idToken.startsWith('test-token-')) {
-    return {
-      uid: `uid-${idToken}`,
-      email: idToken.includes('admin') ? 'estoquecristolandia@gmail.com' : 'usuario@cristolandia.org',
-    };
-  }
-
   try {
     const url = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${firebaseConfig.apiKey}`;
     const res = await customFetch(url, {

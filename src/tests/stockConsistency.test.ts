@@ -414,4 +414,7 @@ async function runTests() {
   }
 }
 
-runTests();
+runTests().catch((err) => {
+  console.error('❌ Falha na suíte de consistência de estoque:', err);
+  process.exit(1);
+});

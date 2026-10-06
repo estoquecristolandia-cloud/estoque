@@ -19,7 +19,7 @@ const MOCK_AUTHORITATIVE_PRODUCTS: Product[] = ([
   { id: 'prod-sal', name: 'Sal Refinado', category: 'Óleos e Condimentos' as const, unit: 'kg' as const, currentStock: 35, minStock: 10, dailyAvgConsumption: 1, location: 'Prateleira 3', lastUpdated: '2026-08-21T17:30:00' },
   { id: 'prod-farinha', name: 'Farinha de Trigo', category: 'Grãos e Cereais' as const, unit: 'kg' as const, currentStock: 50, minStock: 20, dailyAvgConsumption: 4, location: 'Prateleira 3', lastUpdated: '2026-08-21T17:30:00' },
   { id: 'prod-fuba', name: 'Fubá Mimoso', category: 'Grãos e Cereais' as const, unit: 'kg' as const, currentStock: 28, minStock: 10, dailyAvgConsumption: 2, location: 'Prateleira 3', lastUpdated: '2026-08-21T17:30:00' },
-  { id: 'prod-flocao', name: 'Flocão de Milho (Cuscuz 400g)', category: 'Grãos e Cereais' as const, unit: 'pacote' as const, currentStock: 52, minStock: 44, dailyAvgConsumption: 6.29, location: 'Prateleira 4', lastUpdated: '2026-08-21T17:30:00' },
+  { id: 'prod-flocao', name: 'Flocão de Milho (Cuscuz 400g)', category: 'Grãos e Cereais' as const, unit: 'pacote' as const, currentStock: 52, minStock: 40, dailyAvgConsumption: 5.71, location: 'Prateleira 4', lastUpdated: '2026-08-21T17:30:00' },
   { id: 'prod-frango', name: 'Frango Congelado (Cortes)', category: 'Proteínas e Carnes' as const, unit: 'kg' as const, currentStock: 90, minStock: 40, dailyAvgConsumption: 15, location: 'Freezer 1', lastUpdated: '2026-08-21T17:30:00' },
   { id: 'prod-salsicha', name: 'Salsicha Hot Dog', category: 'Proteínas e Carnes' as const, unit: 'kg' as const, currentStock: 30, minStock: 15, dailyAvgConsumption: 4, location: 'Freezer 2', lastUpdated: '2026-08-21T17:30:00' },
   { id: 'prod-margarina', name: 'Margarina com Sal 500g', category: 'Laticínios e Massas' as const, unit: 'unidade' as const, currentStock: 22, minStock: 12, dailyAvgConsumption: 2, location: 'Refrigerador', lastUpdated: '2026-08-21T17:30:00' },
@@ -127,11 +127,17 @@ async function runTests() {
   assert.strictEqual(parsedProduct.unit, 'kg');
   console.log('  ✅ 8. Parser de dados nativos REST do Firestore aprovado.');
 
-  // Teste 9: Token de teste reconhecido
-  const resTestToken = await verifyFirebaseToken('test-token-admin');
-  assert(resTestToken !== null, 'Token de teste deve ser validado');
-  assert.strictEqual(resTestToken?.email, 'estoquecristolandia@gmail.com');
-  console.log('  ✅ 9. Validação de credencial autorizada aprovada.');
+  // Teste 9: Validação segura de token via Identity Toolkit mockado
+  const mockFetchIdentity = async () => ({
+    ok: true,
+    json: async () => ({
+      users: [{ localId: 'uid-admin-1', email: 'estoquecristolandia@gmail.com' }],
+    }),
+  }) as any;
+  const resVerified = await verifyFirebaseToken('valid-jwt-token-string', mockFetchIdentity);
+  assert(resVerified !== null, 'Token verificado deve ser retornado');
+  assert.strictEqual(resVerified?.email, 'estoquecristolandia@gmail.com');
+  console.log('  ✅ 9. Validação de credencial autorizada via Identity Toolkit aprovada.');
 
   console.log('\n🎯 Todos os 9 testes de autoridade de IA & backend passaram com sucesso!\n');
 }

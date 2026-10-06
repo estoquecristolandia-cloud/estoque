@@ -784,4 +784,7 @@ async function runPhase2AuditTestSuite() {
   }
 }
 
-runPhase2AuditTestSuite();
+runPhase2AuditTestSuite().catch((err) => {
+  console.error('❌ Falha na suíte de auditoria matemática:', err);
+  process.exit(1);
+});

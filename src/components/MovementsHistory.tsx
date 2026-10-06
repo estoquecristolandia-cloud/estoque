@@ -270,8 +270,8 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
       const matchesSector =
         sectorFilter === 'all' ||
         m.sector === sectorFilter ||
-        (sectorFilter === 'Casa Missionária Masculina' && (m.sector === 'Casa Masculina' || m.sector === 'Casa Missionária Masculina')) ||
-        (sectorFilter === 'Casa Missionária Feminina' && (m.sector === 'Casa Feminina' || m.sector === 'Casa Missionária Feminina'));
+        (sectorFilter === 'Casa Missionária Masculina' && ((m.sector as string) === 'Casa Masculina' || m.sector === 'Casa Missionária Masculina')) ||
+        (sectorFilter === 'Casa Missionária Feminina' && ((m.sector as string) === 'Casa Feminina' || m.sector === 'Casa Missionária Feminina'));
 
       // Date filter
       let matchesDate = true;

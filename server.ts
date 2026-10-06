@@ -154,7 +154,7 @@ DIRETRIZES FUNDAMENTAIS PARA ELIMINAR CONFUSÕES:
    - O almoxarifado monitora 14 produtos de sustentação alimentar.
 
 3. PARÂMETROS OPERACIONAIS ALINHADOS DA UNIDADE:
-   - Flocão de Milho (Cuscuz): Preparo fixo e padronizado às quartas-feiras e aos domingos, utilizando rigorosamente 22 pacotes por preparo (= 44 pacotes/semana). Não consome nos outros dias da semana.
+   - Flocão de Milho (Cuscuz): Preparo fixo e padronizado às quartas-feiras e aos domingos, utilizando rigorosamente 20 pacotes por preparo (= 40 pacotes/semana). Não consome nos outros dias da semana.
    - Milho Pipoca: Consumo eventual / baseado em eventos comemorativos. Não deve ser descontado automaticamente do kit diário.
    - Padaria: Produção diária conduzida por Fernando Pates (consome Farinha de Trigo, Margarina e Sal Refinado).
    - Cozinha Geral: Liderada pelo Chefe Marcos (Marcus Vinicius), responsável pelas 4 refeições diárias dos acolhidos.

@@ -591,6 +591,10 @@ export const MealManager: React.FC<MealManagerProps> = ({
     const totalDinner = augustStats.totalDinner + septemberStats.totalDinner;
     const avgDailyMeals =
       totalDays > 0 ? Math.round(totalMonthMeals / totalDays) : 0;
+    const avgBreakfast = totalDays > 0 ? Math.round(totalBreakfast / totalDays) : 0;
+    const avgLunch = totalDays > 0 ? Math.round(totalLunch / totalDays) : 0;
+    const avgSnack = totalDays > 0 ? Math.round(totalSnack / totalDays) : 0;
+    const avgDinner = totalDays > 0 ? Math.round(totalDinner / totalDays) : 0;
 
     return {
       totalMonthMeals,
@@ -600,6 +604,10 @@ export const MealManager: React.FC<MealManagerProps> = ({
       totalSnack,
       totalDinner,
       avgDailyMeals,
+      avgBreakfast,
+      avgLunch,
+      avgSnack,
+      avgDinner,
     };
   }, [augustStats, septemberStats]);
 

@@ -89,6 +89,7 @@ export interface StockMovement {
   movementRole?: 'original' | 'compensation' | 'replacement';
   isCompensated?: boolean;
   compensatedByMovementId?: string;
+  isAdjustment?: boolean;
 }
 
 export interface KitItem { productId: string; productName: string; quantity: number; unit: Unit; }

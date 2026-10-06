@@ -334,4 +334,7 @@ async function runIdempotencySuite() {
   }
 }
 
-runIdempotencySuite();
+runIdempotencySuite().catch((err) => {
+  console.error('❌ Falha na suíte de idempotência:', err);
+  process.exit(1);
+});

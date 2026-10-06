@@ -1,4 +1,5 @@
 import { Product, StockMovement, Unit, InventoryAudit } from '../types';
+import { FLOCAO_RULES } from '../domain/businessRules';
 
 export type ForecastPeriodDays = 8 | 14 | 21 | 30;
 export type ForecastStatus = 'CRITICO' | 'ATENCAO' | 'NORMAL';
@@ -245,7 +246,7 @@ export function calculatePurchaseForecast(
 
     if (normId.includes('flocao') || normName.includes('flocão')) {
       usageRule = 'wed_sun';
-      usageRuleDescription = 'Quarta (22 pc) e Domingo (22 pc) = 44 pc/sem';
+      usageRuleDescription = FLOCAO_RULES.description;
       occurrencesInPeriod = wedSunOccurrences;
     } else if (normId.includes('macarrao') || normName.includes('macarrão')) {
       usageRule = 'wed_sun';
@@ -293,19 +294,19 @@ export function calculatePurchaseForecast(
       }
     } else if (usageRule === 'wed_sun') {
       // Specific days (Wednesday & Sunday)
-      // For Flocão: strictly 22 pacotes on Wednesday + 22 pacotes on Sunday = 44 pacotes/semana
+      // For Flocão: strictly 20 pacotes on Wednesday + 20 pacotes on Sunday = 40 pacotes/semana (FLOCAO_RULES)
       // For Macarrão: ~10 pacotes per preparation day
       const isFlocao = normId.includes('flocao') || normName.includes('flocão');
-      const consumptionPerMeal = isFlocao ? 22 : 10;
-      dailyAvgConsumption = isFlocao ? 6.29 : Number(((consumptionPerMeal * 2) / 7).toFixed(2));
+      const consumptionPerMeal = isFlocao ? FLOCAO_RULES.packsPerMeal : 10;
+      dailyAvgConsumption = isFlocao ? FLOCAO_RULES.dailyEquivalentConsumption : Number(((consumptionPerMeal * 2) / 7).toFixed(2));
       consumptionUnitText = isFlocao
-        ? `22 pacotes/preparo (Qua: 22 / Dom: 22 = 44/sem)`
+        ? `${FLOCAO_RULES.packsPerMeal} pacotes/preparo (Qua: ${FLOCAO_RULES.packsPerMeal} / Dom: ${FLOCAO_RULES.packsPerMeal} = ${FLOCAO_RULES.weeklyConsumption}/sem)`
         : `${consumptionPerMeal} ${product.unit}/preparo (Qua/Dom)`;
 
       projectedConsumption = occurrencesInPeriod * consumptionPerMeal;
       
-      // Safety Stock for weekly items: 1 preparation buffer (22 pc for Flocão)
-      safetyStock = consumptionPerMeal;
+      // Safety Stock for weekly items: 1 preparation buffer (20 pc for Flocão)
+      safetyStock = isFlocao ? FLOCAO_RULES.safetyStockPacks : consumptionPerMeal;
 
       // Autonomy calculation based on real preparation rate
       const totalPreparations = Math.floor(currentStock / consumptionPerMeal);

@@ -206,4 +206,9 @@ export function runFirestoreRulesTests() {
   console.log('🎉 Todos os 7 testes de regras de segurança passaram com sucesso!\n');
 }
 
-runFirestoreRulesTests();
+try {
+  runFirestoreRulesTests();
+} catch (err) {
+  console.error('❌ Falha na simulação das regras do Firestore:', err);
+  process.exit(1);
+}

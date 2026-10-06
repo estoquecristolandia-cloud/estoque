@@ -11,6 +11,7 @@ interface ProductTimelineModalProps {
   onClose: () => void;
   onOpenEntry: (product: Product) => void;
   onOpenExit: (product: Product) => void;
+  onDeleteMovement?: (movementId: string) => void;
 }
 
 const round2 = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;

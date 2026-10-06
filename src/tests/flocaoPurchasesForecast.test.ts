@@ -9,9 +9,9 @@ const MOCK_PRODUCTS: Product[] = [
     category: 'Grãos e Cereais',
     unit: 'pacote',
     currentStock: 52,
-    minStock: 44,
-    idealStock: 88,
-    dailyAvgConsumption: 6.29,
+    minStock: 40,
+    idealStock: 80,
+    dailyAvgConsumption: 5.71,
     location: 'Prateleira 4',
     lastUpdated: '2026-08-21T17:30:00',
   },
@@ -51,37 +51,37 @@ async function runTests() {
   const forecast14 = calculatePurchaseForecast(MOCK_PRODUCTS, [], 14, [], undefined, mondayBaseDate);
   const flocao14 = forecast14.allItems.find((i) => i.id === 'prod-flocao')!;
   assert.strictEqual(flocao14.occurrencesInPeriod, 4, '14 dias deve conter exatamente 4 preparos (2 quartas e 2 domingos)');
-  assert.strictEqual(flocao14.projectedConsumption, 88, '14 dias deve projetar exatamente 88 pacotes (4 x 22 pacotes)');
-  console.log('  ✅ 1. Horizonte 14 dias: 4 preparos x 22 pc = 88 pacotes de Flocão.');
+  assert.strictEqual(flocao14.projectedConsumption, 80, '14 dias deve projetar exatamente 80 pacotes (4 x 20 pacotes)');
+  console.log('  ✅ 1. Horizonte 14 dias: 4 preparos x 20 pc = 80 pacotes de Flocão.');
 
   // 2. Horizonte 21 dias (3 semanas exatas)
   const forecast21 = calculatePurchaseForecast(MOCK_PRODUCTS, [], 21, [], undefined, mondayBaseDate);
   const flocao21 = forecast21.allItems.find((i) => i.id === 'prod-flocao')!;
   assert.strictEqual(flocao21.occurrencesInPeriod, 6, '21 dias deve conter exatamente 6 preparos (3 quartas e 3 domingos)');
-  assert.strictEqual(flocao21.projectedConsumption, 132, '21 dias deve projetar exatamente 132 pacotes (6 x 22 pacotes)');
-  console.log('  ✅ 2. Horizonte 21 dias: 6 preparos x 22 pc = 132 pacotes de Flocão.');
+  assert.strictEqual(flocao21.projectedConsumption, 120, '21 dias deve projetar exatamente 120 pacotes (6 x 20 pacotes)');
+  console.log('  ✅ 2. Horizonte 21 dias: 6 preparos x 20 pc = 120 pacotes de Flocão.');
 
   // 3. Horizonte 8 dias começando na Segunda-feira (Qua + Dom = 2 preparos)
   const forecast8Monday = calculatePurchaseForecast(MOCK_PRODUCTS, [], 8, [], undefined, mondayBaseDate);
   const flocao8Mon = forecast8Monday.allItems.find((i) => i.id === 'prod-flocao')!;
   assert.strictEqual(flocao8Mon.occurrencesInPeriod, 2, '8 dias a partir de segunda deve conter 2 preparos (Qua + Dom)');
-  assert.strictEqual(flocao8Mon.projectedConsumption, 44, '8 dias a partir de segunda deve projetar 44 pacotes (2 x 22 pc)');
-  console.log('  ✅ 3. Horizonte 8 dias (início Segunda): 2 preparos x 22 pc = 44 pacotes.');
+  assert.strictEqual(flocao8Mon.projectedConsumption, 40, '8 dias a partir de segunda deve projetar 40 pacotes (2 x 20 pc)');
+  console.log('  ✅ 3. Horizonte 8 dias (início Segunda): 2 preparos x 20 pc = 40 pacotes.');
 
   // 4. Horizonte 8 dias começando na Quarta-feira (2026-08-26: Qua, Dom, Qua = 3 preparos)
   const wednesdayBaseDate = '2026-08-26';
   const forecast8Wed = calculatePurchaseForecast(MOCK_PRODUCTS, [], 8, [], undefined, wednesdayBaseDate);
   const flocao8Wed = forecast8Wed.allItems.find((i) => i.id === 'prod-flocao')!;
   assert.strictEqual(flocao8Wed.occurrencesInPeriod, 3, '8 dias a partir de quarta deve conter 3 preparos (Qua + Dom + Qua)');
-  assert.strictEqual(flocao8Wed.projectedConsumption, 66, '8 dias a partir de quarta deve projetar 66 pacotes (3 x 22 pc)');
-  console.log('  ✅ 4. Horizonte 8 dias (início Quarta): 3 preparos x 22 pc = 66 pacotes (não linear!).');
+  assert.strictEqual(flocao8Wed.projectedConsumption, 60, '8 dias a partir de quarta deve projetar 60 pacotes (3 x 20 pc)');
+  console.log('  ✅ 4. Horizonte 8 dias (início Quarta): 3 preparos x 20 pc = 60 pacotes (não linear!).');
 
   // 5. Horizonte 30 dias
   const forecast30 = calculatePurchaseForecast(MOCK_PRODUCTS, [], 30, [], undefined, mondayBaseDate);
   const flocao30 = forecast30.allItems.find((i) => i.id === 'prod-flocao')!;
   assert(flocao30.occurrencesInPeriod >= 8 && flocao30.occurrencesInPeriod <= 9, '30 dias deve conter 8 ou 9 preparos');
-  assert(flocao30.projectedConsumption === 176 || flocao30.projectedConsumption === 198, 'Consumo deve ser 8x22 ou 9x22');
-  console.log(`  ✅ 5. Horizonte 30 dias: ${flocao30.occurrencesInPeriod} preparos x 22 pc = ${flocao30.projectedConsumption} pacotes.`);
+  assert(flocao30.projectedConsumption === 160 || flocao30.projectedConsumption === 180, 'Consumo deve ser 8x20 ou 9x20');
+  console.log(`  ✅ 5. Horizonte 30 dias: ${flocao30.occurrencesInPeriod} preparos x 20 pc = ${flocao30.projectedConsumption} pacotes.`);
 
   // 6. Milho de Pipoca não projeta consumo diário (eventual)
   const pipoca = forecast14.allItems.find((i) => i.id === 'prod-milho-pipoca')!;

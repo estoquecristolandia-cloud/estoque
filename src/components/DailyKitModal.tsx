@@ -81,7 +81,7 @@ export const DailyKitModal: React.FC<DailyKitModalProps> = ({
   const [time, setTime] = useState<string>(getNowTimeString());
 
   const kitchenMissionaries = missionaries.filter((m) =>
-    isDml ? m.sector === 'DML' || m.sector === 'Manutenção' || m.sector === 'Geral' : m.sector === 'Cozinha'
+    isDml ? (m.sector as string) === 'DML' || (m.sector as string) === 'Manutenção' || (m.sector as string) === 'Geral' : m.sector === 'Cozinha'
   );
 
   // People / Portion Scaler
