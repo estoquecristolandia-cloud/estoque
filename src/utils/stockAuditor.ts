@@ -1,26 +1,7 @@
 import { Product, StockMovement, InventoryAudit, InventorySessionSummary } from '../types';
+import { OFFICIAL_MARCO_ZERO } from '../domain/businessRules';
 
-/**
- * 14 PRODUTOS OFICIAIS DO MARCO ZERO — CRISTOLÂNDIA LEM/BA
- * Sessão: marco-zero-20260821 | Data: 2026-08-21 | Horário: 17:30 | Resp: Marconi Castro
- * Base histórica imutável auditada e conferida fisicamente.
- */
-export const OFFICIAL_MARCO_ZERO: Record<string, { stock: number; unit: string; name: string }> = {
-  'prod-acucar': { stock: 35, unit: 'kg', name: 'Açúcar Cristal' },
-  'prod-alho': { stock: 16.5, unit: 'pacote', name: 'Alho (Pacote c/ 10 cabeças)' },
-  'prod-arroz': { stock: 107, unit: 'kg', name: 'Arroz Branco' },
-  'prod-cafe': { stock: 12, unit: 'pacote', name: 'Café Torrado e Moído (250g)' },
-  'prod-farinha': { stock: 26, unit: 'kg', name: 'Farinha de Trigo / Mandioca' },
-  'prod-feijao': { stock: 44, unit: 'kg', name: 'Feijão Carioca' },
-  'prod-flocao': { stock: 52, unit: 'pacote', name: 'Flocão de Milho (Cuscuz 400g)' },
-  'prod-leite': { stock: 18, unit: 'litro', name: 'Leite Integral' },
-  'prod-macarrao': { stock: 56, unit: 'pacote', name: 'Macarrão Espaguete' },
-  'prod-manteiga': { stock: 24, unit: 'kg', name: 'Manteiga / Margarina (Balde 14,5kg)' },
-  'prod-milho-pipoca': { stock: 10, unit: 'pacote', name: 'Milho para Pipoca (500g)' },
-  'prod-oleo': { stock: 11, unit: 'litro', name: 'Óleo de Soja (900ml)' },
-  'prod-sal': { stock: 3, unit: 'kg', name: 'Sal Refinado' },
-  'prod-suco': { stock: 13, unit: 'pacote', name: 'Suco em Pó (250g)' },
-};
+export { OFFICIAL_MARCO_ZERO };
 
 /**
  * 17 PRODUTOS OFICIAIS DO MARCO ZERO DML (HIGIENE E LIMPEZA) — CRISTOLÂNDIA LEM/BA

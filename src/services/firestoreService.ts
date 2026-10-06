@@ -15,6 +15,7 @@ import { Product, StockMovement, DailyKit, DailyMealRecord, EntryType, Sector, I
 import { INITIAL_PRODUCTS, INITIAL_MOVEMENTS, DEFAULT_DAILY_KIT } from '../data/initialData';
 import { INITIAL_DML_PRODUCTS, DEFAULT_DML_KIT } from '../data/initialDmlData';
 import { isDmlProduct } from '../utils/departmentUtils';
+import { OFFICIAL_MARCO_ZERO } from '../domain/businessRules';
 
 const PRODUCTS_COLLECTION = 'products';
 const MOVEMENTS_COLLECTION = 'movements';
@@ -364,17 +365,17 @@ export async function syncInitialFirestoreData(): Promise<void> {
     let baselineWrites = 0;
     let adjustedCount = 0;
 
-    for (const baselineProduct of INITIAL_PRODUCTS) {
-      const currentProduct = currentById.get(baselineProduct.id);
+    for (const [productId, baseline] of Object.entries(OFFICIAL_MARCO_ZERO)) {
+      const currentProduct = currentById.get(productId);
       if (!currentProduct) continue;
 
       const previousStock = round2(Number(currentProduct.currentStock || 0));
-      const physicalStock = round2(Number(baselineProduct.currentStock || 0));
+      const physicalStock = round2(Number(baseline.stock || 0));
       const difference = round2(physicalStock - previousStock);
 
       if (difference === 0) continue;
 
-      const opId = `adj-marco-zero-20260821-${baselineProduct.id}`;
+      const opId = `adj-marco-zero-20260821-${productId}`;
       const reason = 'Conciliação física e estabelecimento de Marco Zero — contagem e recontagem física realizada em 21/08/2026.';
 
       const movement: StockMovement = {
@@ -438,8 +439,8 @@ export async function syncInitialFirestoreData(): Promise<void> {
       date: auditDate,
       time: auditTime,
       responsible: 'Marconi Castro (Gestor do Estoque)',
-      totalProducts: INITIAL_PRODUCTS.length,
-      checkedCount: INITIAL_PRODUCTS.length,
+      totalProducts: Object.keys(OFFICIAL_MARCO_ZERO).length,
+      checkedCount: Object.keys(OFFICIAL_MARCO_ZERO).length,
       divergentCount: adjustedCount,
       adjustedCount,
       notes: 'Marco Zero oficial baseado na contagem e recontagem física confirmada em 21/08/2026. Histórico anterior preservado integralmente; nenhuma movimentação histórica foi reescrita.',
