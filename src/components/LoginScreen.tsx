@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, User, Eye, EyeOff, ShieldCheck, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
 import { AppUserProfile, loginWithCredentials, loginWithGoogle, registerWithCredentials } from '../firebase';
 import { CristolandiaLogo } from './CristolandiaLogo';
+import { APP_VERSION_LABEL } from '../version';
 
 interface LoginScreenProps {
   onLoginSuccess: (userProfile: AppUserProfile) => void;
@@ -154,6 +155,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, authEr
         </div>
         <div className="text-center text-xs text-slate-500">
           <p>LEM / BA • "Transformando Vidas pelo Amor de Cristo"</p>
+        </div>
+        <div className="text-center text-[10px] text-slate-600 font-mono tracking-wider">
+          {APP_VERSION_LABEL}
         </div>
       </div>
     </div>

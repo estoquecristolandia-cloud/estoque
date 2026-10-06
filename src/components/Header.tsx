@@ -4,6 +4,7 @@ import { AppUserProfile, ROLE_LABELS } from '../firebase';
 import { Department } from '../types';
 import { CristolandiaLogo } from './CristolandiaLogo';
 import { soundFeedback } from '../utils/audioFeedback';
+import { APP_VERSION_LABEL } from '../version';
 
 interface HeaderProps {
   activeTab: 'dashboard' | 'products' | 'entries' | 'exits' | 'meals' | 'reports' | 'ai_assistant';
@@ -915,6 +916,10 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Sair do Sistema</span>
             </button>
           )}
+
+          <div className="pt-2 text-center text-[10px] text-slate-500 font-mono tracking-wider">
+            {APP_VERSION_LABEL}
+          </div>
         </div>
       </aside>
     </>
