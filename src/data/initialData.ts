@@ -1,3 +1,10 @@
+/**
+ * Os valores de currentStock neste arquivo são o ponto de partida oficial do Marco Zero (21/08/2026),
+ * conferidos por contagem física. Eles não devem ser atualizados para refletir saldos recentes — o
+ * saldo real vive no banco de dados. Este arquivo serve para: (1) criar o ponto de partida em ambiente
+ * novo e (2) servir de cache local quando o banco não responde.
+ */
+
 import { Product, StockMovement, DailyKit, Missionary, DailyMealRecord, InventoryAudit, InventorySessionSummary } from '../types';
 
 export const INITIAL_MISSIONARIES: Missionary[] = [
@@ -40,6 +47,12 @@ export const INITIAL_MISSIONARIES: Missionary[] = [
   { id: 'm-pad-1', name: 'Fernando Pates', role: 'Responsável pela Padaria', sector: 'Padaria' },
 ];
 
+/**
+ * Os valores de currentStock neste arquivo são o ponto de partida oficial do Marco Zero (21/08/2026),
+ * conferidos por contagem física. Eles não devem ser atualizados para refletir saldos recentes — o
+ * saldo real vive no banco de dados. Este arquivo serve para: (1) criar o ponto de partida em ambiente
+ * novo e (2) servir de cache local quando o banco não responde.
+ */
 export const INITIAL_PRODUCTS: Product[] = [
   {
     id: 'prod-arroz',

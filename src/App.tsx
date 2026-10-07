@@ -72,6 +72,7 @@ export default function App() {
     meals,
     inventoryAudits,
     inventorySessions,
+    dataReady,
     handleAddEntry,
     handleAddExit,
     handleAddBatchExit,
@@ -254,6 +255,29 @@ export default function App() {
           >
             Sair
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Guarda de sincronização inicial do Firestore (Lote 6: Tela de carregamento)
+  if (!dataReady) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white select-none">
+        <div className="max-w-xs w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center shadow-2xl flex flex-col items-center">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-2xl mb-4 border border-amber-500/20">
+            🥘
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-white mb-1">
+            SIG-Cristolândia
+          </h1>
+          <p className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-6">
+            Gestão de Estoque
+          </p>
+          <div className="flex items-center gap-2 text-sm text-slate-400">
+            <span className="inline-block w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span>Carregando…</span>
+          </div>
         </div>
       </div>
     );

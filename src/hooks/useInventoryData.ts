@@ -57,46 +57,119 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
   const [meals, setMeals] = useState<DailyMealRecord[]>(getStoredMeals());
   const [inventoryAudits, setInventoryAudits] = useState<InventoryAudit[]>([]);
   const [inventorySessions, setInventorySessions] = useState<InventorySessionSummary[]>([]);
+  const [dataReady, setDataReady] = useState(false);
 
-  // Sincronização e subscrições reativas do Firestore
+  // Sincronização e subscrições reativas do Firestore com garantias de carregamento (Lote 6)
   useEffect(() => {
-    if (!currentUser || currentUser.role === 'pendente') return;
+    // Caso 4: Usuário deslogado ou pendente — não espera dados, login/bloqueio prevalece
+    if (!currentUser || currentUser.role === 'pendente') {
+      setDataReady(false);
+      return;
+    }
+
+    // Caso 3: Sem internet — se o navegador estiver offline, libera imediatamente para exibir cache local
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setDataReady(true);
+      return;
+    }
+
+    const handleOffline = () => {
+      setDataReady(true);
+    };
+    window.addEventListener('offline', handleOffline);
+
+    // Caso 1: Prazo máximo de 8 segundos — nunca travar
+    const emergencyTimeout = setTimeout(() => {
+      setDataReady(true);
+    }, 8000);
+
+    // Caso 2: Erro de conexão em qualquer assinatura — libera imediatamente
+    const handleSubError = (err: unknown) => {
+      console.warn('Erro de assinatura do Firestore (liberando tela de carregamento):', err);
+      setDataReady(true);
+    };
+
+    let prodsReceived = false;
+    let movsReceived = false;
+
+    const checkAndSetReady = () => {
+      // Quando as duas coleções principais responderem (mesmo vazias), dados estão prontos
+      if (prodsReceived && movsReceived) {
+        setDataReady(true);
+      }
+    };
+
+    // Tolerância de transição suave: se uma das duas responder e a outra tardar mais de 3s, libera também
+    const graceTimeout = setTimeout(() => {
+      if (prodsReceived || movsReceived) {
+        setDataReady(true);
+      }
+    }, 3000);
 
     if (currentUser.role === 'admin') {
       syncInitialFirestoreData().catch((err) => console.error('Bootstrap Firestore:', err));
     }
 
-    const unsubProds = subscribeToProducts((data) => {
-      setProducts(data);
-      saveProducts(data);
-    });
+    const unsubProds = subscribeToProducts(
+      (data) => {
+        setProducts(data);
+        saveProducts(data);
+        prodsReceived = true;
+        checkAndSetReady();
+      },
+      handleSubError
+    );
 
-    const unsubMovs = subscribeToMovements((data) => {
-      setMovements(data);
-      saveMovements(data);
-    });
+    const unsubMovs = subscribeToMovements(
+      (data) => {
+        setMovements(data);
+        saveMovements(data);
+        movsReceived = true;
+        checkAndSetReady();
+      },
+      handleSubError
+    );
 
-    const unsubKit = subscribeToDailyKit((data) => {
-      setDailyKit(data);
-      saveDailyKit(data);
-    });
+    const unsubKit = subscribeToDailyKit(
+      (data) => {
+        setDailyKit(data);
+        saveDailyKit(data);
+      },
+      handleSubError
+    );
 
-    const unsubMeals = subscribeToMeals((data) => {
-      setMeals(data);
-      saveMeals(data);
-    });
+    const unsubMeals = subscribeToMeals(
+      (data) => {
+        setMeals(data);
+        saveMeals(data);
+      },
+      handleSubError
+    );
 
-    const unsubAudits = subscribeToInventoryAudits((data) => setInventoryAudits(data));
-    const unsubSessions = subscribeToInventorySessions((data) => setInventorySessions(data));
+    const unsubAudits = subscribeToInventoryAudits(
+      (data) => setInventoryAudits(data),
+      handleSubError
+    );
 
-    const unsubMissionaries = subscribeToMissionaries((data) => {
-      if (data && data.length > 0) {
-        setMissionaries(data);
-        saveMissionaries(data);
-      }
-    });
+    const unsubSessions = subscribeToInventorySessions(
+      (data) => setInventorySessions(data),
+      handleSubError
+    );
+
+    const unsubMissionaries = subscribeToMissionaries(
+      (data) => {
+        if (data && data.length > 0) {
+          setMissionaries(data);
+          saveMissionaries(data);
+        }
+      },
+      handleSubError
+    );
 
     return () => {
+      clearTimeout(emergencyTimeout);
+      clearTimeout(graceTimeout);
+      window.removeEventListener('offline', handleOffline);
       unsubProds();
       unsubMovs();
       unsubKit();
@@ -475,6 +548,7 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
     setInventoryAudits,
     inventorySessions,
     setInventorySessions,
+    dataReady,
     handleAddEntry,
     handleAddExit,
     handleAddBatchExit,
