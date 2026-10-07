@@ -71,6 +71,16 @@ const DML_CATEGORIES: (Category | string)[] = [
   "Outros",
 ];
 
+function escapeHtml(str: string | number | null | undefined): string {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Helper to identify multi-sector items with decentralized unnotified usage
 export const isMultiSectorItem = (name: string, isDml: boolean = false): boolean => {
   const norm = name.toLowerCase();
@@ -700,7 +710,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
             customEmailNote.trim()
               ? `
             <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12px; color: #1e40af;">
-              <strong>Observação da Gestão do Almoxarifado:</strong> ${customEmailNote.trim()}
+              <strong>Observação da Gestão do Almoxarifado:</strong> ${escapeHtml(customEmailNote.trim())}
             </div>
           `
               : ""
@@ -1370,7 +1380,7 @@ export const PurchaseForecastReport: React.FC<PurchaseForecastReportProps> = ({
           customEmailNote.trim()
             ? `
           <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 12px; color: #1e40af;">
-            <strong>Observação da Gestão:</strong> ${customEmailNote.trim()}
+            <strong>Observação da Gestão:</strong> ${escapeHtml(customEmailNote.trim())}
           </div>
         `
             : ""

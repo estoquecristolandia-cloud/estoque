@@ -9,6 +9,9 @@ import {
   writeBatch,
   runTransaction,
   serverTimestamp,
+  query,
+  orderBy,
+  limit,
 } from 'firebase/firestore';
 import { db, AppUserProfile, UserRole } from '../firebase';
 import { Product, StockMovement, DailyKit, DailyMealRecord, EntryType, Sector, InventoryAudit, InventorySessionSummary, Missionary, AuthorizedUser } from '../types';
@@ -85,9 +88,18 @@ export function subscribeToProducts(onData: (products: Product[]) => void, onErr
   );
 }
 
-export function subscribeToMovements(onData: (movements: StockMovement[]) => void, onError?: (error: Error) => void) {
+export function subscribeToMovements(
+  onData: (movements: StockMovement[]) => void,
+  onError?: (error: Error) => void,
+  limitCount: number = 500
+) {
+  const coll = collection(db, MOVEMENTS_COLLECTION);
+  const q = limitCount && limitCount > 0
+    ? query(coll, orderBy('date', 'desc'), limit(limitCount))
+    : coll;
+
   return onSnapshot(
-    collection(db, MOVEMENTS_COLLECTION),
+    q,
     (snapshot) => {
       const list = snapshot.docs.map((d) => {
         const raw = d.data();
@@ -112,6 +124,29 @@ export function subscribeToMovements(onData: (movements: StockMovement[]) => voi
       onError?.(toError(err, 'Não foi possível carregar o histórico.'));
     }
   );
+}
+
+/**
+ * Consulta sob demanda para obter o histórico completo de movimentações
+ * quando um relatório especializado (ex: Auditoria Matemática / Marco Zero) necessitar.
+ */
+export async function getFullMovementsHistory(): Promise<StockMovement[]> {
+  const snapshot = await getDocs(collection(db, MOVEMENTS_COLLECTION));
+  return snapshot.docs.map((d) => {
+    const raw = d.data();
+    const isDml = raw.department === 'dml' || (raw.productId || '').toLowerCase().startsWith('dml-');
+    return {
+      ...raw,
+      id: d.id,
+      department: raw.department || (isDml ? 'dml' : 'alimentacao'),
+    } as StockMovement;
+  }).sort((a, b) => {
+    const date = (b.date || '').localeCompare(a.date || '');
+    if (date) return date;
+    const time = (b.time || '').localeCompare(a.time || '');
+    if (time) return time;
+    return (b.createdAt || '').localeCompare(a.createdAt || '');
+  });
 }
 
 export function subscribeToDailyKit(onData: (kit: DailyKit) => void, onError?: (error: Error) => void) {
@@ -153,9 +188,18 @@ export function subscribeToMeals(onData: (meals: DailyMealRecord[]) => void, onE
   );
 }
 
-export function subscribeToInventoryAudits(onData: (audits: InventoryAudit[]) => void, onError?: (error: Error) => void) {
+export function subscribeToInventoryAudits(
+  onData: (audits: InventoryAudit[]) => void,
+  onError?: (error: Error) => void,
+  limitCount: number = 500
+) {
+  const coll = collection(db, INVENTORY_AUDITS_COLLECTION);
+  const q = limitCount && limitCount > 0
+    ? query(coll, orderBy('date', 'desc'), limit(limitCount))
+    : coll;
+
   return onSnapshot(
-    collection(db, INVENTORY_AUDITS_COLLECTION),
+    q,
     (snapshot) => {
       const list = snapshot.docs.map((d) => d.data() as InventoryAudit).sort((a, b) => {
         const date = (b.date || '').localeCompare(a.date || '');
@@ -168,9 +212,23 @@ export function subscribeToInventoryAudits(onData: (audits: InventoryAudit[]) =>
     },
     (err) => {
       console.error('Error listening to inventory audits:', err);
-      onError?.(toError(err, 'Não foi possível carregar o histórico de auditorias.'));
+      onError?.(toError(err, 'Não foi possível carregar as auditorias.'));
     }
   );
+}
+
+/**
+ * Consulta sob demanda para obter o histórico completo de auditorias de inventário.
+ */
+export async function getFullInventoryAuditsHistory(): Promise<InventoryAudit[]> {
+  const snapshot = await getDocs(collection(db, INVENTORY_AUDITS_COLLECTION));
+  return snapshot.docs.map((d) => d.data() as InventoryAudit).sort((a, b) => {
+    const date = (b.date || '').localeCompare(a.date || '');
+    if (date) return date;
+    const time = (b.time || '').localeCompare(a.time || '');
+    if (time) return time;
+    return (b.createdAt || '').localeCompare(a.createdAt || '');
+  });
 }
 
 export function subscribeToInventorySessions(onData: (sessions: InventorySessionSummary[]) => void, onError?: (error: Error) => void) {

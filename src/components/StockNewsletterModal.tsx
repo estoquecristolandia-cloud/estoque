@@ -30,6 +30,16 @@ interface StockNewsletterModalProps {
   userName?: string;
 }
 
+function escapeHtml(str: string | number | null | undefined): string {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export const StockNewsletterModal: React.FC<StockNewsletterModalProps> = ({
   isOpen,
   onClose,
@@ -385,7 +395,7 @@ export const StockNewsletterModal: React.FC<StockNewsletterModalProps> = ({
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${emailSubject}</title>
+  <title>${escapeHtml(emailSubject)}</title>
 </head>
 <body style="margin: 0; padding: 16px; background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #1e293b; line-height: 1.5;">
   <div style="max-width: 980px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
@@ -405,7 +415,7 @@ export const StockNewsletterModal: React.FC<StockNewsletterModalProps> = ({
             }
           </div>
           <div style="font-size: 12px; color: #64748b; margin-top: 4px;">
-            Emissão: <strong>${dateFormatted} às ${timeFormatted}</strong> &bull; Responsável: <strong>${userName}</strong>
+            Emissão: <strong>${escapeHtml(dateFormatted)} às ${escapeHtml(timeFormatted)}</strong> &bull; Responsável: <strong>${escapeHtml(userName)}</strong>
           </div>
         </div>
 
@@ -430,7 +440,7 @@ export const StockNewsletterModal: React.FC<StockNewsletterModalProps> = ({
         customManagerNotes
           ? `
       <div style="margin-top: 14px; padding: 10px 14px; background-color: #f0fdf4; border-left: 4px solid #16a34a; border-radius: 4px; font-size: 12px; color: #166534;">
-        <strong>Nota da Gestão:</strong> ${customManagerNotes}
+        <strong>Nota da Gestão:</strong> ${escapeHtml(customManagerNotes)}
       </div>`
           : ''
       }

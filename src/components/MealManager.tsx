@@ -55,6 +55,16 @@ interface MealManagerProps {
   onDeleteMealRecord: (id: string) => void;
 }
 
+function escapeHtml(str: string | number | null | undefined): string {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export const MealManager: React.FC<MealManagerProps> = ({
   meals,
   missionaries,
@@ -731,11 +741,11 @@ export const MealManager: React.FC<MealManagerProps> = ({
             </div>
           </div>
           <div style="font-size: 19px; font-weight: 900; color: #0f172a; margin-top: 4px;">Demonstrativo Mensal de Refeições Servidas</div>
-          <div style="font-size: 12px; color: #475569; margin-top: 4px;">Competência Oficial: <strong>${currentMonthName}</strong> &bull; Gestão de Refeitório & Prestação de Contas</div>
+          <div style="font-size: 12px; color: #475569; margin-top: 4px;">Competência Oficial: <strong>${escapeHtml(currentMonthName)}</strong> &bull; Gestão de Refeitório & Prestação de Contas</div>
         </div>
 
         <p style="margin: 0 0 10px 0;">Prezados Pastor Humberto, Missª. Débora e Chefe Marcus Vinicius, graça e paz!</p>
-        <p style="margin: 0 0 16px 0;">Apresentamos o demonstrativo oficial consolidado de refeições servidas na cozinha e refeitório da Cristolândia LEM/BA referente ao período de <strong>${currentMonthName}</strong>, com conferência in loco e conformidade total:</p>
+        <p style="margin: 0 0 16px 0;">Apresentamos o demonstrativo oficial consolidado de refeições servidas na cozinha e refeitório da Cristolândia LEM/BA referente ao período de <strong>${escapeHtml(currentMonthName)}</strong>, com conferência in loco e conformidade total:</p>
 
         <!-- Scorecard Executivo de 4 Cards no Topo -->
         <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
@@ -829,7 +839,7 @@ export const MealManager: React.FC<MealManagerProps> = ({
 
         ${customEmailNote.trim() ? `
           <div style="background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 12px; color: #334155;">
-            <strong>Observação da Gestão:</strong> ${customEmailNote.trim()}
+            <strong>Observação da Gestão:</strong> ${escapeHtml(customEmailNote.trim())}
           </div>
         ` : ""}
 

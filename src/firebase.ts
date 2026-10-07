@@ -135,4 +135,18 @@ export async function registerWithCredentials(username: string, password: string
 
 export async function logoutUser() {
   await firebaseSignOut(auth);
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (key && key.startsWith('cristolandia_') && key !== 'cristolandia_theme') {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((k) => window.localStorage.removeItem(k));
+    } catch (e) {
+      console.warn('Erro ao limpar cache local de dados do SIG-Cristolândia:', e);
+    }
+  }
 }
