@@ -41,6 +41,18 @@ const mockProducts: Product[] = [
     location: 'Palete B',
     lastUpdated: '2026-08-28T10:00:00Z',
   },
+  {
+    id: 'prod-cafe',
+    name: 'Café Torrado e Moído (250g)',
+    category: 'Matinais e Bebidas',
+    unit: 'pacote',
+    currentStock: 12,
+    minStock: 5,
+    idealStock: 20,
+    dailyAvgConsumption: 0.5,
+    location: 'Despensa 1',
+    lastUpdated: '2026-08-28T10:00:00Z',
+  },
 ];
 
 const mockMissionaries: Missionary[] = [
@@ -119,6 +131,121 @@ const mockMovements: StockMovement[] = [
     deliveredBy: 'Pr. Marconi',
     sector: 'Cozinha',
     createdAt: '2026-08-27T11:00:00Z',
+  },
+];
+
+const mockCoffeeAdminMovements: StockMovement[] = [
+  {
+    id: 'mov-cafe-adm-1',
+    productId: 'prod-cafe',
+    productName: 'Café Torrado e Moído (250g)',
+    type: 'saida',
+    quantity: 1,
+    unit: 'pacote',
+    date: '2026-08-02',
+    time: '11:00',
+    retrievedBy: 'Raquel Lima',
+    deliveredBy: 'Pr. Marconi',
+    sector: 'Administração',
+    createdAt: '2026-08-02T11:00:00Z',
+  },
+  {
+    id: 'mov-cafe-adm-2',
+    productId: 'prod-cafe',
+    productName: 'Café Torrado e Moído (250g)',
+    type: 'saida',
+    quantity: 2,
+    unit: 'pacote',
+    date: '2026-08-09',
+    time: '10:00',
+    retrievedBy: 'Raquel Lima',
+    deliveredBy: 'Pr. Marconi',
+    sector: 'Administração',
+    createdAt: '2026-08-09T10:00:00Z',
+  },
+  {
+    id: 'mov-cafe-adm-3',
+    productId: 'prod-cafe',
+    productName: 'Café Torrado e Moído (250g)',
+    type: 'saida',
+    quantity: 1,
+    unit: 'pacote',
+    date: '2026-09-23',
+    time: '13:00',
+    retrievedBy: 'Diego',
+    deliveredBy: 'Pr. Marconi',
+    sector: 'Administração',
+    createdAt: '2026-09-23T13:00:00Z',
+  },
+  {
+    id: 'mov-cafe-adm-4',
+    productId: 'prod-cafe',
+    productName: 'Café Torrado e Moído (250g)',
+    type: 'saida',
+    quantity: 1,
+    unit: 'pacote',
+    date: '2026-09-26',
+    time: '08:18',
+    retrievedBy: 'Rebeca',
+    deliveredBy: 'Pr. Marconi',
+    sector: 'Administração',
+    createdAt: '2026-09-26T08:18:00Z',
+  },
+  {
+    id: 'mov-cafe-adm-5',
+    productId: 'prod-cafe',
+    productName: 'Café Torrado e Moído (250g)',
+    type: 'saida',
+    quantity: 3,
+    unit: 'pacote',
+    date: '2026-09-27',
+    time: '13:07',
+    retrievedBy: 'Diego',
+    deliveredBy: 'Pr. Marconi',
+    sector: 'Administração',
+    createdAt: '2026-09-27T13:07:00Z',
+  },
+  {
+    id: 'mov-cafe-adm-6',
+    productId: 'prod-cafe',
+    productName: 'Café Torrado e Moído (250g)',
+    type: 'saida',
+    quantity: 1,
+    unit: 'pacote',
+    date: '2026-09-29',
+    time: '10:48',
+    retrievedBy: 'Tainã',
+    deliveredBy: 'Pr. Marconi',
+    sector: 'Administração',
+    createdAt: '2026-09-29T10:48:00Z',
+  },
+  {
+    id: 'mov-cafe-adm-7',
+    productId: 'prod-cafe',
+    productName: 'Café Torrado e Moído (250g)',
+    type: 'saida',
+    quantity: 1,
+    unit: 'pacote',
+    date: '2026-10-11',
+    time: '13:12',
+    retrievedBy: 'Renê Lima',
+    deliveredBy: 'Pr. Marconi',
+    sector: 'Administração',
+    createdAt: '2026-10-11T13:12:00Z',
+  },
+  {
+    id: 'mov-cafe-adm-8',
+    productId: 'prod-cafe',
+    productName: 'Café Torrado e Moído (250g)',
+    type: 'saida',
+    quantity: 3,
+    unit: 'pacote',
+    date: '2026-10-14',
+    time: '13:17',
+    retrievedBy: 'Renê Lima',
+    deliveredBy: 'Pr. Marconi',
+    sector: 'Administração',
+    createdAt: '2026-10-14T13:17:00Z',
   },
 ];
 
@@ -476,12 +603,58 @@ export function runAllAiEngineTests(): { passed: number; failed: number; results
     'Filtro auditado por missionário e mês cheio com erro de digitação ("mesmde semtembro"): 1L retirado por Renê em Setembro'
   );
 
+  // Teste 16: Intervalo de Meses com Erro de Digitação ("agosta a outubro") e Média de Consumo de Café para ADM
+  const dateRangeMulti = parseDateRangeFromQuery(
+    'qual a média de consumo de café utilizada pela setor ADM, preciso desta informaçõa desde os primeiros lançamentos nossos, ok? preciso que vc analise os meses de agosta a outubro os lança,emntos',
+    new Date('2026-10-15T12:00:00')
+  );
+  assert(
+    dateRangeMulti.startDate === '2026-08-01' && dateRangeMulti.endDate === '2026-10-31',
+    'Reconhecimento de intervalo multi-mês com digitação ("meses de agosta a outubro"): cobre de 01/08 a 31/10'
+  );
+
+  const resCafeMulti = executeDeterministicStockQuery(
+    'qual a média de consumo de café utilizada pela setor ADM, preciso desta informaçõa desde os primeiros lançamentos nossos, ok? preciso que vc analise os meses de agosta a outubro os lança,emntos',
+    mockProducts,
+    [...mockMovements, ...mockCoffeeAdminMovements],
+    mockMeals,
+    mockDailyKit,
+    mockMissionaries,
+    [],
+    [],
+    new Date('2026-10-15T12:00:00')
+  );
+  assert(resCafeMulti.intent === 'consumption_average', 'Intent classificado com precisão como consumption_average');
+  assert(resCafeMulti.calculationBase.totalQuantity === 13, 'Soma determinística exata de café para ADM (13 pacotes no período)');
+  assert(resCafeMulti.metrics.some((m) => m.label === 'Média Mensal'), 'Métrica de média mensal gerada no relatório');
+  assert(resCafeMulti.detailedAnalysis.includes('Evolução do Consumo Mês a Mês'), 'Tabela mês a mês gerada com sucesso');
+
+  // Teste 17: Consulta de Média de Consumo sem Data Explícita
+  const resCafeSemData = executeDeterministicStockQuery(
+    'qual a média de consumo de café utilizada pela setor ADM',
+    mockProducts,
+    [...mockMovements, ...mockCoffeeAdminMovements],
+    mockMeals,
+    mockDailyKit,
+    mockMissionaries,
+    [],
+    [],
+    new Date('2026-10-15T12:00:00')
+  );
+  assert(resCafeSemData.intent === 'consumption_average', 'Query de média sem data identificada como consumption_average');
+  assert(resCafeSemData.calculationBase.periodAnalyzed.includes('Histórico Consolidado'), 'Fallback inteligente de média utiliza Histórico Consolidado em vez de 7 dias');
+  assert(resCafeSemData.calculationBase.totalQuantity === 13, 'Cálculo da média utiliza histórico completo com 13 pacotes apurados');
+
   return { passed, failed, results };
 }
 
 const aiEngineResult = runAllAiEngineTests();
 console.log(`\n===============================================================`);
-console.log(`   MOTOR DA IA: ${aiEngineResult.passed} PASSOU / ${aiEngineResult.failed} FALHOU (38 verificações)`);
+console.log(`   MOTOR DA IA: ${aiEngineResult.passed} PASSOU / ${aiEngineResult.failed} FALHOU`);
+if (aiEngineResult.failed > 0) {
+  console.log('FALHAS ENCONTRADAS:');
+  aiEngineResult.results.filter(r => r.startsWith('❌')).forEach(r => console.log(r));
+}
 console.log(`===============================================================\n`);
 if (aiEngineResult.failed > 0) {
   process.exit(1);

@@ -396,14 +396,15 @@ export default function App() {
           {activeTab === 'ai_assistant' && (
             <motion.div key="ai_assistant" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <AiAssistantView
-                products={departmentProducts}
-                movements={departmentMovements}
+                products={products}
+                movements={movements}
                 meals={meals}
                 dailyKit={activeKit}
                 missionaries={missionaries}
                 inventoryAudits={inventoryAudits}
                 inventorySessions={inventorySessions}
                 currentUser={currentUser}
+                activeDepartment={activeDepartment}
               />
             </motion.div>
           )}

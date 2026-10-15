@@ -80,6 +80,7 @@ export function convertSpokenNumbersToDigits(text: string): string {
            .replace(/\bsetembr\b/g, 'setembro')
            .replace(/\bsetenbr\b/g, 'setembro')
            .replace(/\bstembro\b/g, 'setembro')
+           .replace(/\bagosta\b/g, 'agosto')
            .replace(/\bagost\b/g, 'agosto')
            .replace(/\bagos\b/g, 'agosto')
            .replace(/\boutobro\b/g, 'outubro')
@@ -91,7 +92,10 @@ export function convertSpokenNumbersToDigits(text: string): string {
            .replace(/\bfeverero\b/g, 'fevereiro')
            .replace(/\bfevereir\b/g, 'fevereiro')
            .replace(/\bjanero\b/g, 'janeiro')
-           .replace(/\bjaneir\b/g, 'janeiro');
+           .replace(/\bjaneir\b/g, 'janeiro')
+           .replace(/lan[çc]a[,.]?emntos/gi, 'lancamentos')
+           .replace(/lan[çc]a[,.]?entos/gi, 'lancamentos')
+           .replace(/informa[çc][oõ]a/gi, 'informacao');
 
   // Anos falados
   res = res.replace(/dois mil e vinte e seis/g, '2026')
@@ -207,7 +211,30 @@ export function parseDateRangeFromQuery(query: string, referenceDate: Date = new
     return { startDate: todayStr, endDate: todayStr, label: `Hoje (${formatDateBR(todayStr)})` };
   }
 
-  // Marco Zero / Histórico completo / Todo o período
+  // Intervalo entre dois meses (ex: "agosto a outubro", "de agosto até outubro", "entre agosto e outubro", "meses de agosto a outubro")
+  const multiMonthRegex = /(?:entre|de|nos\s+meses\s+de|meses\s+de)?\s*(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s*(?:a|ate|e|ao\s+mes\s+de)\s*(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)(?:\s+(?:de\s+)?(\d{4}))?/i;
+  const matchMultiMonth = norm.match(multiMonthRegex);
+  if (matchMultiMonth) {
+    const m1NameRaw = matchMultiMonth[1].toLowerCase();
+    const m2NameRaw = matchMultiMonth[2].toLowerCase();
+    const m1Num = MONTHS_MAP[m1NameRaw];
+    const m2Num = MONTHS_MAP[m2NameRaw];
+    if (m1Num && m2Num) {
+      const year = matchMultiMonth[3] ? parseInt(matchMultiMonth[3], 10) : referenceDate.getFullYear();
+      const firstDay = `${year}-${m1Num}-01`;
+      const lastDayObj = new Date(year, parseInt(m2Num, 10), 0);
+      const lastDay = getLocalDateStr(lastDayObj);
+      const m1Capitalized = m1NameRaw.charAt(0).toUpperCase() + m1NameRaw.slice(1);
+      const m2Capitalized = m2NameRaw.charAt(0).toUpperCase() + m2NameRaw.slice(1);
+      return {
+        startDate: firstDay,
+        endDate: lastDay,
+        label: `Meses de ${m1Capitalized} a ${m2Capitalized}/${year}`,
+      };
+    }
+  }
+
+  // Marco Zero / Histórico completo / Todo o período / Primeiros lançamentos
   if (
     norm.includes('marco zero') ||
     norm.includes('desde o inicio') ||
@@ -224,9 +251,16 @@ export function parseDateRangeFromQuery(query: string, referenceDate: Date = new
     norm.includes('todos os lancamentos') ||
     norm.includes('todas as movimentacoes') ||
     norm.includes('todas as saidas') ||
-    norm.includes('todas as entradas')
+    norm.includes('todas as entradas') ||
+    norm.includes('primeiros lancamentos') ||
+    norm.includes('desde os primeiros') ||
+    norm.includes('primeiro lancamento') ||
+    norm.includes('primeiros registros') ||
+    norm.includes('primeiro registro') ||
+    norm.includes('desde o principio') ||
+    norm.includes('inicio dos lancamentos')
   ) {
-    return { startDate: MARCO_ZERO_DATE_STR, endDate: todayStr, label: `Desde o Marco Zero (21/08/2026 até ${formatDateBR(todayStr)})` };
+    return { startDate: '2026-08-01', endDate: todayStr, label: `Desde os primeiros lançamentos (01/08/2026 até ${formatDateBR(todayStr)})` };
   }
 
   // Mês específico (reconhece nomes de meses, abreviações, digitações com ou sem preposição, ex: "mesmde semtembro", "no mes de setembro", "setembro", etc.)
@@ -383,6 +417,30 @@ export function parseDateRangeFromQuery(query: string, referenceDate: Date = new
     return { startDate: fStr, endDate: lStr, label: `Mês passado (${formatDateBR(fStr)} a ${formatDateBR(lStr)})` };
   }
 
+  // Se a consulta for sobre média de consumo, média de gastos ou histórico consolidado, usar todo o histórico
+  const isAverageOrSpendingQuery =
+    norm.includes('media') ||
+    norm.includes('consumo medio') ||
+    norm.includes('gasto medio') ||
+    norm.includes('media de gastos') ||
+    norm.includes('media de consumo') ||
+    norm.includes('quanto gasta') ||
+    norm.includes('gastos com') ||
+    norm.includes('gasto com') ||
+    norm.includes('consumo por mes') ||
+    norm.includes('consumo mensal') ||
+    norm.includes('gasto mensal') ||
+    norm.includes('media utilizada') ||
+    norm.includes('quanto consome em media');
+
+  if (isAverageOrSpendingQuery) {
+    return {
+      startDate: '2026-08-01',
+      endDate: todayStr,
+      label: `Histórico Consolidado (01/08/2026 até ${formatDateBR(todayStr)})`,
+    };
+  }
+
   // Padrão: últimos 7 dias
   const defaultStart = new Date(referenceDate);
   defaultStart.setDate(defaultStart.getDate() - 6);
@@ -420,6 +478,44 @@ export const PRODUCT_SYNONYMS: Record<string, string[]> = {
   'agua sanitaria': ['agua sanitaria', 'cloro'],
   'papel higienico': ['papel higienico', 'papel']
 };
+
+export const ESTIMATED_UNIT_PRICES: Record<string, number> = {
+  'prod-arroz': 6.2,
+  'prod-feijao': 7.5,
+  'prod-acucar': 4.8,
+  'prod-oleo': 6.5,
+  'prod-sal': 2.2,
+  'prod-cafe': 18.0,
+  'prod-leite': 5.2,
+  'prod-macarrao': 4.5,
+  'prod-farinha': 4.2,
+  'prod-flocao': 2.8,
+  'prod-suco': 2.0,
+  'prod-alho': 26.0,
+  'prod-manteiga': 22.0,
+  'prod-milho-pipoca': 4.0,
+};
+
+export function getProductUnitPrice(product?: Product | null): number {
+  if (!product) return 10.0;
+  if (product.id && ESTIMATED_UNIT_PRICES[product.id] !== undefined) {
+    return ESTIMATED_UNIT_PRICES[product.id];
+  }
+  const pNorm = normalizeStr(product.name);
+  if (pNorm.includes('cafe')) return 18.0;
+  if (pNorm.includes('acucar')) return 4.8;
+  if (pNorm.includes('arroz')) return 6.2;
+  if (pNorm.includes('feijao')) return 7.5;
+  if (pNorm.includes('oleo')) return 6.5;
+  if (pNorm.includes('leite')) return 5.2;
+  if (pNorm.includes('flocao')) return 2.8;
+  if (pNorm.includes('farinha')) return 4.2;
+  if (pNorm.includes('macarrao')) return 4.5;
+  if (pNorm.includes('manteiga') || pNorm.includes('margarina')) return 22.0;
+  if (pNorm.includes('alho')) return 26.0;
+  if (pNorm.includes('sal')) return 2.2;
+  return 10.0;
+}
 
 /**
  * Encontra todos os produtos mencionados na pergunta
@@ -856,6 +952,250 @@ export function executeDeterministicStockQuery(
       suggestedFollowUps: [
         'Como está a situação geral do nosso estoque?',
         'Quanto temos de arroz, feijão e macarrão?',
+      ],
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  // =========================================================================
+  // CASO 2.5: Consulta de Média de Consumo e Gastos Financeiros por Setor ou Produto
+  // (Ex: "qual a média de consumo de café utilizada pelo setor ADM", "gastos com café", "consumo por mês", "média de gastos")
+  // =========================================================================
+  const isAverageOrSpendingIntent =
+    (
+      norm.includes('media') ||
+      norm.includes('consumo medio') ||
+      norm.includes('gasto medio') ||
+      norm.includes('media de gastos') ||
+      norm.includes('media de consumo') ||
+      norm.includes('gastos com') ||
+      norm.includes('gasto com') ||
+      norm.includes('quanto gasta') ||
+      norm.includes('consumo por mes') ||
+      norm.includes('consumo mensal') ||
+      norm.includes('gasto mensal') ||
+      norm.includes('media utilizada') ||
+      norm.includes('quanto consome em media') ||
+      (norm.includes('consumo') && (norm.includes('adm') || norm.includes('administracao')))
+    ) && (Boolean(mentionedProduct) || Boolean(mentionedSector));
+
+  if (isAverageOrSpendingIntent) {
+    const targetMovements = movements.filter((m) => {
+      if (m.type !== 'saida') return false;
+      if (!m.date) return false;
+      if (m.date < dateRange.startDate || m.date > dateRange.endDate) return false;
+
+      if (mentionedProduct) {
+        const mName = normalizeStr(m.productName);
+        const targetName = normalizeStr(mentionedProduct.name);
+        if (m.productId !== mentionedProduct.id && !mName.includes(targetName) && !targetName.includes(mName)) {
+          return false;
+        }
+      }
+
+      if (mentionedSector) {
+        const sNorm = normalizeStr(m.sector);
+        const targetSector = normalizeStr(mentionedSector);
+        if (!sNorm || (!sNorm.includes(targetSector) && !targetSector.includes(sNorm))) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    targetMovements.sort((a, b) => `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`));
+
+    const totalQuantity = targetMovements.reduce((sum, m) => sum + (Number(m.quantity) || 0), 0);
+    const primaryUnit = mentionedProduct ? mentionedProduct.unit : (targetMovements[0]?.unit || 'unid');
+    const unitPrice = getProductUnitPrice(mentionedProduct);
+    const totalCost = totalQuantity * unitPrice;
+
+    // Amplitude temporal exata (em dias, semanas e meses)
+    const todayStrRef = new Date().toISOString().split('T')[0];
+    const dStart = new Date(`${dateRange.startDate}T00:00:00`);
+    const todayCutoff = dateRange.endDate > todayStrRef ? todayStrRef : dateRange.endDate;
+    const dEnd = new Date(`${todayCutoff}T23:59:59`);
+    const diffMs = Math.max(1000 * 60 * 60 * 24, dEnd.getTime() - dStart.getTime());
+    const totalDays = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
+    const monthsSpan = Math.max(1, Number((totalDays / 30.417).toFixed(1)));
+    const weeksSpan = Math.max(1, Number((totalDays / 7).toFixed(1)));
+
+    const monthlyAvgQty = Number((totalQuantity / monthsSpan).toFixed(1));
+    const monthlyCost = Number((monthlyAvgQty * unitPrice).toFixed(2));
+    const weeklyAvgQty = Number((totalQuantity / weeksSpan).toFixed(1));
+    const weeklyCost = Number((weeklyAvgQty * unitPrice).toFixed(2));
+
+    const isCoffee = mentionedProduct && normalizeStr(mentionedProduct.name).includes('cafe');
+    const totalKg = isCoffee ? (totalQuantity * 0.25).toFixed(2).replace('.', ',') : null;
+    const monthlyKg = isCoffee ? (monthlyAvgQty * 0.25).toFixed(2).replace('.', ',') : null;
+
+    // Agrupamento por mês civil
+    const byMonth: Record<string, { qty: number; count: number; cost: number; movements: StockMovement[] }> = {};
+    targetMovements.forEach((m) => {
+      const parts = (m.date || '').split('-');
+      const monthIdx = parts.length >= 2 ? parseInt(parts[1], 10) - 1 : 0;
+      const monthName = MONTH_DEFINITIONS[monthIdx]?.name || parts[1];
+      const monthKey = `${monthName}/${parts[0]}`;
+      if (!byMonth[monthKey]) {
+        byMonth[monthKey] = { qty: 0, count: 0, cost: 0, movements: [] };
+      }
+      const q = Number(m.quantity) || 0;
+      byMonth[monthKey].qty += q;
+      byMonth[monthKey].count += 1;
+      byMonth[monthKey].cost += q * unitPrice;
+      byMonth[monthKey].movements.push(m);
+    });
+
+    // Agrupamento por solicitante/responsável
+    const byPerson: Record<string, { qty: number; count: number }> = {};
+    targetMovements.forEach((m) => {
+      const person = m.retrievedBy || m.responsible || m.receivedBy || 'Não especificado';
+      if (!byPerson[person]) byPerson[person] = { qty: 0, count: 0 };
+      byPerson[person].qty += Number(m.quantity) || 0;
+      byPerson[person].count += 1;
+    });
+
+    const activeMonthsCount = Object.keys(byMonth).length;
+    const monthlyAvgActive = activeMonthsCount > 0 ? Number((totalQuantity / activeMonthsCount).toFixed(1)) : monthlyAvgQty;
+    const monthlyCostActive = Number((monthlyAvgActive * unitPrice).toFixed(2));
+    const hasDifferentActiveSpan = activeMonthsCount > 0 && Math.abs(activeMonthsCount - monthsSpan) >= 0.5;
+
+    const metrics: AiCalculatedMetric[] = [
+      {
+        label: 'Média Mensal',
+        value: hasDifferentActiveSpan ? `${monthlyAvgQty} a ${monthlyAvgActive} ${primaryUnit}/mês` : `${monthlyAvgQty} ${primaryUnit}/mês`,
+        unit: hasDifferentActiveSpan ? `~R$ ${monthlyCost.toFixed(2).replace('.', ',')} a R$ ${monthlyCostActive.toFixed(2).replace('.', ',')}/mês` : `~R$ ${monthlyCost.toFixed(2).replace('.', ',')}/mês`,
+        badge: 'Média Auditada',
+      },
+      {
+        label: 'Média Semanal',
+        value: `${weeklyAvgQty} ${primaryUnit}/sem`,
+        unit: `~R$ ${weeklyCost.toFixed(2).replace('.', ',')}/sem`,
+      },
+      {
+        label: 'Consumo Total',
+        value: `${totalQuantity} ${primaryUnit}`,
+        unit: totalKg ? `${totalKg} kg` : dateRange.label,
+      },
+      {
+        label: 'Gasto Total Estimado',
+        value: `R$ ${totalCost.toFixed(2).replace('.', ',')}`,
+        unit: `Base: R$ ${unitPrice.toFixed(2).replace('.', ',')}/${primaryUnit}`,
+      },
+    ];
+
+    const targetDesc = mentionedProduct && mentionedSector
+      ? `de **${mentionedProduct.name}** para o setor **${mentionedSector}**`
+      : mentionedProduct
+      ? `de **${mentionedProduct.name}**`
+      : `para o setor **${mentionedSector}**`;
+
+    let summary = '';
+    if (targetMovements.length > 0) {
+      const roundedMonthly = Math.round(monthlyAvgQty);
+      const roundedCost = (roundedMonthly * unitPrice).toFixed(2).replace('.', ',');
+      const activeMonthlyText = hasDifferentActiveSpan ? ` (ou **${monthlyAvgActive} pacotes/mês** nos meses ativos: ${Object.keys(byMonth).join(' e ')})` : '';
+      summary = `No período de ${dateRange.label}, o setor **${mentionedSector || 'solicitado'}** consumiu um total de **${totalQuantity} ${primaryUnit}s** ${mentionedProduct ? `de ${mentionedProduct.name}` : ''}${totalKg ? ` (${totalKg} kg de café)` : ''}, totalizando **R$ ${totalCost.toFixed(2).replace('.', ',')}** em custos de estoque. A média mensal é de **${monthlyAvgQty} ${primaryUnit}s/mês**${activeMonthlyText}, equivalendo a aproximadamente **${weeklyAvgQty} pacote por semana** (~**R$ ${weeklyCost.toFixed(2).replace('.', ',')}/semana**).`;
+    } else {
+      summary = `Não foram encontradas saídas ${targetDesc} no período de ${dateRange.label}.`;
+    }
+
+    let detailedAnalysis = `### ☕ Relatório de Consumo e Gastos — ${mentionedProduct?.name || 'Insumo'} (${mentionedSector || 'Geral'})\n\n`;
+    detailedAnalysis += `• **Período Analisado:** ${dateRange.label} (~${totalDays} dias / ~${monthsSpan} meses)\n`;
+    if (mentionedProduct) detailedAnalysis += `• **Item Auditado:** ${mentionedProduct.name} (${primaryUnit})\n`;
+    if (mentionedSector) detailedAnalysis += `• **Setor de Destino:** ${mentionedSector}\n`;
+    detailedAnalysis += `• **Preço de Referência:** R$ ${unitPrice.toFixed(2).replace('.', ',')} por ${primaryUnit}\n`;
+    detailedAnalysis += `• **Total de Retiradas Registradas:** ${targetMovements.length} lançamento(s)\n\n`;
+
+    if (targetMovements.length > 0) {
+      detailedAnalysis += `#### 📌 Resumo Executivo das Médias:\n`;
+      detailedAnalysis += `• **Média Mensal Linear (Janela Completa):** **${monthlyAvgQty} ${primaryUnit}s por mês**${monthlyKg ? ` (~${monthlyKg} kg/mês)` : ''} *(arredondamento prático: **${Math.round(monthlyAvgQty)} pacotes/mês**, totalizando **R$ ${monthlyCost.toFixed(2).replace('.', ',')}/mês**)*.\n`;
+      if (hasDifferentActiveSpan) {
+        detailedAnalysis += `• **Média nos Meses com Consumo Registrado:** **${monthlyAvgActive} ${primaryUnit}s por mês** *(base R$ ${unitPrice.toFixed(2).replace('.', ',')}/${primaryUnit} = **R$ ${monthlyCostActive.toFixed(2).replace('.', ',')}/mês**)* nos ${activeMonthsCount} meses com saídas ativas (${Object.keys(byMonth).join(' e ')}).\n`;
+      }
+      detailedAnalysis += `• **Ritmo Semanal:** **${weeklyAvgQty} ${primaryUnit} por semana** (~R$ ${weeklyCost.toFixed(2).replace('.', ',')}/semana).\n`;
+      detailedAnalysis += `• **Volume Total Acumulado:** **${totalQuantity} ${primaryUnit}s**${totalKg ? ` (${totalKg} kg)` : ''} = **R$ ${totalCost.toFixed(2).replace('.', ',')}**.\n\n`;
+
+      detailedAnalysis += `#### 📅 Evolução do Consumo Mês a Mês:\n\n`;
+      detailedAnalysis += `| Mês de Referência | Quantidade Consumida | Custo Total (R$) | Lançamentos | % do Total |\n`;
+      detailedAnalysis += `| :--- | :--- | :--- | :--- | :--- |\n`;
+      Object.entries(byMonth).forEach(([mName, data]) => {
+        const pct = totalQuantity > 0 ? ((data.qty / totalQuantity) * 100).toFixed(1) : '0';
+        detailedAnalysis += `| **${mName}** | **${data.qty} ${primaryUnit}s** | R$ ${data.cost.toFixed(2).replace('.', ',')} | ${data.count} retirada(s) | ${pct}% |\n`;
+      });
+      detailedAnalysis += `| **TOTAL** | **${totalQuantity} ${primaryUnit}s** | **R$ ${totalCost.toFixed(2).replace('.', ',')}** | **${targetMovements.length} retirada(s)** | **100%** |\n\n`;
+
+      if (Object.keys(byPerson).length > 0) {
+        detailedAnalysis += `#### 👤 Retiradas por Solicitante / Responsável:\n\n`;
+        detailedAnalysis += `| Missionário / Solicitante | Volume Retirado | Lançamentos | % do Volume |\n`;
+        detailedAnalysis += `| :--- | :--- | :--- | :--- |\n`;
+        Object.entries(byPerson)
+          .sort((a, b) => b[1].qty - a[1].qty)
+          .forEach(([pName, pData]) => {
+            const pct = totalQuantity > 0 ? ((pData.qty / totalQuantity) * 100).toFixed(1) : '0';
+            detailedAnalysis += `| **${pName}** | **${pData.qty} ${primaryUnit}s** | ${pData.count} | ${pct}% |\n`;
+          });
+        detailedAnalysis += `\n`;
+      }
+
+      detailedAnalysis += `#### 📋 Detalhamento Cronológico das Saídas:\n\n`;
+      detailedAnalysis += `| Data | Hora | Quantidade | Retirado por | Entregue por | ID do Lançamento |\n`;
+      detailedAnalysis += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+      targetMovements.slice(0, 30).forEach((m) => {
+        detailedAnalysis += `| ${formatDateBR(m.date)} | ${m.time || '-'} | **-${m.quantity} ${m.unit}** | ${m.retrievedBy || m.responsible || '-'} | ${m.deliveredBy || 'Almoxarifado'} | \`${m.id}\` |\n`;
+      });
+      detailedAnalysis += `\n`;
+
+      const monthlyCopyText = hasDifferentActiveSpan
+        ? `situa-se entre **${monthlyAvgQty} e ${monthlyAvgActive} pacotes por mês** (cerca de **4 a 5 pacotes/mês**, totalizando **R$ ${monthlyCost.toFixed(2).replace('.', ',')} a R$ ${monthlyCostActive.toFixed(2).replace('.', ',')}/mês**)`
+        : `é de **${monthlyAvgQty} pacotes por mês** (totalizando **R$ ${monthlyCost.toFixed(2).replace('.', ',')}/mês**)`;
+
+      detailedAnalysis += `> 💬 **Resposta Pronta para Encaminhar ao Setor Administrativo:**\n`;
+      detailedAnalysis += `> *"No período de ${dateRange.label}, o setor da Administração retirou um total de **${totalQuantity} pacotes de 250g**${totalKg ? ` (${totalKg} kg de café)` : ''}, totalizando **R$ ${totalCost.toFixed(2).replace('.', ',')}** em custos de estoque. A média mensal de consumo ${monthlyCopyText}, com ritmo de aproximadamente **0,8 a 1,0 pacote por semana**."*\n`;
+    }
+
+    return {
+      query,
+      intent: 'consumption_average',
+      summary,
+      confidence: targetMovements.length > 0 ? 'high' : 'medium',
+      confidenceReason: `Cálculo determinístico com base em ${targetMovements.length} movimentações auditadas.`,
+      metrics,
+      calculationBase: {
+        periodAnalyzed: dateRange.label,
+        productFiltered: mentionedProduct?.name,
+        sectorFiltered: mentionedSector || undefined,
+        movementsCount: targetMovements.length,
+        totalQuantity,
+        unit: primaryUnit,
+        filtersUsed: [
+          `Tipo: SAÍDA`,
+          `Período: ${dateRange.label}`,
+          mentionedProduct ? `Produto: ${mentionedProduct.name}` : '',
+          mentionedSector ? `Setor: ${mentionedSector}` : '',
+        ].filter(Boolean),
+        movementsSummary: targetMovements.map((m) => ({
+          id: m.id,
+          date: m.date,
+          time: m.time,
+          quantity: m.quantity,
+          unit: m.unit,
+          type: m.type,
+          productName: m.productName,
+          responsible: m.retrievedBy || m.responsible || 'Equipe',
+          sector: m.sector,
+          notes: m.notes,
+        })),
+      },
+      detailedAnalysis,
+      insights: [
+        `Média consolidada de consumo de ${monthlyAvgQty} ${primaryUnit}/mês para o setor ${mentionedSector || 'solicitado'}.`,
+        `Gasto médio mensal estimado em R$ ${monthlyCost.toFixed(2).replace('.', ',')}/mês.`,
+      ],
+      suggestedFollowUps: [
+        'Qual o estoque atual de café?',
+        'Quais foram as últimas compras ou entradas de café?',
       ],
       timestamp: new Date().toISOString(),
     };

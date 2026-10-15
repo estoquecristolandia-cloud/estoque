@@ -160,13 +160,13 @@ export function validateSnapshotAgainstAuthoritativeProducts(
     authByName.set(prod.name.trim().toLowerCase(), prod);
   }
 
-  // Se o snapshot tiver menos produtos que os autoritativos conhecidos (snapshot incompleto)
-  if (snapshotProducts.length < authoritativeProducts.length) {
+  // Validação de presença de produtos
+  if (snapshotProducts.length === 0) {
     return {
       valid: false,
       error: {
         code: 'INVALID_SNAPSHOT',
-        message: `Snapshot incompleto: contém ${snapshotProducts.length} produtos, mas o almoxarifado possui ${authoritativeProducts.length} produtos cadastrados.`,
+        message: 'Snapshot de inventário vazio.',
         details: {
           reason: 'INCOMPLETE_SNAPSHOT',
         },

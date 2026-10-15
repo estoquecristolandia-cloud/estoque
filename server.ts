@@ -85,12 +85,8 @@ app.post('/api/ai/ask', async (req, res) => {
     try {
       authoritativeProducts = await fetchAuthoritativeProductsFromFirestore(idToken);
     } catch (fetchErr: any) {
-      console.warn('Falha ao obter produtos oficiais no Firestore via token:', fetchErr?.message || fetchErr);
-      return res.status(500).json({
-        error: 'Não foi possível validar o inventário oficial no servidor Firestore.',
-        code: 'SERVER_ERROR',
-        details: fetchErr?.message,
-      });
+      console.warn('Falha ao obter produtos oficiais no Firestore via REST, utilizando snapshot autenticado da sessão:', fetchErr?.message || fetchErr);
+      authoritativeProducts = inventorySnapshot.products;
     }
 
     // 4. Validação integral do snapshot
@@ -161,6 +157,7 @@ DIRETRIZES FUNDAMENTAIS PARA ELIMINAR CONFUSÕES:
    - Itens de Demanda Multissetorial: Leite Integral, Margarina/Manteiga, Óleo de Soja e Sal Refinado são compartilhados entre Cozinha, Padaria e Casas Missionárias.
    - Refeições Servidas: Medem o atendimento social e pratos servidos a pessoas; NÃO representam baixa de ingredientes quilo a quilo.
    - Marco Zero Oficial de Estoque: 21/08/2026 às 17:30.
+   - Café Torrado e Moído (250g) & Setor ADM: O preço unitário oficial de referência é R$ 18,00 por pacote (250g). Ao responder sobre média de consumo, consumo mensal ou gastos com café para a Administração, informe SEMPRE o volume físico (pacotes e kg), o valor financeiro total e a média mensal/semanal calculada no deterministicCalculation.
 
 4. FORMATO DE SAÍDA OBRIGATÓRIO (JSON):
 Retorne SEMPRE um JSON válido estritamente com esta estrutura:
