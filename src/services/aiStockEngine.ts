@@ -1148,11 +1148,11 @@ export function executeDeterministicStockQuery(
       detailedAnalysis += `\n`;
 
       const monthlyCopyText = hasDifferentActiveSpan
-        ? `situa-se entre **${monthlyAvgQty} e ${monthlyAvgActive} pacotes por mês** (cerca de **4 a 5 pacotes/mês**, totalizando **R$ ${monthlyCost.toFixed(2).replace('.', ',')} a R$ ${monthlyCostActive.toFixed(2).replace('.', ',')}/mês**)`
-        : `é de **${monthlyAvgQty} pacotes por mês** (totalizando **R$ ${monthlyCost.toFixed(2).replace('.', ',')}/mês**)`;
+        ? `situa-se entre **${monthlyAvgQty} e ${monthlyAvgActive} pacotes por mês** (cerca de **${Math.round(monthlyAvgQty)} a ${Math.round(monthlyAvgActive)} pacotes/mês**, totalizando **R$ ${monthlyCost.toFixed(2).replace('.', ',')} a R$ ${monthlyCostActive.toFixed(2).replace('.', ',')}/mês**)`
+        : `é de **${monthlyAvgQty} pacotes por mês** (cerca de **${Math.round(monthlyAvgQty)} pacotes/mês**, totalizando **R$ ${monthlyCost.toFixed(2).replace('.', ',')}/mês**)`;
 
       detailedAnalysis += `> 💬 **Resposta Pronta para Encaminhar ao Setor Administrativo:**\n`;
-      detailedAnalysis += `> *"No período de ${dateRange.label}, o setor da Administração retirou um total de **${totalQuantity} pacotes de 250g**${totalKg ? ` (${totalKg} kg de café)` : ''}, totalizando **R$ ${totalCost.toFixed(2).replace('.', ',')}** em custos de estoque. A média mensal de consumo ${monthlyCopyText}, com ritmo de aproximadamente **0,8 a 1,0 pacote por semana**."*\n`;
+      detailedAnalysis += `> *"No período de ${dateRange.label}, o setor da Administração retirou um total de **${totalQuantity} pacotes de 250g**${totalKg ? ` (${totalKg} kg de café)` : ''}, totalizando **R$ ${totalCost.toFixed(2).replace('.', ',')}** em custos de estoque. A média mensal de consumo ${monthlyCopyText}, com ritmo de aproximadamente **${weeklyAvgQty} pacote por semana** (~**R$ ${weeklyCost.toFixed(2).replace('.', ',')}/semana**)."*\n`;
     }
 
     return {

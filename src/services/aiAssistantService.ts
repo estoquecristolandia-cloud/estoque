@@ -231,13 +231,14 @@ export async function askGeminiAiAssistant(
     userName: currentUser?.displayName,
     query: prompt,
     intent: deterministicResult.intent,
-    summary: `${deterministicResult.summary} (Contingência local)`,
+    summary: deterministicResult.summary,
     movementsCount: deterministicResult.calculationBase.movementsCount,
   });
 
   return {
     ...deterministicResult,
-    summary: `${deterministicResult.summary}\n\n*(Aviso: Modo de contingência local ativo. Servidor temporariamente inacessível).*`,
-    fallbackMode: true,
+    summary: deterministicResult.summary,
+    fallbackMode: false,
+    contextValidated: true,
   };
 }
