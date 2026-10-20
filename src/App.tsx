@@ -322,7 +322,7 @@ export default function App() {
         onOpenQuickGuide={() => setIsQuickGuideOpen(true)}
       />
       <main className="flex-1 md:h-screen md:overflow-y-auto overflow-x-hidden relative z-10 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800">
-        <div className="p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto w-full">
+        <div className="p-4 sm:p-6 md:p-8 lg:px-8 xl:px-10 space-y-6 w-full max-w-full">
           <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
             <motion.div key="dashboard" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
