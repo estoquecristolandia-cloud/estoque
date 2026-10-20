@@ -20,7 +20,7 @@ import {
   Scale,
   Mail,
 } from 'lucide-react';
-import { getProductStockStatus, calculateDaysRemaining, getProductAutonomyLabel } from '../utils/storage';
+import { getProductStockStatus, calculateDaysRemaining, getProductAutonomyLabel, isProductNeedingAttention } from '../utils/storage';
 import { StockNewsletterModal } from './StockNewsletterModal';
 
 interface CurrentStockOverviewProps {
@@ -60,12 +60,11 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'critical' | 'warning' | 'normal'>('all');
   const [isNewsletterOpen, setIsNewsletterOpen] = useState(false);
 
-  // Stats calculation
+  // Stats calculation (Critério Unificado B.2 & B.5)
   const totalProducts = products.length;
-  const totalPhysicalStock = products.reduce((acc, p) => acc + (Number(p.currentStock) || 0), 0);
   const criticalProducts = products.filter((p) => p.currentStock === 0 || getProductStockStatus(p) === 'critical');
-  const warningProducts = products.filter((p) => p.currentStock > 0 && getProductStockStatus(p) === 'warning');
-  const normalProducts = products.filter((p) => getProductStockStatus(p) === 'normal');
+  const warningProducts = products.filter((p) => isProductNeedingAttention(p) && !(p.currentStock === 0 || getProductStockStatus(p) === 'critical'));
+  const normalProducts = products.filter((p) => !isProductNeedingAttention(p));
 
   // Unique categories
   const categories = Array.from(new Set(products.map((p) => p.category)));
@@ -79,7 +78,9 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
 
     const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
 
-    const status = p.currentStock === 0 || getProductStockStatus(p) === 'critical' ? 'critical' : getProductStockStatus(p);
+    const isCritical = p.currentStock === 0 || getProductStockStatus(p) === 'critical';
+    const isWarning = isProductNeedingAttention(p) && !isCritical;
+    const status = isCritical ? 'critical' : isWarning ? 'warning' : 'normal';
     const matchesStatus = statusFilter === 'all' || status === statusFilter;
 
     return matchesSearch && matchesCategory && matchesStatus;
@@ -116,7 +117,7 @@ export const CurrentStockOverview: React.FC<CurrentStockOverviewProps> = ({
                 : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
             }`}
           >
-            Total: {totalProducts} itens ({Math.round(totalPhysicalStock).toLocaleString('pt-BR')} un físicas)
+            Total: {totalProducts} itens ({criticalProducts.length} crítico{criticalProducts.length === 1 ? '' : 's'} · {warningProducts.length} em atenção)
           </button>
 
           <button

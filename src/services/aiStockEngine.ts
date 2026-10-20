@@ -151,19 +151,18 @@ export function formatDateTimeBR(isoString?: string): string {
   }
 }
 
+export function getLocalDateStr(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 /**
  * Retorna as datas de início e fim no fuso horário do Brasil
  */
 export function parseDateRangeFromQuery(query: string, referenceDate: Date = new Date()): DateRange {
   const norm = convertSpokenNumbersToDigits(query);
-
-  const getLocalDateStr = (d: Date): string => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
   const todayStr = getLocalDateStr(referenceDate);
 
   // 1. Data explícita no formato "dia DD de [mes] (de YYYY)?" ou "DD/MM/YYYY" ou "DD/MM"
@@ -865,6 +864,225 @@ export function executeDeterministicStockQuery(
       suggestedFollowUps: [
         'Quanto de arroz a cozinha consumiu nos últimos 7 dias?',
         'Quais produtos foram entregues para a Cozinha esta semana?',
+      ],
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  // =========================================================================
+  // CASO AUDITORIA: Auditoria de Dias sem Lançamento / Lançamentos Faltantes / Esquecidos
+  // Ex: "verifique nos ultimos 10 dias se tem algum dia que não foi lançado a saida de arroz?"
+  // =========================================================================
+  const isMissingAuditInquiry =
+    norm.includes('nao foi lancad') ||
+    norm.includes('nao lancad') ||
+    norm.includes('esqueceu de lancar') ||
+    norm.includes('faltou lancar') ||
+    norm.includes('sem lancamento') ||
+    norm.includes('sem saida') ||
+    norm.includes('sem entrada') ||
+    norm.includes('dias sem') ||
+    norm.includes('dia sem') ||
+    norm.includes('algum dia que nao') ||
+    norm.includes('algum dia sem') ||
+    norm.includes('deixou de lancar') ||
+    norm.includes('dias que nao') ||
+    norm.includes('dias faltantes') ||
+    norm.includes('dias pendentes') ||
+    (norm.includes('algum dia') && (norm.includes('falta') || norm.includes('nao') || norm.includes('esqueceu')));
+
+  if (isMissingAuditInquiry) {
+    const targetType: 'saida' | 'entrada' = norm.includes('entrada') ? 'entrada' : 'saida';
+    const targetProduct = mentionedProduct || (mentionedProducts.length > 0 ? mentionedProducts[0] : null);
+    const targetSector = mentionedSector;
+
+    // Gerar a lista cronológica de todos os dias do período analisado
+    const WEEKDAYS_PT = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    const allDaysInPeriod: string[] = [];
+    const startObj = new Date(`${dateRange.startDate}T12:00:00`);
+    const endObj = new Date(`${dateRange.endDate}T12:00:00`);
+    const iterDate = new Date(startObj);
+    while (iterDate <= endObj) {
+      allDaysInPeriod.push(getLocalDateStr(iterDate));
+      iterDate.setDate(iterDate.getDate() + 1);
+    }
+
+    interface DayAuditRecord {
+      date: string;
+      dayOfWeek: string;
+      count: number;
+      totalQty: number;
+      movements: StockMovement[];
+    }
+
+    const daysWithLaunches: DayAuditRecord[] = [];
+    const daysWithoutLaunches: { date: string; dayOfWeek: string }[] = [];
+
+    allDaysInPeriod.forEach((dayStr) => {
+      const dayDateObj = new Date(`${dayStr}T12:00:00`);
+      const dayOfWeek = WEEKDAYS_PT[dayDateObj.getDay()];
+
+      const dayMovs = movements.filter((m) => {
+        if (m.date !== dayStr) return false;
+        if (m.type !== targetType) return false;
+        if (targetProduct) {
+          const mProdId = m.productId || '';
+          const mProdName = (m.productName || '').toLowerCase();
+          const tId = targetProduct.id.toLowerCase();
+          const tName = targetProduct.name.toLowerCase();
+          if (mProdId !== tId && !mProdName.includes(tName)) return false;
+        }
+        if (targetSector) {
+          const mSec = (m.sector || '').toLowerCase();
+          if (!mSec.includes(targetSector.toLowerCase())) return false;
+        }
+        return true;
+      });
+
+      const dayTotalQty = dayMovs.reduce((acc, m) => acc + (Number(m.quantity) || 0), 0);
+
+      if (dayMovs.length > 0) {
+        daysWithLaunches.push({
+          date: dayStr,
+          dayOfWeek,
+          count: dayMovs.length,
+          totalQty: dayTotalQty,
+          movements: dayMovs,
+        });
+      } else {
+        daysWithoutLaunches.push({
+          date: dayStr,
+          dayOfWeek,
+        });
+      }
+    });
+
+    const totalQtyPeriod = daysWithLaunches.reduce((acc, d) => acc + d.totalQty, 0);
+    const unit = targetProduct ? targetProduct.unit : 'unidade(s)';
+    const prodTitle = targetProduct ? targetProduct.name : 'insumos gerais';
+    const sectorTitle = targetSector ? ` para o setor ${targetSector}` : '';
+
+    let summary = '';
+    if (daysWithoutLaunches.length === 0) {
+      summary = `✅ **Nenhum dia sem lançamento.** No período de ${dateRange.label} (total de ${allDaysInPeriod.length} dias), todos os dias tiveram lançamentos de ${targetType} de **${prodTitle}**${sectorTitle} devidamente registrados, totalizando **${totalQtyPeriod} ${unit}**.`;
+    } else if (daysWithLaunches.length === 0) {
+      summary = `⚠️ **Atenção:** No período de ${dateRange.label} (${allDaysInPeriod.length} dias analisados), **não foi localizado nenhum lançamento de ${targetType}** de **${prodTitle}**${sectorTitle}. Todos os ${allDaysInPeriod.length} dias constam sem movimentação desse item no sistema.`;
+    } else {
+      const missingDatesFormatted = daysWithoutLaunches.map((d) => `**${formatDateBR(d.date)}** (${d.dayOfWeek})`).join(', ');
+      summary = `⚠️ **Identificamos ${daysWithoutLaunches.length} dia(s) sem lançamento de ${targetType}** de **${prodTitle}**${sectorTitle} no período de ${dateRange.label}: ${missingDatesFormatted}. Nos demais **${daysWithLaunches.length} dia(s)**, foram lançados um total de **${totalQtyPeriod} ${unit}**.`;
+    }
+
+    let detailedAnalysis = `### 🔍 Auditoria de Frequência de Lançamentos — ${prodTitle}\n\n`;
+    detailedAnalysis += `• **Período Auditado:** ${dateRange.label} (${allDaysInPeriod.length} dias no total)\n`;
+    detailedAnalysis += `• **Item Auditado:** ${prodTitle} (${unit})\n`;
+    detailedAnalysis += `• **Tipo de Movimentação:** ${targetType.toUpperCase()}\n`;
+    if (targetSector) detailedAnalysis += `• **Setor Filtrado:** ${targetSector}\n`;
+    detailedAnalysis += `• **Dias com Lançamento Registrado:** **${daysWithLaunches.length} de ${allDaysInPeriod.length} dias** (${((daysWithLaunches.length / (allDaysInPeriod.length || 1)) * 100).toFixed(0)}% de cobertura)\n`;
+    detailedAnalysis += `• **Dias Pendentes (Sem Lançamento):** **${daysWithoutLaunches.length} dia(s)**\n`;
+    detailedAnalysis += `• **Volume Total Baixado no Período:** **${totalQtyPeriod} ${unit}**\n\n`;
+
+    detailedAnalysis += `#### 📅 Conferência Detalhada Dia a Dia:\n\n`;
+    detailedAnalysis += `| Data | Dia da Semana | Status do Lançamento | Quantidade | Destino / Solicitante | ID do Lançamento |\n`;
+    detailedAnalysis += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`;
+
+    allDaysInPeriod.forEach((dayStr) => {
+      const withLaunch = daysWithLaunches.find((d) => d.date === dayStr);
+      const dayDateObj = new Date(`${dayStr}T12:00:00`);
+      const dayOfWeek = WEEKDAYS_PT[dayDateObj.getDay()];
+
+      if (withLaunch) {
+        withLaunch.movements.forEach((m, idx) => {
+          const resp = m.retrievedBy || m.responsible || m.receivedBy || 'Equipe';
+          const sec = m.sector || 'Geral';
+          const badge = idx === 0 ? '✅ **Registrado**' : '↳ *(+1 saída)*';
+          detailedAnalysis += `| ${formatDateBR(dayStr)} | ${dayOfWeek} | ${badge} | **-${m.quantity} ${m.unit}** | ${sec} (${resp}) | \`${m.id}\` |\n`;
+        });
+      } else {
+        detailedAnalysis += `| ${formatDateBR(dayStr)} | ${dayOfWeek} | ❌ **SEM LANÇAMENTO** | *0 ${unit}* | *Pendente de registro* | *-* |\n`;
+      }
+    });
+
+    detailedAnalysis += `\n`;
+
+    if (daysWithoutLaunches.length > 0) {
+      detailedAnalysis += `#### 💡 Recomendação para o Gestor do Estoque (Marconi Castro):\n`;
+      detailedAnalysis += `1. **Conferência Física:** Verificar com a equipe de Cozinha (Chefe Marcos) se houve consumo físico de **${prodTitle}** nos dias sem registro (${daysWithoutLaunches.map((d) => formatDateBR(d.date)).join(', ')}).\n`;
+      detailedAnalysis += `2. **Regularização:** Se o produto foi consumido, utilize o botão de **"Adicionar Saída no dia"** na Linha do Tempo de Movimentações para registrar a saída retroativa com a data exata e manter o estoque real alinhado ao sistema.\n`;
+    }
+
+    const metrics: AiCalculatedMetric[] = [
+      {
+        label: 'Dias Analisados',
+        value: `${allDaysInPeriod.length} dias`,
+        unit: dateRange.label,
+      },
+      {
+        label: 'Dias com Saída',
+        value: `${daysWithLaunches.length} dias`,
+        unit: `${totalQtyPeriod} ${unit} lançados`,
+        badge: daysWithLaunches.length === allDaysInPeriod.length ? '100% Regular' : 'Auditado',
+      },
+      {
+        label: 'Dias sem Saída',
+        value: `${daysWithoutLaunches.length} dia(s)`,
+        unit: daysWithoutLaunches.length === 0 ? 'Regular' : 'Pendência Detectada',
+        badge: daysWithoutLaunches.length > 0 ? 'Atenção' : 'Concluído',
+      },
+      {
+        label: 'Total Consumido',
+        value: `${totalQtyPeriod} ${unit}`,
+        unit: prodTitle,
+      },
+    ];
+
+    const allMatchingMovs = daysWithLaunches.flatMap((d) => d.movements);
+
+    return {
+      query,
+      intent: 'audit_missing_launches',
+      summary,
+      confidence: 'high',
+      confidenceReason: `Auditoria de calendário dia a dia com ${allDaysInPeriod.length} datas confrontadas com registros de movimentação.`,
+      metrics,
+      calculationBase: {
+        periodAnalyzed: dateRange.label,
+        productFiltered: prodTitle,
+        sectorFiltered: targetSector || undefined,
+        movementsCount: allMatchingMovs.length,
+        totalQuantity: totalQtyPeriod,
+        unit,
+        filtersUsed: [
+          `Tipo: ${targetType.toUpperCase()}`,
+          `Período: ${dateRange.label}`,
+          targetProduct ? `Produto: ${targetProduct.name}` : '',
+          targetSector ? `Setor: ${targetSector}` : '',
+          `Dias analisados: ${allDaysInPeriod.length}`,
+          `Dias sem lançamento: ${daysWithoutLaunches.length}`,
+        ].filter(Boolean),
+        movementsSummary: allMatchingMovs.map((m) => ({
+          id: m.id,
+          date: m.date,
+          time: m.time,
+          quantity: m.quantity,
+          unit: m.unit,
+          type: m.type,
+          productName: m.productName,
+          responsible: m.retrievedBy || m.responsible || 'Equipe',
+          sector: m.sector,
+          notes: m.notes,
+        })),
+      },
+      detailedAnalysis,
+      insights: [
+        daysWithoutLaunches.length === 0
+          ? `Excelente: 100% dos dias analisados possuem saídas de ${prodTitle} registradas.`
+          : `Foram detectados ${daysWithoutLaunches.length} dia(s) sem lançamento de ${targetType} para ${prodTitle}.`,
+        `Consumo total registrado no período: ${totalQtyPeriod} ${unit}.`,
+      ],
+      suggestedFollowUps: [
+        `Qual o estoque atual de ${prodTitle}?`,
+        `Quais foram as últimas saídas de ${prodTitle}?`,
+        'Como lançar uma saída retroativa?',
       ],
       timestamp: new Date().toISOString(),
     };

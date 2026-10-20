@@ -160,15 +160,17 @@ export function validateSnapshotAgainstAuthoritativeProducts(
     authByName.set(prod.name.trim().toLowerCase(), prod);
   }
 
-  // Validação de presença de produtos
-  if (snapshotProducts.length === 0) {
+  // Validação de completude do snapshot em relação ao banco autoritativo
+  if (snapshotProducts.length < authoritativeProducts.length) {
     return {
       valid: false,
       error: {
         code: 'INVALID_SNAPSHOT',
-        message: 'Snapshot de inventário vazio.',
+        message: `Snapshot de inventário incompleto: contém ${snapshotProducts.length} produtos de ${authoritativeProducts.length} cadastrados.`,
         details: {
           reason: 'INCOMPLETE_SNAPSHOT',
+          providedCount: snapshotProducts.length,
+          expectedCount: authoritativeProducts.length,
         },
       },
     };

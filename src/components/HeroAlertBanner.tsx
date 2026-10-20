@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Product, DailyKit, Department } from '../types';
 import { UserRole } from '../firebase';
-import { getProductStockStatus } from '../utils/storage';
+import { getProductStockStatus, isProductNeedingAttention } from '../utils/storage';
 import { AnimatedNumber } from './AnimatedNumber';
 import { soundFeedback } from '../utils/audioFeedback';
 
@@ -105,15 +105,9 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
     return { product: p, dailyRate, days, status, inKit };
   });
 
-  // Filter items in urgent alert (<= 5 days autonomy or below minimum stock or critical)
+  // Filter items in urgent alert using unified business rule (B.2)
   const alertProducts = productsWithAutonomy
-    .filter(
-      (item) =>
-        item.days <= 5 ||
-        item.status === 'critical' ||
-        item.status === 'warning' ||
-        item.product.currentStock <= item.product.minStock
-    )
+    .filter((item) => isProductNeedingAttention(item.product))
     .sort((a, b) => a.days - b.days);
 
   // Key staples IDs
@@ -375,7 +369,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
                 Alerta de Reposição (≤ 5 dias)
               </span>
               <div className="text-2xl font-black tabular-nums mt-0.5">
-                <AnimatedNumber value={alertProducts.length} /> itens
+                <AnimatedNumber value={alertProducts.length} /> {alertProducts.length === 1 ? 'item' : 'itens'}
               </div>
               <span className="text-[11px] font-bold">
                 {alertProducts.length > 0 ? 'Requer atenção imediata' : 'Nenhum item zerado'}
@@ -562,7 +556,7 @@ export const HeroAlertBanner: React.FC<HeroAlertBannerProps> = ({
                   </div>
 
                   {/* Right Side: Physical Quantity + Quick Entry */}
-                  <div className="flex items-center justify-between sm:justify-end gap-5 shrink-0">
+                  <div className="flex items-center justify-between sm:justify-end gap-5 shrink-0 pr-2 sm:pr-3">
                     <div className="text-right">
                       <div className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white tabular-nums">
                         {product.currentStock} <span className="text-xs font-semibold text-slate-400">{product.unit}</span>

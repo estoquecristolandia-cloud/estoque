@@ -208,3 +208,29 @@ export function getRecommendedPurchaseDate(products: Product[]): { dateStr: stri
   };
 }
 export function getProductStockStatus(product: Product): 'critical' | 'warning' | 'normal' { const days = calculateDaysRemaining(product); const alertDays = getProductAlertDays(product); if (days <= 0 || product.currentStock <= 0 || days <= 1.5 || product.currentStock <= product.minStock / 2) return 'critical'; if (days <= alertDays || days <= 3 || product.currentStock <= product.minStock) return 'warning'; return 'normal'; }
+
+/**
+ * Regra Unificada de Reposição e Atenção de Estoque (Lote 8 - Parte B.2):
+ * Critério unificado e mais abrangente:
+ * - Estoque zerado (currentStock === 0)
+ * - Estoque abaixo ou igual ao mínimo (currentStock <= minStock)
+ * - Autonomia estimada <= 5 dias (days <= 5)
+ * - Status crítico ou em alerta (warning) pelo cálculo padrão
+ */
+export function isProductNeedingAttention(product: Product): boolean {
+  if (!product) return false;
+  const stock = Number(product.currentStock) || 0;
+  const min = Number(product.minStock) || 0;
+  if (stock === 0) return true;
+  if (stock <= min) return true;
+  const days = calculateDaysRemaining(product);
+  if (!isNaN(days) && days <= 5) return true;
+  const status = getProductStockStatus(product);
+  if (status === 'critical' || status === 'warning') return true;
+  return false;
+}
+
+export function getProductsNeedingAttention(products: Product[]): Product[] {
+  if (!Array.isArray(products)) return [];
+  return products.filter(isProductNeedingAttention);
+}

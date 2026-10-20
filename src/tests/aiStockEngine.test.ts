@@ -645,6 +645,53 @@ export function runAllAiEngineTests(): { passed: number; failed: number; results
   assert(resCafeSemData.calculationBase.periodAnalyzed.includes('Histórico Consolidado'), 'Fallback inteligente de média utiliza Histórico Consolidado em vez de 7 dias');
   assert(resCafeSemData.calculationBase.totalQuantity === 13, 'Cálculo da média utiliza histórico completo com 13 pacotes apurados');
 
+  // Teste 18: Auditoria de Dias sem Lançamento (Faltantes / Esquecidos)
+  const resAuditoriaFalta = executeDeterministicStockQuery(
+    'verifique nos ultimos 10 dias se tem algum dia que não foi lançado a saida de arroz?',
+    mockProducts,
+    [
+      ...mockMovements,
+      {
+        id: 'mov-arroz-aud-1',
+        productId: 'prod-2',
+        productName: 'Arroz Branco Tipo 1',
+        type: 'saida',
+        quantity: 15,
+        unit: 'kg',
+        date: '2026-10-10',
+        time: '10:00',
+        sector: 'Cozinha',
+        retrievedBy: 'Chefe Marcos',
+        deliveredBy: 'Pr. Marconi',
+        createdAt: '2026-10-10T10:00:00Z',
+      },
+      {
+        id: 'mov-arroz-aud-2',
+        productId: 'prod-2',
+        productName: 'Arroz Branco Tipo 1',
+        type: 'saida',
+        quantity: 15,
+        unit: 'kg',
+        date: '2026-10-14',
+        time: '09:30',
+        sector: 'Cozinha',
+        retrievedBy: 'Chefe Marcos',
+        deliveredBy: 'Pr. Marconi',
+        createdAt: '2026-10-14T09:30:00Z',
+      },
+    ],
+    mockMeals,
+    mockDailyKit,
+    mockMissionaries,
+    [],
+    [],
+    new Date('2026-10-15T12:00:00')
+  );
+  assert(resAuditoriaFalta.intent === 'audit_missing_launches', 'Intent audit_missing_launches detectado com sucesso');
+  assert(resAuditoriaFalta.metrics.some(m => m.label === 'Dias sem Saída'), 'Métrica de Dias sem Saída gerada');
+  assert(resAuditoriaFalta.detailedAnalysis.includes('Conferência Detalhada Dia a Dia'), 'Tabela cronológica de auditoria dia a dia gerada');
+  assert(resAuditoriaFalta.summary.includes('sem lançamento de saida'), 'Resumo executivo informa pendências de lançamento');
+
   return { passed, failed, results };
 }
 

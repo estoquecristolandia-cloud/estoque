@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { Product, StockMovement, DailyKit, DailyMealRecord, Department } from '../types';
 import { UserRole } from '../firebase';
-import { getProductStockStatus } from '../utils/storage';
+import { getProductStockStatus, getProductsNeedingAttention, isProductNeedingAttention } from '../utils/storage';
 import { AnimatedNumber } from './AnimatedNumber';
 import { soundFeedback } from '../utils/audioFeedback';
 
@@ -53,12 +53,14 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
   // 1. Total de Produtos & Categorias
   const totalProducts = products.length;
   const activeCategories = new Set(products.map((p) => p.category)).size;
-  const totalPhysicalStock = products.reduce((acc, p) => acc + (Number(p.currentStock) || 0), 0);
 
-  // 2. Estoque em Alerta & Zerados
+  // 2. Estoque em Alerta & Zerados (Critério Unificado B.2)
+  const productsNeedingAttention = getProductsNeedingAttention(products);
   const zeroStockProducts = products.filter((p) => p.currentStock === 0);
-  const belowMinProducts = products.filter((p) => p.currentStock > 0 && p.currentStock <= p.minStock);
-  const alertTotal = zeroStockProducts.length + belowMinProducts.length;
+  const belowMinProducts = products.filter((p) => p.currentStock > 0 && isProductNeedingAttention(p));
+  const criticalProductsCount = products.filter((p) => p.currentStock === 0 || getProductStockStatus(p) === 'critical').length;
+  const warningProductsCount = Math.max(0, productsNeedingAttention.length - criticalProductsCount);
+  const alertTotal = productsNeedingAttention.length;
 
   // 3. Movimentações de Hoje
   // Format today as YYYY-MM-DD
@@ -147,8 +149,8 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
               Produtos Cadastrados
             </p>
             <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-lg w-fit">
-              <span>📦 Saldo Físico Total:</span>
-              <strong>{Math.round(totalPhysicalStock).toLocaleString('pt-BR')} un/L/kg</strong>
+              <span>📦 Itens Monitorados:</span>
+              <strong>{totalProducts} monitorados · {criticalProductsCount} crítico{criticalProductsCount === 1 ? '' : 's'} · {warningProductsCount} em atenção</strong>
             </div>
           </div>
 
@@ -260,11 +262,11 @@ export const KpiCards: React.FC<KpiCardsProps> = ({
             </p>
             <div className="flex items-center gap-1.5 mt-1 text-[11px] font-bold flex-wrap">
               <span className="text-emerald-600 dark:text-emerald-400">
-                +{todayEntries.length} Entradas {todayEntriesQty > 0 ? `(+${todayEntriesQty} un/L)` : ''}
+                {todayEntries.length} {todayEntries.length === 1 ? 'entrada' : 'entradas'}
               </span>
               <span className="text-slate-300 dark:text-slate-700">·</span>
               <span className="text-blue-600 dark:text-blue-400">
-                -{todayExits.length} Saídas {todayExitsQty > 0 ? `(-${todayExitsQty} un/L)` : ''}
+                {todayExits.length} {todayExits.length === 1 ? 'saída' : 'saídas'}
               </span>
             </div>
           </div>

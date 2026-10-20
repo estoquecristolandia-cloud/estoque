@@ -425,22 +425,22 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
     switch (confidence) {
       case 'high':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Dados 100% Auditados
           </span>
         );
       case 'medium':
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
             Dados Parciais
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
             Dados Insuficientes
           </span>
         );
@@ -454,7 +454,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
         return (
-          <strong key={i} className="font-bold text-slate-900">
+          <strong key={i} className="font-bold text-slate-900 dark:text-white">
             {part.slice(2, -2)}
           </strong>
         );
@@ -465,30 +465,30 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
 
   return (
     <div className="space-y-6">
-      {/* HEADER SECTION (PADRÃO BENTO GRID CLARO & INSTITUCIONAL) */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
-        <div className={`absolute top-0 right-0 w-80 h-80 ${isDml ? 'bg-cyan-50' : 'bg-emerald-50'} rounded-full blur-3xl pointer-events-none -mr-20 -mt-20`} />
+      {/* HEADER SECTION (PADRÃO BENTO GRID CLARO & INSTITUCIONAL COM SUPORTE A TEMA ESCURO) */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
+        <div className={`absolute top-0 right-0 w-80 h-80 ${isDml ? 'bg-cyan-50 dark:bg-cyan-950/20' : 'bg-emerald-50 dark:bg-emerald-950/20'} rounded-full blur-3xl pointer-events-none -mr-20 -mt-20`} />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${
               isDml
-                ? 'bg-cyan-50 text-cyan-700 border border-cyan-200'
-                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                ? 'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800'
+                : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
             } text-xs font-black uppercase tracking-wider`}>
-              <Sparkles className={`w-3.5 h-3.5 ${isDml ? 'text-cyan-600' : 'text-emerald-600'}`} />
+              <Sparkles className={`w-3.5 h-3.5 ${isDml ? 'text-cyan-600 dark:text-cyan-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
               <span>
                 {isDml
                   ? 'Gemini 3.8 Flash • DML & Limpeza • Entrada por Voz'
                   : 'Gemini 3.8 Flash • Somente Leitura • Entrada por Voz'}
               </span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
-              <Bot className={`w-8 h-8 ${isDml ? 'text-cyan-600' : 'text-emerald-600'}`} />
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+              <Bot className={`w-8 h-8 ${isDml ? 'text-cyan-600 dark:text-cyan-400' : 'text-emerald-600 dark:text-emerald-400'}`} />
               <span>
                 {isDml ? 'Assistente Inteligente DML & Higiene' : 'Assistente Inteligente de Estoque'}
               </span>
             </h1>
-            <p className="text-sm text-slate-600 max-w-2xl leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
               {isDml
                 ? 'Faça perguntas por texto ou por voz sobre o estoque de produtos de limpeza, higiene dos acolhidos, rotinas da lavanderia e asseio predial da Cristolândia (LEM/BA).'
                 : 'Faça perguntas por texto ou por voz sobre o estoque da Cristolândia (LEM/BA), consumo por missionário/setor e refeições com rastreabilidade auditada.'}
@@ -498,15 +498,15 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
           <div className="flex items-center gap-2 self-start md:self-auto">
             <button
               onClick={handleRunSelfTest}
-              className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-2xl text-xs font-bold border border-emerald-200 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+              className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 rounded-2xl text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
               title="Executar bateria de testes e auditoria de integridade do sistema"
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Auditoria do Sistema (38 Testes)</span>
             </button>
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className="px-4 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-2xl text-xs font-bold border border-slate-200 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+              className="px-4 py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-2xl text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
               title="Ver histórico de perguntas da sessão"
             >
               <History className="w-4 h-4 text-amber-500" />
@@ -517,7 +517,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
       </div>
 
       {/* INPUT CARD COM BOTÃO DE VOZ (MICROFONE) */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4">
         {/* BARRA DE GRAVAÇÃO ATIVA OU PROCESSAMENTO COM IA */}
         <AnimatePresence>
           {isRecording && (
@@ -525,7 +525,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
               initial={{ opacity: 0, height: 0, y: -10 }}
               animate={{ opacity: 1, height: 'auto', y: 0 }}
               exit={{ opacity: 0, height: 0, y: -10 }}
-              className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden shadow-xs"
+              className="p-4 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden shadow-xs"
             >
               <div className="flex items-center gap-3">
                 <span className="relative flex h-3.5 w-3.5">
@@ -534,14 +534,14 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                 </span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-xs font-bold text-slate-900">
-                      Gravando áudio direto: <span className="font-mono text-emerald-700 font-black">{formatTimer(recordingSeconds)}</span>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">
+                      Gravando áudio direto: <span className="font-mono text-emerald-700 dark:text-emerald-400 font-black">{formatTimer(recordingSeconds)}</span>
                     </p>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-800 font-bold uppercase">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 font-bold uppercase">
                       pt-BR
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 mt-0.5 flex items-center gap-1.5">
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
                     <span>Fale sua pergunta sobre o estoque ou refeições e clique em Concluir</span>
                   </p>
                 </div>
@@ -559,7 +559,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                 <button
                   type="button"
                   onClick={cancelVoiceRecording}
-                  className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
+                  className="px-3 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-medium flex items-center gap-1 transition-all cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
                   <span>Cancelar</span>
@@ -573,14 +573,14 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
               initial={{ opacity: 0, height: 0, y: -10 }}
               animate={{ opacity: 1, height: 'auto', y: 0 }}
               exit={{ opacity: 0, height: 0, y: -10 }}
-              className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 overflow-hidden"
+              className="p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-center gap-3 overflow-hidden"
             >
-              <Loader2 className="w-5 h-5 text-amber-600 animate-spin shrink-0" />
+              <Loader2 className="w-5 h-5 text-amber-600 dark:text-amber-400 animate-spin shrink-0" />
               <div>
-                <p className="text-xs font-bold text-amber-900">
+                <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
                   Transcrevendo sua fala com Gemini IA...
                 </p>
-                <p className="text-xs text-amber-700">
+                <p className="text-xs text-amber-700 dark:text-amber-400">
                   Reconhecendo nomes de produtos, missionários e períodos.
                 </p>
               </div>
@@ -597,8 +597,8 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Digite ou fale sua pergunta... (Ex: Quanto de leite o missionário Renê retirou nos últimos 7 dias?)"
-              className={`w-full pl-4 pr-14 py-3.5 bg-slate-50 border rounded-2xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
-                isRecording ? 'border-rose-400 ring-2 ring-rose-400/20' : 'border-slate-200'
+              className={`w-full pl-4 pr-14 py-3.5 bg-slate-50 dark:bg-slate-800/80 border rounded-2xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
+                isRecording ? 'border-rose-400 ring-2 ring-rose-400/20' : 'border-slate-200 dark:border-slate-700'
               }`}
               disabled={isLoading || isTranscribing}
             />
@@ -620,16 +620,16 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                 isRecording
                   ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30 scale-105 animate-pulse'
                   : isTranscribing
-                  ? 'bg-amber-100 text-amber-700 cursor-wait'
-                  : 'text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 active:scale-95'
+                  ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 cursor-wait'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 active:scale-95'
               }`}
             >
               {isRecording ? (
                 <Square className="w-4 h-4 fill-current" />
               ) : isTranscribing ? (
-                <Loader2 className="w-5 h-5 animate-spin text-amber-600" />
+                <Loader2 className="w-5 h-5 animate-spin text-amber-600 dark:text-amber-400" />
               ) : (
-                <Mic className="w-5 h-5 text-emerald-600 hover:text-emerald-700" />
+                <Mic className="w-5 h-5 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300" />
               )}
             </button>
           </div>
@@ -654,15 +654,15 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
         </div>
 
         {/* DICA DE VOZ DISCRETA E INFORMATIVA */}
-        <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+        <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 px-1">
           <span className="flex items-center gap-1.5">
-            <Radio className="w-3.5 h-3.5 text-emerald-600" />
+            <Radio className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             <span>Dica: Clique no 🎙️ microfone e fale normalmente (ex: "Quanto arroz a cozinha consumiu nos últimos 15 dias?")</span>
           </span>
           {query.trim() && (
             <button
               onClick={() => setQuery('')}
-              className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer"
             >
               Limpar texto
             </button>
@@ -670,8 +670,8 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
         </div>
 
         {/* QUICK PROMPTS CHIPS */}
-        <div className="space-y-2 pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
             <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
             <span>Sugestões de Perguntas Rápidas:</span>
           </div>
@@ -681,7 +681,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                 key={idx}
                 onClick={() => handleAsk(item.query)}
                 disabled={isLoading}
-                className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-medium border border-slate-200 hover:border-emerald-300 transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-medium border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600 transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span>{item.label}</span>
               </button>
@@ -697,42 +697,42 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm overflow-hidden"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-sm overflow-hidden"
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                 <History className="w-4 h-4 text-amber-500" />
                 <span>Histórico de Consultas da Sessão</span>
               </h3>
               <button
                 onClick={() => setShowHistory(false)}
-                className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 Fechar
               </button>
             </div>
 
             {auditLogs.length === 0 ? (
-              <p className="text-xs text-slate-500 italic">Nenhuma consulta realizada nesta sessão ainda.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 italic">Nenhuma consulta realizada nesta sessão ainda.</p>
             ) : (
-              <div className="divide-y divide-slate-100 max-h-64 overflow-y-auto">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-64 overflow-y-auto">
                 {auditLogs.map((log) => (
                   <div
                     key={log.id}
                     onClick={() => handleAsk(log.query)}
-                    className="py-2.5 px-2 hover:bg-slate-50 rounded-xl flex items-center justify-between gap-4 cursor-pointer transition-colors"
+                    className="py-2.5 px-2 hover:bg-slate-50 dark:hover:bg-slate-800/60 rounded-xl flex items-center justify-between gap-4 cursor-pointer transition-colors"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-slate-800 truncate">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                         "{log.query}"
                       </p>
-                      <p className="text-[11px] text-slate-500 truncate mt-0.5">{log.summary}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{log.summary}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="text-[10px] text-slate-400 block">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 block">
                         {new Date(log.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
-                      <span className="text-[9px] font-bold text-emerald-600">
+                      <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
                         {log.movementsCount} reg.
                       </span>
                     </div>
@@ -752,19 +752,19 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
           className="space-y-6"
         >
           {/* MAIN RESPONSE CARD */}
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
             {/* TOP STATUS BAR */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 {getConfidenceBadge(currentResponse.confidence)}
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-slate-500 dark:text-slate-400">
                   {currentResponse.confidenceReason}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span>100% Somente Leitura (Auditado)</span>
                 </span>
               </div>
@@ -772,22 +772,22 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
 
             {/* QUERY TITLE */}
             <div>
-              <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">
+              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
                 Pergunta Analisada:
               </p>
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 mt-1">
+              <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white mt-1">
                 "{currentResponse.query}"
               </h2>
             </div>
 
             {/* STALE CONTEXT WARNING (HTTP 409) */}
             {currentResponse.staleContext && (
-              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900">
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 dark:text-amber-200">
                 <div className="flex items-start sm:items-center gap-3">
-                  <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5 sm:mt-0" />
                   <div>
                     <p className="text-sm font-bold">Atenção: Os dados do estoque no navegador estão desatualizados</p>
-                    <p className="text-xs text-amber-700 mt-0.5">O servidor identificou divergência em relação aos registros oficiais consolidados no Firestore.</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">O servidor identificou divergência em relação aos registros oficiais consolidados no Firestore.</p>
                   </div>
                 </div>
                 <button
@@ -807,22 +807,22 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                 {currentResponse.metrics.map((metric, idx) => (
                   <div
                     key={idx}
-                    className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-1"
+                    className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 space-y-1"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-600 font-medium">
+                      <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
                         {metric.label}
                       </span>
                       {metric.badge && (
-                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                           {metric.badge}
                         </span>
                       )}
                     </div>
-                    <p className="text-xl sm:text-2xl font-black text-slate-900">
+                    <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
                       {metric.value}
                       {metric.unit && (
-                        <span className="text-xs font-bold text-slate-500 ml-1">
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 ml-1">
                           {metric.unit}
                         </span>
                       )}
@@ -833,38 +833,38 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
             )}
 
             {/* EXECUTIVE SUMMARY BOX */}
-            <div className="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-200 space-y-2">
-              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-900">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
+            <div className="p-5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-emerald-900 dark:text-emerald-300">
+                <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <span>Resumo da Análise:</span>
               </div>
-              <p className="text-sm sm:text-base font-semibold text-slate-800 leading-relaxed">
+              <p className="text-sm sm:text-base font-semibold text-slate-800 dark:text-slate-200 leading-relaxed">
                 {renderFormattedText(currentResponse.summary)}
               </p>
             </div>
 
             {/* DETAILED EXPLANATION */}
             <div className="space-y-3">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                <FileText className="w-4 h-4 text-blue-600" />
+              <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span>Detalhamento Técnico & Explicação</span>
               </h3>
 
-              <div className="prose prose-sm max-w-none text-slate-700 leading-relaxed space-y-3">
+              <div className="prose prose-sm max-w-none text-slate-700 dark:text-slate-300 leading-relaxed space-y-3">
                 {currentResponse.detailedAnalysis.split('\n\n').map((paragraph, pIdx) => {
                   const trimmed = paragraph.trim();
                   if (!trimmed) return null;
 
                   if (trimmed.startsWith('### ')) {
                     return (
-                      <h4 key={pIdx} className="text-base font-bold text-slate-900 mt-4 mb-2 flex items-center gap-1.5">
+                      <h4 key={pIdx} className="text-base font-bold text-slate-900 dark:text-white mt-4 mb-2 flex items-center gap-1.5">
                         {renderFormattedText(trimmed.replace('### ', ''))}
                       </h4>
                     );
                   }
                   if (trimmed.startsWith('#### ')) {
                     return (
-                      <h5 key={pIdx} className="text-sm font-bold text-slate-800 mt-3 mb-1">
+                      <h5 key={pIdx} className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-3 mb-1">
                         {renderFormattedText(trimmed.replace('#### ', ''))}
                       </h5>
                     );
@@ -877,21 +877,21 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
 
                     return (
                       <div key={pIdx} className="overflow-x-auto my-3">
-                        <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-                          <thead className="bg-slate-100 text-slate-700 font-bold">
+                        <table className="w-full text-left text-xs border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+                          <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold">
                             <tr>
                               {headers.map((h, hIdx) => (
-                                <th key={hIdx} className="p-2.5 border-b border-slate-200">
+                                <th key={hIdx} className="p-2.5 border-b border-slate-200 dark:border-slate-700">
                                   {renderFormattedText(h)}
                                 </th>
                               ))}
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                             {bodyRows.map((row, rIdx) => (
-                              <tr key={rIdx} className="hover:bg-slate-50 transition-colors">
+                              <tr key={rIdx} className="hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                                 {row.map((cell, cIdx) => (
-                                  <td key={cIdx} className="p-2.5 text-slate-700">
+                                  <td key={cIdx} className="p-2.5 text-slate-700 dark:text-slate-300">
                                     {renderFormattedText(cell)}
                                   </td>
                                 ))}
@@ -912,9 +912,9 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                           const isBullet = line.trim().startsWith('•') || line.trim().startsWith('-');
                           const cleanLine = isBullet ? line.trim().replace(/^[•\-]\s*/, '') : line;
                           return (
-                            <div key={lIdx} className="text-xs text-slate-700 leading-relaxed flex items-start gap-2">
+                            <div key={lIdx} className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed flex items-start gap-2">
                               {isBullet && (
-                                <span className="text-emerald-600 font-bold select-none mt-0.5">•</span>
+                                <span className="text-emerald-600 dark:text-emerald-400 font-bold select-none mt-0.5">•</span>
                               )}
                               <span className="flex-1">{renderFormattedText(cleanLine)}</span>
                             </div>
@@ -925,7 +925,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                   }
 
                   return (
-                    <p key={pIdx} className="my-1.5 text-xs text-slate-700 leading-relaxed">
+                    <p key={pIdx} className="my-1.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
                       {renderFormattedText(trimmed)}
                     </p>
                   );
@@ -934,14 +934,14 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
             </div>
 
             {/* BASE DE CÁLCULO E RASTREABILIDADE (EXPANDÍVEL) */}
-            <div className="border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
               <button
                 onClick={() => setShowCalculationBase(!showCalculationBase)}
-                className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-left transition-colors cursor-pointer"
+                className="w-full p-4 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between text-left transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <Scale className="w-4 h-4 text-emerald-600" />
-                  <span className="text-xs font-black uppercase tracking-wider text-slate-800">
+                  <Scale className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
                     Base de Cálculo & Rastreabilidade dos Lançamentos ({currentResponse.calculationBase.movementsCount} registros)
                   </span>
                 </div>
@@ -949,19 +949,19 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
               </button>
 
               {showCalculationBase && (
-                <div className="p-4 sm:p-5 space-y-4 text-xs bg-white border-t border-slate-200">
+                <div className="p-4 sm:p-5 space-y-4 text-xs bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <span className="text-slate-500 font-medium">Período Auditado:</span>
-                      <p className="font-bold text-slate-800">{currentResponse.calculationBase.periodAnalyzed}</p>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 rounded-xl">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Período Auditado:</span>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">{currentResponse.calculationBase.periodAnalyzed}</p>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <span className="text-slate-500 font-medium">Lançamentos Considerados:</span>
-                      <p className="font-bold text-slate-800">{currentResponse.calculationBase.movementsCount} movimentações</p>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 rounded-xl">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Lançamentos Considerados:</span>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">{currentResponse.calculationBase.movementsCount} movimentações</p>
                     </div>
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <span className="text-slate-500 font-medium">Total Calculado:</span>
-                      <p className="font-bold text-emerald-700">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 rounded-xl">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Total Calculado:</span>
+                      <p className="font-bold text-emerald-700 dark:text-emerald-400">
                         {currentResponse.calculationBase.totalQuantity} {currentResponse.calculationBase.unit || ''}
                       </p>
                     </div>
@@ -969,12 +969,12 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
 
                   {currentResponse.calculationBase.filtersUsed && (
                     <div className="space-y-1">
-                      <span className="text-slate-500 font-medium">Filtros Aplicados na Consulta:</span>
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Filtros Aplicados na Consulta:</span>
                       <div className="flex flex-wrap gap-1.5">
                         {currentResponse.calculationBase.filtersUsed.map((filter, fIdx) => (
                           <span
                             key={fIdx}
-                            className="px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 text-[11px] font-semibold"
+                            className="px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold"
                           >
                             {filter}
                           </span>
@@ -986,10 +986,10 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                   {/* TABELA DE MOVIMENTAÇÕES INCLUÍDAS */}
                   {currentResponse.calculationBase.movementsSummary && currentResponse.calculationBase.movementsSummary.length > 0 && (
                     <div className="space-y-2 mt-4">
-                      <span className="text-slate-500 font-medium">Rastreio Cronológico de Registros:</span>
-                      <div className="overflow-x-auto max-h-60 overflow-y-auto border border-slate-200 rounded-xl">
+                      <span className="text-slate-500 dark:text-slate-400 font-medium">Rastreio Cronológico de Registros:</span>
+                      <div className="overflow-x-auto max-h-60 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl">
                         <table className="w-full text-left text-xs">
-                          <thead className="bg-slate-100 text-slate-700 sticky top-0">
+                          <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 sticky top-0">
                             <tr>
                               <th className="p-2">Data/Hora</th>
                               <th className="p-2">Produto</th>
@@ -998,22 +998,22 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                               <th className="p-2">Setor</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100">
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900">
                             {currentResponse.calculationBase.movementsSummary.map((mov, mIdx) => (
-                              <tr key={mIdx} className="hover:bg-slate-50">
-                                <td className="p-2 text-slate-500 whitespace-nowrap">
+                              <tr key={mIdx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                <td className="p-2 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                                   {mov.date} {mov.time || ''}
                                 </td>
-                                <td className="p-2 font-bold text-slate-800">
+                                <td className="p-2 font-bold text-slate-800 dark:text-slate-200">
                                   {mov.productName}
                                 </td>
-                                <td className="p-2 font-bold text-emerald-700 whitespace-nowrap">
+                                <td className="p-2 font-bold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
                                   {mov.quantity} {mov.unit}
                                 </td>
-                                <td className="p-2 text-slate-600">
+                                <td className="p-2 text-slate-600 dark:text-slate-400">
                                   {mov.responsible || '-'}
                                 </td>
-                                <td className="p-2 text-slate-600">
+                                <td className="p-2 text-slate-600 dark:text-slate-400">
                                   {mov.sector || '-'}
                                 </td>
                               </tr>
@@ -1029,12 +1029,12 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
 
             {/* INSIGHTS */}
             {currentResponse.insights && currentResponse.insights.length > 0 && (
-              <div className="space-y-2 p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-800">
-                  <Lightbulb className="w-4 h-4 text-amber-600" />
+              <div className="space-y-2 p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-2xl">
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                  <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span>Conclusões & Insights:</span>
                 </div>
-                <ul className="space-y-1 text-xs text-slate-700">
+                <ul className="space-y-1 text-xs text-slate-700 dark:text-slate-300">
                   {currentResponse.insights.map((insight, iIdx) => (
                     <li key={iIdx} className="flex items-start gap-2">
                       <span className="text-amber-500 font-bold">•</span>
@@ -1048,7 +1048,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
             {/* SUGGESTED FOLLOW-UPS */}
             {currentResponse.suggestedFollowUps && currentResponse.suggestedFollowUps.length > 0 && (
               <div className="space-y-2 pt-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   Perguntas Sugeridas a Seguir:
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -1056,10 +1056,10 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                     <button
                       key={sIdx}
                       onClick={() => handleAsk(suggested)}
-                      className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xl text-xs font-medium border border-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="px-3.5 py-2 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-medium border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>{suggested}</span>
-                      <ArrowRight className="w-3 h-3 text-emerald-600" />
+                      <ArrowRight className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                     </button>
                   ))}
                 </div>
@@ -1067,29 +1067,29 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
             )}
 
             {/* ACTIONS FOOTER */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleCopyResponse}
-                  className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                  className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
                 >
-                  {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  {copied ? <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-4 h-4" />}
                   <span>{copied ? 'Copiado!' : 'Copiar Resposta'}</span>
                 </button>
 
                 <button
                   onClick={handleExportPDF}
-                  className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                  className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
                 >
-                  <FileText className="w-4 h-4 text-rose-600" />
+                  <FileText className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                   <span>Exportar PDF</span>
                 </button>
 
                 <button
                   onClick={() => window.print()}
-                  className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+                  className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-all cursor-pointer shadow-sm"
                 >
-                  <Printer className="w-4 h-4 text-blue-600" />
+                  <Printer className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   <span>Imprimir</span>
                 </button>
               </div>
@@ -1099,9 +1099,9 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                   setQuery('');
                   inputRef.current?.focus();
                 }}
-                className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-emerald-200"
+                className="px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-emerald-200 dark:border-emerald-800"
               >
-                <RefreshCw className="w-3.5 h-3.5 text-emerald-600" />
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span>Nova Pergunta</span>
               </button>
             </div>
@@ -1117,25 +1117,25 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden"
+              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden"
             >
-              <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/80">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-2xl">
+                  <div className="p-2.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-2xl">
                     <ShieldCheck className="w-6 h-6" />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-slate-900">
+                    <h3 className="text-base font-black text-slate-900 dark:text-white">
                       Bateria de Testes Automatizados & Auditoria do Sistema
                     </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Validação matemática, regras de negócio e integridade de consultas
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowSelfTestModal(false)}
-                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-xl transition-all cursor-pointer"
+                  className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1144,41 +1144,41 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
               <div className="p-6 overflow-y-auto space-y-4 flex-1">
                 {isRunningSelfTest ? (
                   <div className="py-12 flex flex-col items-center justify-center space-y-3">
-                    <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
-                    <p className="text-sm font-bold text-slate-700">Executando suíte de testes do motor do estoque...</p>
-                    <p className="text-xs text-slate-400">Verificando 38 regras críticas, incluindo datas, setores e missionários.</p>
+                    <Loader2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400 animate-spin" />
+                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300">Executando suíte de testes do motor do estoque...</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Verificando 38 regras críticas, incluindo datas, setores e missionários.</p>
                   </div>
                 ) : selfTestResults ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-3 gap-3">
-                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
-                        <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">Testes Aprovados</span>
-                        <span className="text-2xl font-black text-emerald-600 mt-1 block">{selfTestResults.passed}</span>
+                      <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-2xl text-center">
+                        <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">Testes Aprovados</span>
+                        <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">{selfTestResults.passed}</span>
                       </div>
-                      <div className={`p-3 rounded-2xl text-center border ${selfTestResults.failed > 0 ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                      <div className={`p-3 rounded-2xl text-center border ${selfTestResults.failed > 0 ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300' : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}>
                         <span className="text-[11px] font-bold uppercase tracking-wider block">Falhas Encontradas</span>
                         <span className="text-2xl font-black mt-1 block">{selfTestResults.failed}</span>
                       </div>
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-2xl text-center">
-                        <span className="text-[11px] font-bold text-blue-800 uppercase tracking-wider block">Status Geral</span>
-                        <span className="text-xs font-black text-blue-700 mt-2 block">
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-2xl text-center">
+                        <span className="text-[11px] font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider block">Status Geral</span>
+                        <span className="text-xs font-black text-blue-700 dark:text-blue-300 mt-2 block">
                           {selfTestResults.failed === 0 ? '✅ 100% ÍNTEGRO' : '⚠️ AJUSTE NECESSÁRIO'}
                         </span>
                       </div>
                     </div>
 
                     <div className="space-y-1.5 pt-2">
-                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                         Detalhamento dos Testes Executados:
                       </h4>
-                      <div className="max-h-72 overflow-y-auto space-y-1.5 p-3 bg-slate-50 border border-slate-200 rounded-2xl font-mono text-xs text-slate-700">
+                      <div className="max-h-72 overflow-y-auto space-y-1.5 p-3 bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-2xl font-mono text-xs text-slate-700 dark:text-slate-300">
                         {selfTestResults.results.map((res, i) => (
                           <div
                             key={i}
                             className={`p-2 rounded-lg border ${
                               res.includes('PASSOU')
-                                ? 'bg-white border-slate-200 text-slate-800'
-                                : 'bg-rose-100 border-rose-300 text-rose-900 font-bold'
+                                ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200'
+                                : 'bg-rose-100 dark:bg-rose-950/80 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200 font-bold'
                             }`}
                           >
                             {res}
@@ -1190,7 +1190,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                 ) : null}
               </div>
 
-              <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+              <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 flex items-center justify-between">
                 <button
                   onClick={handleRunSelfTest}
                   disabled={isRunningSelfTest}
@@ -1201,7 +1201,7 @@ Relatório gerado em: ${new Date(currentResponse.timestamp).toLocaleString('pt-B
                 </button>
                 <button
                   onClick={() => setShowSelfTestModal(false)}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  className="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
                 >
                   Fechar
                 </button>

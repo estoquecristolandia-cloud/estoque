@@ -7,6 +7,8 @@ import {
   formatDaysRemainingText,
   getProductAlertDays,
   getProductAutonomyLabel,
+  getProductsNeedingAttention,
+  isProductNeedingAttention,
 } from "../utils/storage";
 import { BarcodeScannerModal } from "./BarcodeScannerModal";
 import { ShelfLabelsModal } from "./ShelfLabelsModal";
@@ -299,7 +301,12 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
       selectedCategory === "all" || p.category === selectedCategory;
 
     const status = getProductStockStatus(p);
-    const matchesStatus = statusFilter === "all" || status === statusFilter;
+    const matchesStatus =
+      statusFilter === "all"
+        ? true
+        : statusFilter === "warning"
+        ? isProductNeedingAttention(p)
+        : status === statusFilter;
 
     return matchesSearch && matchesCat && matchesStatus;
   });
@@ -395,12 +402,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 : "bg-slate-100 dark:bg-slate-800 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40"
             }`}
           >
-            🟡 Reposição (
-            {
-              products.filter((p) => getProductStockStatus(p) === "warning")
-                .length
-            }
-            )
+            🟡 Reposição ({getProductsNeedingAttention(products).length})
           </button>
 
           <button
@@ -745,7 +747,7 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                 </button>
               )}
               <span className="text-xs font-bold px-3 py-1 bg-slate-800 rounded-lg text-emerald-400 border border-slate-700">
-                {filteredProducts.length} itens no catálogo ({Math.round(filteredProducts.reduce((acc, p) => acc + (Number(p.currentStock) || 0), 0)).toLocaleString('pt-BR')} un físicas)
+                {filteredProducts.length} itens monitorados · {filteredProducts.filter((p) => p.currentStock === 0 || getProductStockStatus(p) === 'critical').length} crítico{filteredProducts.filter((p) => p.currentStock === 0 || getProductStockStatus(p) === 'critical').length === 1 ? '' : 's'} · {filteredProducts.filter((p) => isProductNeedingAttention(p) && !(p.currentStock === 0 || getProductStockStatus(p) === 'critical')).length} em atenção
               </span>
             </div>
           </div>
@@ -855,7 +857,10 @@ export const ProductManager: React.FC<ProductManagerProps> = ({
                         </span>
                       </td>
 
-                      <td className="p-3.5 text-slate-500 dark:text-slate-400 text-xs truncate max-w-[140px] font-normal">
+                      <td
+                        className="p-3.5 text-slate-500 dark:text-slate-400 text-xs truncate max-w-[220px] font-normal"
+                        title={p.location}
+                      >
                         {p.location}
                       </td>
 

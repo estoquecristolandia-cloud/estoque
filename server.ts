@@ -57,13 +57,19 @@ app.post('/api/ai/ask', async (req, res) => {
     const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
     const idToken = bearerToken || req.body?.idToken;
 
-    let verifiedUser = null;
-    if (idToken) {
-      try {
-        verifiedUser = await verifyFirebaseToken(idToken);
-      } catch (authErr) {
-        console.warn('Verificação de token Firebase offline/indisponível:', authErr);
-      }
+    if (!idToken) {
+      return res.status(401).json({
+        error: 'Sua sessão expirou ou não foi reconhecida. Saia do sistema e entre novamente.',
+        code: 'AUTH_REQUIRED',
+      });
+    }
+
+    const verifiedUser = await verifyFirebaseToken(idToken);
+    if (!verifiedUser) {
+      return res.status(401).json({
+        error: 'Sua sessão expirou ou não foi reconhecida. Saia do sistema e entre novamente.',
+        code: 'AUTH_REQUIRED',
+      });
     }
 
     // 2. Validação básica de presença de snapshot
@@ -74,28 +80,33 @@ app.post('/api/ai/ask', async (req, res) => {
       });
     }
 
-    // 3. Obtenção de produtos autoritativos via Firestore ou snapshot validado da sessão
-    let authoritativeProducts: Product[] = inventorySnapshot.products;
-    if (idToken && verifiedUser) {
-      try {
-        const remoteProds = await fetchAuthoritativeProductsFromFirestore(idToken);
-        if (remoteProds && remoteProds.length > 0) {
-          authoritativeProducts = remoteProds;
-        }
-      } catch (fetchErr: any) {
-        console.warn('Falha ao obter produtos oficiais no Firestore via REST, utilizando snapshot autenticado da sessão:', fetchErr?.message || fetchErr);
-        authoritativeProducts = inventorySnapshot.products;
-      }
+    // 3. Obtenção de produtos autoritativos diretamente do Firestore
+    let authoritativeProducts: Product[] = [];
+    try {
+      authoritativeProducts = await fetchAuthoritativeProductsFromFirestore(idToken);
+    } catch (fetchErr: any) {
+      console.error('Falha ao obter produtos oficiais no Firestore via REST:', fetchErr?.message || fetchErr);
+      return res.status(500).json({
+        error: 'Falha na comunicação com o banco de dados oficial do Firestore. Tente novamente em instantes.',
+        code: 'FIRESTORE_FETCH_FAILED',
+      });
     }
 
-    // 4. Validação do snapshot (não bloqueante para garantir continuidade operacional da liderança)
+    // 4. Validação integral do snapshot contra os dados autoritativos do Firestore
     const validation = validateSnapshotAgainstAuthoritativeProducts(inventorySnapshot.products, authoritativeProducts);
     if (!validation.valid && validation.error) {
-      console.warn('Validação de contexto com divergência secundária:', validation.error.message);
-      // Em caso de filtro por departamento ou atualização recente na tela, prioriza dados consistentes
-      if (!authoritativeProducts || authoritativeProducts.length === 0) {
-        authoritativeProducts = inventorySnapshot.products;
+      if (validation.error.code === 'STALE_INVENTORY_CONTEXT') {
+        return res.status(409).json({
+          error: validation.error.message,
+          code: 'STALE_INVENTORY_CONTEXT',
+          details: validation.error.details,
+        });
       }
+      return res.status(400).json({
+        error: validation.error.message,
+        code: validation.error.code,
+        details: validation.error.details,
+      });
     }
 
     // 5. Execução do cálculo determinístico com dados autoritativos no backend
@@ -164,7 +175,7 @@ Retorne SEMPRE um JSON válido estritamente com esta estrutura:
 
     const contextPayload = {
       userQuestion: prompt,
-      requester: user?.displayName || verifiedUser.email || 'Equipe Cristolândia',
+      requester: user?.displayName || verifiedUser?.email || 'Equipe Cristolândia',
       currentSystemDate: new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Bahia' }),
       deterministicCalculation: authoritativeResult,
       authoritativeProductsCount: authoritativeProducts.length,

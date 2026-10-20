@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, User, Eye, EyeOff, ShieldCheck, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { Lock, User, ShieldCheck, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
 import { AppUserProfile, loginWithCredentials, loginWithGoogle, registerWithCredentials } from '../firebase';
 import { CristolandiaLogo } from './CristolandiaLogo';
 import { APP_VERSION_LABEL } from '../version';
@@ -12,7 +12,6 @@ interface LoginScreenProps {
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, authErrorMessage }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -53,13 +52,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, authEr
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans">
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-600/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="w-full max-w-md relative z-10 space-y-6">
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-3">
-            <CristolandiaLogo size={56} variant="mark" />
+      <div className="w-full max-w-md relative z-10 space-y-3.5 my-auto py-2">
+        <div className="text-center space-y-2">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-2.5">
+            <CristolandiaLogo size={48} variant="mark" />
           </div>
           <div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-1.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 mb-1">
               <Sparkles className="w-3 h-3" /> JUNTA DE MISSÕES NACIONAIS • CBB
             </div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
@@ -69,7 +68,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, authEr
             <p className="text-[11px] text-slate-500">Centro de Formação e Assistência Social (LEM / BA)</p>
           </div>
         </div>
-        <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-5">
+        <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-3xl p-5 sm:p-7 shadow-2xl space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
             <ShieldCheck className="w-5 h-5 text-emerald-400" />
             <h2 className="text-sm font-bold text-white uppercase tracking-wider">Acesso Seguro Autorizado</h2>
@@ -112,20 +111,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, authEr
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   required
-                  className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl text-xs sm:text-sm text-white placeholder-slate-600 focus:outline-none"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl text-xs sm:text-sm text-white placeholder-slate-600 focus:outline-none"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-3 text-slate-500 hover:text-slate-300"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
             </div>
             <button
@@ -140,16 +132,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, authEr
               )}
             </button>
           </form>
-          <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-1 text-[11px] text-slate-400">
-            <p className="font-semibold text-slate-300">Contas Oficiais Autorizadas:</p>
-            <p>
-              • <strong className="text-emerald-400">Administrador</strong> (estoquecristolandia@gmail.com): Gestão total de estoque, compras, saídas e configurações.
+          <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-xl space-y-1 text-center text-xs text-slate-400">
+            <p className="font-semibold text-slate-300">
+              Acesso Restrito
             </p>
-            <p>
-              • <strong className="text-blue-400">Visualizadores</strong> (Chefe Marcos, Pr. Humberto): Consulta de estoque, refeições e relatórios.
-            </p>
-            <p className="text-[10px] text-slate-500 pt-1 border-t border-slate-800/80">
-              * O cadastro público está fechado. Novos acessos devem ser pré-autorizados pelo administrador.
+            <p className="text-[11px] text-slate-400">
+              Acesso restrito a usuários pré-autorizados pela coordenação. O cadastro público está fechado.
             </p>
           </div>
         </div>
