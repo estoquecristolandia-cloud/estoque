@@ -13,6 +13,8 @@ export interface ContextValidationError {
     clientName?: string;
     serverName?: string;
     reason?: 'PRODUCT_NOT_FOUND' | 'STOCK_MISMATCH' | 'NAME_MISMATCH' | 'INCOMPLETE_SNAPSHOT';
+    providedCount?: number;
+    expectedCount?: number;
   };
 }
 
