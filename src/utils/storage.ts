@@ -29,6 +29,12 @@ export function getStoredMissionaries(): Missionary[] {
         return m;
       });
     }
+    // Ensure all default mission sectors/missionaries exist in storage
+    for (const initM of INITIAL_MISSIONARIES) {
+      if (!parsed.some((m) => m.id === initM.id || m.sector === initM.sector)) {
+        parsed.push(initM);
+      }
+    }
     return parsed;
   } catch {
     return INITIAL_MISSIONARIES;

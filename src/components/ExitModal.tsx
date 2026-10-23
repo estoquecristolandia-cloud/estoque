@@ -53,6 +53,8 @@ const SECTORS: Sector[] = [
   'Casa Lana & Joabe (Cesta Básica)',
   'Casa Marcos & Fabíola (Cesta Básica)',
   'Casa Tainã (Cesta Básica)',
+  'Casa Pr. Jeferson & Esposa (Cesta Básica)',
+  'Casa Cristiano (Cesta Básica)',
   'Eventos',
   'Outros',
 ];

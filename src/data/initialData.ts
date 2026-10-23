@@ -33,10 +33,12 @@ export const INITIAL_MISSIONARIES: Missionary[] = [
   { id: 'm-coord-1', name: 'Pr. Huberto (Coordenador Cristolândia)', role: 'Coordenador Cristolândia', sector: 'Casa da Coordenação (Huberto & Débora)' },
   { id: 'm-coord-2', name: 'Missª. Débora (Coordenadora Cristolândia)', role: 'Coordenadora Cristolândia', sector: 'Casa da Coordenação (Huberto & Débora)' },
 
-  // Casas dos Casais Missionários (Recebem Cesta Básica)
+  // Casas dos Casais e Missionários (Recebem Cesta Básica)
   { id: 'm-casal-1', name: 'Casal Lana & Joabe', role: 'Casal Missionário (Cesta Básica)', sector: 'Casa Lana & Joabe (Cesta Básica)' },
   { id: 'm-casal-2', name: 'Casal Marcos & Fabíola', role: 'Casal Missionário (Cesta Básica)', sector: 'Casa Marcos & Fabíola (Cesta Básica)' },
   { id: 'm-casal-3', name: 'Missionária Tainã', role: 'Missionária (Cesta Básica)', sector: 'Casa Tainã (Cesta Básica)' },
+  { id: 'm-casal-4', name: 'Pr. Jeferson & Esposa', role: 'Pastor & Esposa (Cesta Básica)', sector: 'Casa Pr. Jeferson & Esposa (Cesta Básica)' },
+  { id: 'm-casal-5', name: 'Missionário Cristiano', role: 'Missionário (Cesta Básica)', sector: 'Casa Cristiano (Cesta Básica)' },
 
   // Turnos da Cozinha
   { id: 'm-coz-1', name: 'Equipe 1 (Café da Manhã)', role: 'Resp. Turno 1 (Café / Manhã)', sector: 'Cozinha', shift: 'Café / Manhã' },

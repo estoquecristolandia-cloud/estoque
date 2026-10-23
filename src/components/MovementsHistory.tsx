@@ -432,6 +432,8 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
               <option value="Casa Lana & Joabe (Cesta Básica)">Casa Lana & Joabe (Cesta Básica)</option>
               <option value="Casa Marcos & Fabíola (Cesta Básica)">Casa Marcos & Fabíola (Cesta Básica)</option>
               <option value="Casa Tainã (Cesta Básica)">Casa Tainã (Cesta Básica)</option>
+              <option value="Casa Pr. Jeferson & Esposa (Cesta Básica)">Casa Pr. Jeferson & Esposa (Cesta Básica)</option>
+              <option value="Casa Cristiano (Cesta Básica)">Casa Cristiano (Cesta Básica)</option>
               <option value="Eventos">Eventos</option>
               <option value="Outros">Outros</option>
             </select>
@@ -1124,6 +1126,8 @@ export const MovementsHistory: React.FC<MovementsHistoryProps> = ({
                         <option value="Casa Lana & Joabe (Cesta Básica)">Casa Lana & Joabe</option>
                         <option value="Casa Marcos & Fabíola (Cesta Básica)">Casa Marcos & Fabíola</option>
                         <option value="Casa Tainã (Cesta Básica)">Casa Tainã</option>
+                        <option value="Casa Pr. Jeferson & Esposa (Cesta Básica)">Casa Pr. Jeferson & Esposa</option>
+                        <option value="Casa Cristiano (Cesta Básica)">Casa Cristiano</option>
                         <option value="Eventos">Eventos</option>
                         <option value="Outros">Outros</option>
                       </select>

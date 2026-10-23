@@ -717,6 +717,12 @@ export function findMentionedSector(query: string): string | null {
   if (norm.includes('taina')) {
     return 'Casa Tainã (Cesta Básica)';
   }
+  if (norm.includes('jeferson') || norm.includes('jefferson')) {
+    return 'Casa Pr. Jeferson & Esposa (Cesta Básica)';
+  }
+  if (norm.includes('cristiano')) {
+    return 'Casa Cristiano (Cesta Básica)';
+  }
   if (norm.includes('evento') || norm.includes('eventos') || norm.includes('culto')) {
     return 'Eventos';
   }

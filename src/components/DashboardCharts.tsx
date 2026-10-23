@@ -34,6 +34,8 @@ const ALL_SECTORS: Sector[] = [
   'Casa Lana & Joabe (Cesta Básica)',
   'Casa Marcos & Fabíola (Cesta Básica)',
   'Casa Tainã (Cesta Básica)',
+  'Casa Pr. Jeferson & Esposa (Cesta Básica)',
+  'Casa Cristiano (Cesta Básica)',
   'Eventos',
   'Outros',
 ];
@@ -48,6 +50,8 @@ const SECTOR_COLORS: Record<string, string> = {
   'Casa Lana & Joabe (Cesta Básica)': '#ec4899', // Pink
   'Casa Marcos & Fabíola (Cesta Básica)': '#6366f1', // Indigo
   'Casa Tainã (Cesta Básica)': '#10b981', // Emerald
+  'Casa Pr. Jeferson & Esposa (Cesta Básica)': '#0ea5e9', // Sky blue
+  'Casa Cristiano (Cesta Básica)': '#14b8a6', // Teal
   Eventos: '#8b5cf6', // Violet
   Outros: '#f43f5e', // Rose
 };
