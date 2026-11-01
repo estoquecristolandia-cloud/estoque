@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, lazy, Suspense } from 'react';
 import { Product } from './types';
 import { auth, getUserProfile, UserRole } from './firebase';
 import { useAuthSession } from './hooks/useAuthSession';
@@ -19,15 +19,10 @@ import { DailyKitModal } from './components/DailyKitModal';
 import { ProductManager } from './components/ProductManager';
 import { MovementsHistory } from './components/MovementsHistory';
 import { MealManager } from './components/MealManager';
-import { ReportsView } from './components/ReportsView';
-import { AiAssistantView } from './components/AiAssistantView';
 import { AuthModal } from './components/AuthModal';
 import { MissionaryManagerModal } from './components/MissionaryManagerModal';
 import { WhatsAppAlertModal } from './components/WhatsAppAlertModal';
-import { PhysicalInventoryModal } from './components/PhysicalInventoryModal';
 import { PhysicalReconciliationPreviewModal } from './components/PhysicalReconciliationPreviewModal';
-import { BarcodeScannerModal } from './components/BarcodeScannerModal';
-import { ReceiptScannerModal } from './components/ReceiptScannerModal';
 import { PvpsRunwayBanner } from './components/PvpsRunwayBanner';
 import { CommandPalette } from './components/CommandPalette';
 import { QuickGuideModal } from './components/QuickGuideModal';
@@ -41,6 +36,36 @@ import { getTodayDateString, getNowTimeString } from './utils/storage';
 import { filterProductsByDepartment, filterMovementsByDepartment } from './utils/departmentUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Utensils, Sparkles } from 'lucide-react';
+
+import { BarcodeScannerModal } from './components/BarcodeScannerModal';
+
+// Módulos pesados carregados sob demanda (Fase 1: Code Splitting)
+const ReportsView = lazy(() => import('./components/ReportsView').then((m) => ({ default: m.ReportsView })));
+const AiAssistantView = lazy(() => import('./components/AiAssistantView').then((m) => ({ default: m.AiAssistantView })));
+const PhysicalInventoryModal = lazy(() => import('./components/PhysicalInventoryModal').then((m) => ({ default: m.PhysicalInventoryModal })));
+const ReceiptScannerModal = lazy(() => import('./components/ReceiptScannerModal').then((m) => ({ default: m.ReceiptScannerModal })));
+
+function ModuleLoadingFallback({ label }: { label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center p-12 min-h-[320px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm text-center">
+      <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+      <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Carregando {label}...</p>
+      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Carregando módulo sob demanda</p>
+    </div>
+  );
+}
+
+function ModalLoadingFallback() {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-2xl flex flex-col items-center max-w-sm w-full text-center">
+        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm font-bold text-slate-900 dark:text-white">Abrindo módulo...</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Aguarde um instante</p>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   // 1. Sessão e Autenticação
@@ -395,17 +420,19 @@ export default function App() {
 
           {activeTab === 'ai_assistant' && (
             <motion.div key="ai_assistant" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <AiAssistantView
-                products={products}
-                movements={movements}
-                meals={meals}
-                dailyKit={activeKit}
-                missionaries={missionaries}
-                inventoryAudits={inventoryAudits}
-                inventorySessions={inventorySessions}
-                currentUser={currentUser}
-                activeDepartment={activeDepartment}
-              />
+              <Suspense fallback={<ModuleLoadingFallback label="Assistente Inteligente" />}>
+                <AiAssistantView
+                  products={products}
+                  movements={movements}
+                  meals={meals}
+                  dailyKit={activeKit}
+                  missionaries={missionaries}
+                  inventoryAudits={inventoryAudits}
+                  inventorySessions={inventorySessions}
+                  currentUser={currentUser}
+                  activeDepartment={activeDepartment}
+                />
+              </Suspense>
             </motion.div>
           )}
 
@@ -528,17 +555,19 @@ export default function App() {
 
           {activeTab === 'reports' && (
             currentUser.role === 'admin' ? (
-              <ReportsView
-                products={departmentProducts}
-                movements={departmentMovements}
-                meals={meals}
-                missionaries={missionaries}
-                inventoryAudits={inventoryAudits}
-                userRole={currentUser.role}
-                userName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'}
-                userEmail={currentUser.email}
-                activeDepartment={activeDepartment}
-              />
+              <Suspense fallback={<ModuleLoadingFallback label="Relatórios e Auditoria" />}>
+                <ReportsView
+                  products={departmentProducts}
+                  movements={departmentMovements}
+                  meals={meals}
+                  missionaries={missionaries}
+                  inventoryAudits={inventoryAudits}
+                  userRole={currentUser.role}
+                  userName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'}
+                  userEmail={currentUser.email}
+                  activeDepartment={activeDepartment}
+                />
+              </Suspense>
             ) : (
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm space-y-4">
                 <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-3xl mx-auto">
@@ -646,23 +675,25 @@ export default function App() {
       )}
 
       {isPhysicalInventoryOpen && currentUser.role === 'admin' && (
-        <PhysicalInventoryModal
-          isOpen={isPhysicalInventoryOpen}
-          products={departmentProducts}
-          department={activeDepartment}
-          userRole={currentUser.role}
-          currentUserName={currentUser.displayName || 'Marconi Castro'}
-          currentUserEmail={currentUser.email}
-          currentUserUid={currentUser.uid}
-          inventoryAudits={inventoryAudits}
-          inventorySessions={inventorySessions}
-          onClose={() => setIsPhysicalInventoryOpen(false)}
-          onNotify={(msg, type) => {
-            if (type === 'error' || type === 'warning') toast.warning(msg);
-            else if (type === 'info') toast.info(msg);
-            else toast.success(msg);
-          }}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <PhysicalInventoryModal
+            isOpen={isPhysicalInventoryOpen}
+            products={departmentProducts}
+            department={activeDepartment}
+            userRole={currentUser.role}
+            currentUserName={currentUser.displayName || 'Marconi Castro'}
+            currentUserEmail={currentUser.email}
+            currentUserUid={currentUser.uid}
+            inventoryAudits={inventoryAudits}
+            inventorySessions={inventorySessions}
+            onClose={() => setIsPhysicalInventoryOpen(false)}
+            onNotify={(msg, type) => {
+              if (type === 'error' || type === 'warning') toast.warning(msg);
+              else if (type === 'info') toast.info(msg);
+              else toast.success(msg);
+            }}
+          />
+        </Suspense>
       )}
 
       {isReconciliationPreviewOpen && currentUser.role === 'admin' && (
@@ -694,11 +725,13 @@ export default function App() {
       )}
 
       {isReceiptScannerOpen && (
-        <ReceiptScannerModal
-          products={departmentProducts}
-          onClose={() => setIsReceiptScannerOpen(false)}
-          onImportEntries={handleImportReceiptEntries}
-        />
+        <Suspense fallback={<ModalLoadingFallback />}>
+          <ReceiptScannerModal
+            products={departmentProducts}
+            onClose={() => setIsReceiptScannerOpen(false)}
+            onImportEntries={handleImportReceiptEntries}
+          />
+        </Suspense>
       )}
 
       <AuthModal
