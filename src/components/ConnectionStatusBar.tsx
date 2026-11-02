@@ -96,7 +96,7 @@ export const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
           icon: <Database className="w-3.5 h-3.5 text-indigo-500 shrink-0" />,
           badge: 'Cache Local',
           badgeClass: 'bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 border border-indigo-500/30',
-          message: 'Exibindo dados locais seguros — aguardando confirmação do servidor...',
+          message: 'Exibindo dados locais — aguardando confirmação do servidor...',
         };
 
       case 'synced':

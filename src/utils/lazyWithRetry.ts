@@ -22,12 +22,18 @@ export function clearChunkReloadLock(moduleKey: string): void {
 /**
  * Carrega componentes dinâmicos (React.lazy) com proteção contra falhas de rede transitórias.
  *
- * 1. Tenta até 2 retentativas automáticas em memória com backoff leve (ex: 800ms, 1600ms).
- * 2. Se as retentativas falharem:
- *    - Se houver evidência de chunk obsoleto (ex: 404 / 'Failed to fetch dynamically imported module'
- *      após novo deploy), executa reload limpo ÚNICO com trava em sessionStorage para impedir loops.
- *    - Se a trava já foi utilizada ou o erro for persistente, repassa o erro para o LazyChunkErrorBoundary
- *      que exibirá o fallback amigável com opção manual de "Tentar novamente".
+ * Mecanismo de tentativas:
+ * - 1 tentativa inicial imediata;
+ * - Até 2 retentativas automáticas em memória com backoff progressivo (ex: 800ms, 1600ms);
+ * - 3 tentativas totais antes de declarar falha.
+ *
+ * Tratamento após esgotar as 3 tentativas totais:
+ * - Se o dispositivo estiver comprovadamente online (navigator.onLine === true) e houver evidência
+ *   clara de chunk antigo após nova publicação (ex: 404 / 'Failed to fetch dynamically imported module'),
+ *   executa reload limpo ÚNICO com trava em sessionStorage para impedir loops de recarregamento.
+ * - Se o dispositivo estiver offline (navigator.onLine === false ou navigator.onLine indisponível) ou
+ *   se a trava de sessão já tiver sido consumida, NÃO executa reload automático e repassa o erro
+ *   para o LazyChunkErrorBoundary exibir o fallback amigável com opção manual de "Tentar novamente".
  */
 export function lazyWithRetry<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T }>,
@@ -48,7 +54,7 @@ export function lazyWithRetry<T extends ComponentType<any>>(
       } catch (err: unknown) {
         attemptCount++;
 
-        // Tentativa de retry automático transitório (até maxRetries)
+        // Tentativa de retry automático transitório (até 2 retentativas automáticas, totalizando 3 tentativas)
         if (attemptCount <= maxRetries) {
           await new Promise((resolve) => setTimeout(resolve, initialDelayMs * attemptCount));
           return execute();
@@ -75,8 +81,12 @@ export function lazyWithRetry<T extends ComponentType<any>>(
           alreadyReloaded = false;
         }
 
-        // Se for evidência clara de chunk desatualizado e NUNCA tiver recarregado nesta sessão:
-        if (isChunkMismatch && !alreadyReloaded && typeof window !== 'undefined') {
+        // Verifica estritamente se o navegador está online.
+        // Se navigator.onLine for false ou indisponível, NUNCA executa reload automático de página.
+        const isDeviceOnline = typeof navigator !== 'undefined' && navigator.onLine === true;
+
+        // Se for evidência clara de chunk desatualizado, comprovadamente online e NUNCA tiver recarregado nesta sessão:
+        if (isChunkMismatch && isDeviceOnline && !alreadyReloaded && typeof window !== 'undefined') {
           try {
             window.sessionStorage.setItem(sessionKey, String(Date.now()));
           } catch {
@@ -87,7 +97,8 @@ export function lazyWithRetry<T extends ComponentType<any>>(
           return new Promise<{ default: T }>(() => {});
         }
 
-        // Caso contrário, lança o erro para o LazyChunkErrorBoundary capturar de forma localizada
+        // Caso contrário (dispositivo offline, trava já consumida ou outro erro),
+        // lança o erro para o LazyChunkErrorBoundary capturar de forma localizada
         throw err;
       }
     };
