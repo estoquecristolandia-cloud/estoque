@@ -38,12 +38,27 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Utensils, Sparkles } from 'lucide-react';
 
 import { BarcodeScannerModal } from './components/BarcodeScannerModal';
+import { ConnectionStatusBar } from './components/ConnectionStatusBar';
+import { LazyChunkErrorBoundary } from './components/LazyChunkErrorBoundary';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 
-// Módulos pesados carregados sob demanda (Fase 1: Code Splitting)
-const ReportsView = lazy(() => import('./components/ReportsView').then((m) => ({ default: m.ReportsView })));
-const AiAssistantView = lazy(() => import('./components/AiAssistantView').then((m) => ({ default: m.AiAssistantView })));
-const PhysicalInventoryModal = lazy(() => import('./components/PhysicalInventoryModal').then((m) => ({ default: m.PhysicalInventoryModal })));
-const ReceiptScannerModal = lazy(() => import('./components/ReceiptScannerModal').then((m) => ({ default: m.ReceiptScannerModal })));
+// Módulos pesados carregados sob demanda com proteção de retry contra falhas de rede (Fase 2)
+const ReportsView = lazyWithRetry(
+  () => import('./components/ReportsView').then((m) => ({ default: m.ReportsView })),
+  'reports_view'
+);
+const AiAssistantView = lazyWithRetry(
+  () => import('./components/AiAssistantView').then((m) => ({ default: m.AiAssistantView })),
+  'ai_assistant_view'
+);
+const PhysicalInventoryModal = lazyWithRetry(
+  () => import('./components/PhysicalInventoryModal').then((m) => ({ default: m.PhysicalInventoryModal })),
+  'physical_inventory_modal'
+);
+const ReceiptScannerModal = lazyWithRetry(
+  () => import('./components/ReceiptScannerModal').then((m) => ({ default: m.ReceiptScannerModal })),
+  'receipt_scanner_modal'
+);
 
 function ModuleLoadingFallback({ label }: { label: string }) {
   return (
@@ -98,6 +113,8 @@ export default function App() {
     inventoryAudits,
     inventorySessions,
     dataReady,
+    syncStatus,
+    lastSyncedAt,
     handleAddEntry,
     handleAddExit,
     handleAddBatchExit,
@@ -347,6 +364,7 @@ export default function App() {
         onOpenQuickGuide={() => setIsQuickGuideOpen(true)}
       />
       <main className="flex-1 md:h-screen md:overflow-y-auto overflow-x-hidden relative z-10 scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-800">
+        <ConnectionStatusBar status={syncStatus} lastSyncedAt={lastSyncedAt} />
         <div className="p-4 sm:p-6 md:p-8 lg:px-8 xl:px-10 space-y-6 w-full max-w-full">
           <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && (
@@ -420,19 +438,21 @@ export default function App() {
 
           {activeTab === 'ai_assistant' && (
             <motion.div key="ai_assistant" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <Suspense fallback={<ModuleLoadingFallback label="Assistente Inteligente" />}>
-                <AiAssistantView
-                  products={products}
-                  movements={movements}
-                  meals={meals}
-                  dailyKit={activeKit}
-                  missionaries={missionaries}
-                  inventoryAudits={inventoryAudits}
-                  inventorySessions={inventorySessions}
-                  currentUser={currentUser}
-                  activeDepartment={activeDepartment}
-                />
-              </Suspense>
+              <LazyChunkErrorBoundary moduleName="Assistente Inteligente" moduleKey="ai_assistant_view">
+                <Suspense fallback={<ModuleLoadingFallback label="Assistente Inteligente" />}>
+                  <AiAssistantView
+                    products={products}
+                    movements={movements}
+                    meals={meals}
+                    dailyKit={activeKit}
+                    missionaries={missionaries}
+                    inventoryAudits={inventoryAudits}
+                    inventorySessions={inventorySessions}
+                    currentUser={currentUser}
+                    activeDepartment={activeDepartment}
+                  />
+                </Suspense>
+              </LazyChunkErrorBoundary>
             </motion.div>
           )}
 
@@ -555,19 +575,21 @@ export default function App() {
 
           {activeTab === 'reports' && (
             currentUser.role === 'admin' ? (
-              <Suspense fallback={<ModuleLoadingFallback label="Relatórios e Auditoria" />}>
-                <ReportsView
-                  products={departmentProducts}
-                  movements={departmentMovements}
-                  meals={meals}
-                  missionaries={missionaries}
-                  inventoryAudits={inventoryAudits}
-                  userRole={currentUser.role}
-                  userName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'}
-                  userEmail={currentUser.email}
-                  activeDepartment={activeDepartment}
-                />
-              </Suspense>
+              <LazyChunkErrorBoundary moduleName="Relatórios e Auditoria" moduleKey="reports_view">
+                <Suspense fallback={<ModuleLoadingFallback label="Relatórios e Auditoria" />}>
+                  <ReportsView
+                    products={departmentProducts}
+                    movements={departmentMovements}
+                    meals={meals}
+                    missionaries={missionaries}
+                    inventoryAudits={inventoryAudits}
+                    userRole={currentUser.role}
+                    userName={currentUser.displayName || 'Marconi Castro (Gestor do Estoque)'}
+                    userEmail={currentUser.email}
+                    activeDepartment={activeDepartment}
+                  />
+                </Suspense>
+              </LazyChunkErrorBoundary>
             ) : (
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 sm:p-12 text-center max-w-xl mx-auto shadow-sm space-y-4">
                 <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-3xl mx-auto">
@@ -675,25 +697,32 @@ export default function App() {
       )}
 
       {isPhysicalInventoryOpen && currentUser.role === 'admin' && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <PhysicalInventoryModal
-            isOpen={isPhysicalInventoryOpen}
-            products={departmentProducts}
-            department={activeDepartment}
-            userRole={currentUser.role}
-            currentUserName={currentUser.displayName || 'Marconi Castro'}
-            currentUserEmail={currentUser.email}
-            currentUserUid={currentUser.uid}
-            inventoryAudits={inventoryAudits}
-            inventorySessions={inventorySessions}
-            onClose={() => setIsPhysicalInventoryOpen(false)}
-            onNotify={(msg, type) => {
-              if (type === 'error' || type === 'warning') toast.warning(msg);
-              else if (type === 'info') toast.info(msg);
-              else toast.success(msg);
-            }}
-          />
-        </Suspense>
+        <LazyChunkErrorBoundary
+          moduleName="Inventário Físico"
+          moduleKey="physical_inventory_modal"
+          isModal
+          onClose={() => setIsPhysicalInventoryOpen(false)}
+        >
+          <Suspense fallback={<ModalLoadingFallback />}>
+            <PhysicalInventoryModal
+              isOpen={isPhysicalInventoryOpen}
+              products={departmentProducts}
+              department={activeDepartment}
+              userRole={currentUser.role}
+              currentUserName={currentUser.displayName || 'Marconi Castro'}
+              currentUserEmail={currentUser.email}
+              currentUserUid={currentUser.uid}
+              inventoryAudits={inventoryAudits}
+              inventorySessions={inventorySessions}
+              onClose={() => setIsPhysicalInventoryOpen(false)}
+              onNotify={(msg, type) => {
+                if (type === 'error' || type === 'warning') toast.warning(msg);
+                else if (type === 'info') toast.info(msg);
+                else toast.success(msg);
+              }}
+            />
+          </Suspense>
+        </LazyChunkErrorBoundary>
       )}
 
       {isReconciliationPreviewOpen && currentUser.role === 'admin' && (
@@ -725,13 +754,20 @@ export default function App() {
       )}
 
       {isReceiptScannerOpen && (
-        <Suspense fallback={<ModalLoadingFallback />}>
-          <ReceiptScannerModal
-            products={departmentProducts}
-            onClose={() => setIsReceiptScannerOpen(false)}
-            onImportEntries={handleImportReceiptEntries}
-          />
-        </Suspense>
+        <LazyChunkErrorBoundary
+          moduleName="Scanner de Nota Fiscal"
+          moduleKey="receipt_scanner_modal"
+          isModal
+          onClose={() => setIsReceiptScannerOpen(false)}
+        >
+          <Suspense fallback={<ModalLoadingFallback />}>
+            <ReceiptScannerModal
+              products={departmentProducts}
+              onClose={() => setIsReceiptScannerOpen(false)}
+              onImportEntries={handleImportReceiptEntries}
+            />
+          </Suspense>
+        </LazyChunkErrorBoundary>
       )}
 
       <AuthModal

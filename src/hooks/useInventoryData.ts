@@ -48,6 +48,7 @@ import {
 } from '../services/firestoreService';
 import { toast } from '../utils/toast';
 import { AppUserProfile } from '../firebase';
+import { SyncStatus } from '../components/ConnectionStatusBar';
 
 export function useInventoryData(currentUser: AppUserProfile | null) {
   const [products, setProducts] = useState<Product[]>(getStoredProducts());
@@ -58,6 +59,14 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
   const [inventoryAudits, setInventoryAudits] = useState<InventoryAudit[]>([]);
   const [inventorySessions, setInventorySessions] = useState<InventorySessionSummary[]>([]);
   const [dataReady, setDataReady] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return 'offline';
+    }
+    return 'local-cache';
+  });
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
+  const [isTransacting, setIsTransacting] = useState(false);
 
   // Sincronização e subscrições reativas do Firestore com garantias de carregamento (Lote 6)
   useEffect(() => {
@@ -69,14 +78,23 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
 
     // Caso 3: Sem internet — se o navegador estiver offline, libera imediatamente para exibir cache local
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setSyncStatus('offline');
       setDataReady(true);
       return;
     }
 
     const handleOffline = () => {
+      setSyncStatus('offline');
       setDataReady(true);
     };
+
+    const handleOnline = () => {
+      // Conexão de rede voltou: aguarda snapshot autoritativo do Firestore antes de declarar 'synced'
+      setSyncStatus('connecting');
+    };
+
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
 
     // Caso 1: Prazo máximo de 8 segundos — nunca travar
     const emergencyTimeout = setTimeout(() => {
@@ -87,10 +105,16 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
     const handleSubError = (err: unknown) => {
       console.warn('Erro de assinatura do Firestore (liberando tela de carregamento):', err);
       setDataReady(true);
+      setSyncStatus('sync-error');
     };
 
     let prodsReceived = false;
     let movsReceived = false;
+
+    const markSnapshotReceived = () => {
+      setSyncStatus('synced');
+      setLastSyncedAt(new Date());
+    };
 
     const checkAndSetReady = () => {
       // Quando as duas coleções principais responderem (mesmo vazias), dados estão prontos
@@ -115,6 +139,7 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
         setProducts(data);
         saveProducts(data);
         prodsReceived = true;
+        markSnapshotReceived();
         checkAndSetReady();
       },
       handleSubError
@@ -125,6 +150,7 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
         setMovements(data);
         saveMovements(data);
         movsReceived = true;
+        markSnapshotReceived();
         checkAndSetReady();
       },
       handleSubError
@@ -170,6 +196,7 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
       clearTimeout(emergencyTimeout);
       clearTimeout(graceTimeout);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
       unsubProds();
       unsubMovs();
       unsubKit();
@@ -241,6 +268,7 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
         return;
       }
       try {
+        setIsTransacting(true);
         const result = await executeEntryTransaction(
           product.id,
           quantity,
@@ -266,6 +294,8 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
       } catch (err: any) {
         toast.warning(err.message || 'Erro ao registrar entrada');
         throw err;
+      } finally {
+        setIsTransacting(false);
       }
     },
     [currentUser?.role]
@@ -288,6 +318,7 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
         return;
       }
       try {
+        setIsTransacting(true);
         const result = await executeExitTransaction(
           product.id,
           quantity,
@@ -313,6 +344,8 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
       } catch (err: any) {
         toast.warning(err.message || 'Erro ao registrar saída');
         throw err;
+      } finally {
+        setIsTransacting(false);
       }
     },
     [currentUser?.role]
@@ -334,6 +367,7 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
         return;
       }
       try {
+        setIsTransacting(true);
         const result = await executeBatchExitTransaction(
           items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
           sector,
@@ -364,6 +398,8 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
       } catch (err: any) {
         toast.warning(err.message || 'Erro ao registrar saída de itens');
         throw err;
+      } finally {
+        setIsTransacting(false);
       }
     },
     [currentUser?.role]
@@ -549,6 +585,8 @@ export function useInventoryData(currentUser: AppUserProfile | null) {
     inventorySessions,
     setInventorySessions,
     dataReady,
+    syncStatus: isTransacting ? ('syncing' as SyncStatus) : syncStatus,
+    lastSyncedAt,
     handleAddEntry,
     handleAddExit,
     handleAddBatchExit,
